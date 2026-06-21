@@ -1,0 +1,11 @@
+[package]
+name = "folder_generator"
+description = "Project folder structure generator with validation, formatting, and CSV batch import"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror = { workspace = true }

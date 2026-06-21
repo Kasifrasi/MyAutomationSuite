@@ -1,0 +1,186 @@
+import { StandardTableView } from "std-widgets.slint";
+
+// ========================================
+// Structs
+// ========================================
+
+export struct Languages {
+    de: bool,
+    en: bool,
+    fr: bool,
+    es: bool,
+    pt: bool,
+}
+
+export struct Categories {
+    cat1: int,
+    cat2: int,
+    cat3: int,
+    cat4: int,
+    cat5: int,
+    cat6: int,
+    cat7: int,
+    cat8: int,
+}
+
+export struct SheetPermissions {
+    select-locked: bool,
+    select-unlocked: bool,
+    format-cells: bool,
+    format-columns: bool,
+    format-rows: bool,
+    insert-columns: bool,
+    insert-rows: bool,
+    insert-hyperlinks: bool,
+    delete-columns: bool,
+    delete-rows: bool,
+    sort: bool,
+    autofilter: bool,
+    pivot-tables: bool,
+    edit-objects: bool,
+    edit-scenarios: bool,
+    contents: bool,
+}
+
+// ========================================
+// Global UI Metrics (Zentrale Steuerung)
+// ========================================
+export global GlobalUI {
+    in-out property <length> window-height;
+    in-out property <length> window-width;
+
+    // Dynamisches Spacing: 
+    out property <length> spacing: Math.max(2px, Math.min(8px, self.window-height * 0.008));
+    
+    // Dynamisches Padding:
+    out property <length> padding: Math.max(4px, Math.min(16px, self.window-width * 0.015));
+
+    // "Kompakt-Modus" Flag: Kannst du nutzen, um Texte zu verkleinern oder 
+    // weniger wichtige Elemente komplett auszublenden.
+    out property <bool> is-compact: self.window-height < 500px;
+}
+
+// ========================================
+// FB-Generator State
+// ========================================
+export global FBState {
+    in-out property <Languages> langs;
+    in-out property <bool> all-langs;
+    in-out property <Categories> categories;
+    in-out property <SheetPermissions> sheet-permissions;
+
+    in-out property <string> version;
+    in-out property <string> folder;
+
+    in-out property <bool> protect-sheet;
+    in-out property <bool> protect-workbook;
+    in-out property <string> sheet-password;
+    in-out property <string> workbook-password;
+    in-out property <bool> hide-columns;
+    in-out property <bool> hide-lang-sheet;
+
+    in-out property <bool> show-settings: true;
+
+    in-out property <string> status-type: "idle";
+    in-out property <string> status-message: "";
+
+    callback generate-report();
+    callback select-folder();
+    callback reset();
+    callback dismiss-status();
+    callback save-settings();
+    callback toggle-settings();
+}
+
+// ========================================
+// Budget-to-FB State
+// ========================================
+export global BudgetState {
+    in-out property <string> src-folder;
+    in-out property <string> out-folder;
+
+    // Settings (persistent via confy)
+    in-out property <bool> show-settings: true;
+    in-out property <string> version;
+    in-out property <bool> protect-sheet;
+    in-out property <bool> protect-workbook;
+    in-out property <string> sheet-password;
+    in-out property <string> workbook-password;
+    in-out property <bool> hide-columns;
+    in-out property <bool> hide-lang-sheet;
+    in-out property <SheetPermissions> sheet-permissions;
+
+    in-out property <string> status-type: "idle";
+    in-out property <string> status-message: "";
+    in-out property <[[StandardListViewItem]]> table-data: [];
+    in-out property <[TableColumn]> table-columns: [];
+
+    callback select-src();
+    callback select-out();
+    callback scan();
+    callback do-export-txt();
+    callback do-export-excel();
+    callback do-reset();
+    callback dismiss-status();
+    callback toggle-settings();
+    callback save-settings();
+}
+
+// ========================================
+// Folder-Creation State
+// ========================================
+export global FolderState {
+    in-out property <string> target-folder;
+    in-out property <string> template-file;
+    in-out property <string> project-name;
+
+    in-out property <bool> skip-validation: false;
+    in-out property <bool> folder-exists: false;
+    in-out property <bool> project-name-valid: false;
+
+    // CSV-Import
+    in-out property <string> csv-file;
+    in-out property <string> csv-target-folder;
+
+    // Editierbare Unterordner-Liste
+    in-out property <[string]> subfolders: [];
+
+    in-out property <string> status-type: "idle";
+    in-out property <string> status-message: "";
+
+    callback select-folder();
+    callback select-template();
+    callback validate-project-name();
+    callback create-folders();
+    callback select-csv-file();
+    callback select-csv-target();
+    callback import-csv();
+    callback reset();
+    callback dismiss-status();
+
+    callback add-subfolder(string);
+    callback remove-subfolder(int);
+    callback rename-subfolder(int, string);
+    callback reset-subfolders();
+}
+
+// ========================================
+// Auto-Update State
+// ========================================
+export global UpdateState {
+    // Mögliche Werte:
+    //   ""                                – Leerlauf
+    //   "Prüfe..."                        – Netzwerk-Request läuft
+    //   "Bereits aktuell"                 – kein Update
+    //   "Update verfügbar: v1.x.y"        – Update gefunden
+    //   "Installiert – bitte neu starten" – Update eingespielt
+    //   "Fehler: <message>"               – Fehler
+    in-out property <string> status: "";
+    in-out property <bool> checking: false;
+    in-out property <bool> update-available: false;
+    in-out property <string> app-version: "";
+    in-out property <bool> installed: false;
+
+    callback check-for-update();
+    callback restart();
+}

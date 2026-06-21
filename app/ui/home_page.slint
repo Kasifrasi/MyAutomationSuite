@@ -1,0 +1,129 @@
+import { Palette, AboutSlint } from "std-widgets.slint";
+
+component MenuCard inherits Rectangle {
+    in property <string> title;
+    in property <string> description;
+    in property <image> icon;
+    callback clicked();
+
+    border-radius: 12px;
+    background: Palette.control-background;
+    border-width: 1px;
+    border-color: ta.has-hover ? Palette.accent-background : Palette.border;
+    height: 140px;
+
+    ta := TouchArea {
+        clicked => {
+            root.clicked();
+        }
+        mouse-cursor: pointer;
+    }
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 10px;
+        alignment: center;
+
+        Image {
+            source: root.icon;
+            width: 32px;
+            height: 32px;
+            colorize: Palette.accent-background;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.title;
+            font-size: 16px;
+            font-weight: 700;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: root.description;
+            font-size: 13px;
+            color: Palette.foreground;
+            opacity: 0.6;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+}
+
+export component HomePage inherits VerticalLayout {
+    callback navigate(string);
+
+    spacing: 20px;
+
+    Rectangle {
+        vertical-stretch: 1;
+    }
+
+    // Titel
+    VerticalLayout {
+        spacing: 4px;
+        Text {
+            text: "Automation-Tool";
+            font-size: 28px;
+            font-weight: 800;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: "Werkzeug auswählen";
+            font-size: 14px;
+            color: Palette.foreground;
+            opacity: 0.5;
+            horizontal-alignment: center;
+        }
+    }
+
+    // Kacheln
+    HorizontalLayout {
+        spacing: 16px;
+        alignment: center;
+
+        MenuCard {
+            title: "FB-Generator";
+            description: "Finanzberichtsvorlagen erstellen";
+            icon: @image-url("icons/chart.svg");
+            width: 260px;
+            clicked => {
+                root.navigate("fb");
+            }
+        }
+
+        MenuCard {
+            title: "Budget zu FB";
+            description: "Budgets in Finanzberichte konvertieren";
+            icon: @image-url("icons/convert.svg");
+            width: 260px;
+            clicked => {
+                root.navigate("budget");
+            }
+        }
+
+        MenuCard {
+            title: "Ordner erstellen";
+            description: "Erstellt Ordner mit Prüfvorlage";
+            icon: @image-url("icons/folder.svg");
+            width: 260px;
+            clicked => {
+                root.navigate("folder");
+            }
+        }
+    }
+
+    Rectangle {
+        vertical-stretch: 1;
+    }
+
+    HorizontalLayout {
+        alignment: end;
+        AboutSlint {
+            width: 125px;
+        }
+    }
+}

@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = [
+    "budget_scanner",
+    "fb_generator",
+    "folder_generator",
+    "gui"
+]
+
+[workspace.package]
+version = "1.0.12"
+edition = "2021"
+rust-version = "1.87"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+# Deine internen Crates
+fb_generator = { path = "fb_generator" }
+budget_scanner = { path = "budget_scanner" }
+folder_generator = { path = "folder_generator" }
+
+# Geteilte externe Abhängigkeiten
+serde = { version = "1", features = ["derive"] }
+slint = { version = "1.15.1", default-features = false }
+slint-build = "1.15.1"
+thiserror = "2"
+rust_xlsxwriter = "0.94"
+rayon = "1"
