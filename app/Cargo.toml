@@ -1,0 +1,31 @@
+[package]
+name = "gui"
+
+# Geerbt vom Workspace
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+confy = "2"
+rfd = "0.14"
+dark-light = "2.0.0"
+rust_xlsxwriter = { workspace = true }
+serde = { workspace = true }
+
+# Import deiner eigenen Logik über den Workspace
+fb_generator = { workspace = true }
+budget_scanner = { workspace = true }
+folder_generator = { workspace = true }
+
+slint = { workspace = true, features = ["backend-winit", "renderer-winit-software", "compat-1-2", "std"] }
+self_update = { version = "0.41", default-features = false, features = ["rustls"] }
+semver = "1"
+
+[build-dependencies]
+slint-build = { workspace = true }
+
+[features]
+# Dieses Feature aktiviert die Live-Preview bei Slint
+dev-ui = ["slint/live-preview"]

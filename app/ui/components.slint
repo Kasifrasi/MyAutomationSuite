@@ -1,0 +1,356 @@
+import { Palette, LineEdit, CheckBox, Button } from "std-widgets.slint";
+import { FBState } from "./state.slint";
+
+// ─── Wiederverwendbare Card-Komponente ───
+export component Card inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle: "";
+
+    border-radius: 10px;
+    background: Palette.control-background;
+    border-width: 1px;
+    border-color: Palette.border;
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 4px;
+
+        if root.title != "" : VerticalLayout {
+            spacing: 2px;
+            Text {
+                text: root.title;
+                font-size: 13px;
+                font-weight: 700;
+                color: Palette.foreground;
+            }
+            if root.subtitle != "" : Text {
+                text: root.subtitle;
+                font-size: 13px;
+                color: Palette.foreground;
+                opacity: 0.5;
+            }
+        }
+
+        if root.title != "" : Rectangle {
+            height: 1px;
+            background: Palette.border;
+            opacity: 0.4;
+        }
+
+        @children
+    }
+}
+
+// ─── Nav-Button ───
+export component NavButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    callback clicked();
+
+    height: 36px;
+    border-radius: 8px;
+    background: root.active ? Palette.accent-background : transparent;
+
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+        mouse-cursor: pointer;
+    }
+
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        alignment: center;
+        Text {
+            text: root.label;
+            font-size: 13px;
+            font-weight: root.active ? 700 : 500;
+            color: root.active ? Palette.accent-foreground : Palette.foreground;
+            vertical-alignment: center;
+            opacity: root.active ? 1.0 : 0.7;
+        }
+    }
+}
+
+// ─── Status-Banner (wiederverwendbar) ───
+export component StatusBanner inherits Rectangle {
+    in property <string> status-type;
+    in property <string> status-message;
+    callback dismiss();
+
+    visible: status-type != "idle";
+    border-radius: 8px;
+    background: status-type == "error"
+        ? Palette.foreground.transparentize(0.92)
+        : Palette.accent-background.transparentize(0.85);
+    border-width: 1px;
+    border-color: status-type == "error"
+        ? Palette.foreground.transparentize(0.8)
+        : Palette.accent-background.transparentize(0.5);
+
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        spacing: 10px;
+
+        Text {
+            text: root.status-type == "success" ? "Erfolg"
+                : root.status-type == "error" ? "Fehler"
+                : "Wird verarbeitet...";
+            font-weight: 700;
+            font-size: 13px;
+            color: root.status-type == "error"
+                ? Palette.foreground.darker(0.1)
+                : Palette.accent-background.darker(0.3);
+            vertical-alignment: center;
+        }
+        Text {
+            text: root.status-message;
+            font-size: 13px;
+            color: Palette.foreground;
+            opacity: 0.8;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            wrap: word-wrap;
+        }
+        if root.status-type == "success" || root.status-type == "error" : TouchArea {
+            width: 24px;
+            mouse-cursor: pointer;
+            clicked => { root.dismiss(); }
+            Text {
+                text: "X";
+                font-size: 14px;
+                font-weight: 700;
+                color: Palette.foreground;
+                opacity: 0.5;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+// ─── Custom SpinBox mit festen Button-Positionen und editierbarem Feld ───
+export component CategorySpinBox inherits HorizontalLayout {
+    in-out property <int> value: 0;
+    in property <int> minimum: 0;
+    in property <int> maximum: 999;
+    callback changed();
+
+    spacing: 2px;
+
+    // Editierbares Zahlenfeld
+    LineEdit {
+        horizontal-stretch: 1;
+        input-type: InputType.number;
+        horizontal-alignment: right;
+        text: root.value;
+        edited(text) => {
+            if (text == "") {
+                root.value = 0;
+            } else {
+                root.value = max(root.minimum, min(root.maximum, text.to-float()));
+            }
+            root.changed();
+        }
+    }
+
+    // Minus-Button
+    Rectangle {
+        width: 26px;
+        border-radius: 4px;
+        background: minus-ta.has-hover ? Palette.control-background.darker(0.1) : Palette.control-background;
+        border-width: 1px;
+        border-color: Palette.border;
+
+        minus-ta := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                if root.value > root.minimum {
+                    root.value -= 1;
+                }
+                root.changed();
+            }
+        }
+
+        Text {
+            text: "−";
+            font-size: 16px;
+            font-weight: 700;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+    // Plus-Button
+    Rectangle {
+        width: 26px;
+        border-radius: 4px;
+        background: plus-ta.has-hover ? Palette.control-background.darker(0.1) : Palette.control-background;
+        border-width: 1px;
+        border-color: Palette.border;
+
+        plus-ta := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                if root.value < root.maximum {
+                    root.value += 1;
+                }
+                root.changed();
+            }
+        }
+
+        Text {
+            text: "+";
+            font-size: 16px;
+            font-weight: 700;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+}
+
+// Eigene wiederverwendbare Zeile für das Grid
+export component CategoryField inherits HorizontalLayout {
+    in property <string> label;
+    in-out property <int> val;
+    
+    alignment: space-between;
+
+    Text {
+        text: root.label;
+        font-size: 13px;
+        opacity: 0.8;
+    }
+    CategorySpinBox {
+        value <=> root.val;
+        max-width: 120px;
+        changed => { FBState.save-settings(); }
+    }
+}
+
+export component SettingCheckBox inherits CheckBox {
+    in-out property <bool> value;
+    in property <bool> is-enabled: true;
+    callback changed(); // NEU: Ein generischer Funkspruch
+
+    checked <=> root.value;
+    enabled: root.is-enabled;
+    toggled => { 
+        root.changed(); // Sag der Seite bescheid
+    }
+}
+
+export component PasswordField inherits Rectangle {
+    in property <string> label;
+    in property <string> placeholder;
+    in-out property <string> password;
+    in property <bool> is-enabled: true;
+    callback changed(); // NEU
+
+    background: Palette.background;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: Palette.border;
+    horizontal-stretch: 1;
+    opacity: root.is-enabled ? 1.0 : 0.5;
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 3px;
+        Text { text: root.label; font-size: 13px; font-weight: 600; color: Palette.foreground; opacity: 0.7; }
+        LineEdit {
+            input-type: InputType.password;
+            placeholder-text: root.placeholder;
+            text <=> root.password;
+            enabled: root.is-enabled;
+            edited => { root.changed(); } // Sag der Seite bescheid
+        }
+    }
+}
+
+// 1. Universelles Feld für Pfad- oder Dateiauswahl
+export component PathInputField inherits VerticalLayout {
+    in property <string> label;
+    in property <string> placeholder;
+    in-out property <string> value;
+    callback clicked();
+
+    spacing: 4px;
+    Text { 
+        text: root.label; 
+        font-size: 13px; font-weight: 600; opacity: 0.8; 
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        LineEdit {
+            text <=> root.value;
+            read-only: true;
+            placeholder-text: root.placeholder;
+            horizontal-stretch: 1;
+        }
+        Button {
+            text: "Durchsuchen...";
+            clicked => { root.clicked(); }
+        }
+    }
+}
+
+// 2. Spezielles Feld für den Projektnamen mit Validierung
+export component ProjectNameField inherits VerticalLayout {
+    in-out property <string> project-name;
+    in-out property <bool> skip-validation;
+    in property <string> target-folder;
+    in property <bool> folder-exists;
+    callback validated();
+
+    spacing: 4px;
+    HorizontalLayout {
+        spacing: 8px;
+        Text {
+            text: "Projektbezeichnung";
+            font-size: 13px; font-weight: 600; opacity: 0.8;
+            vertical-alignment: center; horizontal-stretch: 1;
+        }
+        CheckBox {
+            text: "Freie Eingabe";
+            checked <=> root.skip-validation;
+            toggled => { root.validated(); }
+        }
+    }
+    private property <string> pre-format-text: "";
+
+    HorizontalLayout {
+        spacing: 8px;
+        input := LineEdit {
+            text <=> root.project-name;
+            placeholder-text: "z.B. 2025_0004_003";
+            horizontal-stretch: 1;
+            edited => {
+                root.pre-format-text = root.project-name;
+                root.validated();
+                if root.project-name != root.pre-format-text {
+                    input.set-selection-offsets(root.project-name.character-count, root.project-name.character-count);
+                }
+            }
+        }
+        // Validierungs-Logik Icons
+        if root.target-folder == "" : TouchArea {
+            width: 24px; height: 24px;
+            Text { text: "?"; font-size: 16px; font-weight: 700; opacity: 0.4; horizontal-alignment: center; vertical-alignment: center; }
+            if self.has-hover : Rectangle {
+                x: -140px; y: 24px; width: 160px; height: 28px;
+                background: Palette.background; border-color: Palette.border; border-width: 1px; border-radius: 4px;
+                Text { text: "Zielordner setzen"; font-size: 11px; horizontal-alignment: center; vertical-alignment: center; }
+            }
+        }
+        if root.target-folder != "" && root.project-name != "" : Text {
+            text: root.folder-exists ? "X" : "OK";
+            color: root.folder-exists ? #f44336 : #4caf50;
+            font-size: 16px; font-weight: 700; vertical-alignment: center; width: 24px;
+        }
+    }
+}

@@ -1,0 +1,9 @@
+# Nicht auf crates.io publishen – nur Tag + Push für GitHub Actions
+publish = false
+
+# Tag-Format passend zum GitHub Workflow (erwartet "v*")
+tag-name = "v{{version}}"
+
+# Alles in einem Commit zusammenfassen
+consolidate-commits = true
+

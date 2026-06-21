@@ -1,0 +1,211 @@
+import { Palette, Switch, AboutSlint, Button } from "std-widgets.slint";
+export { Palette }
+import { FBPage } from "fb_page.slint";
+import { BudgetPage } from "budget_to_fb.slint";
+import { FolderPage } from "folder_page.slint";
+import { HomePage } from "home_page.slint";
+import {
+    Languages,
+    Categories,
+    SheetPermissions,
+    GlobalUI,
+    FBState,
+    BudgetState,
+    FolderState,
+    UpdateState,
+} from "state.slint";
+export { Languages, Categories, SheetPermissions, FBState, BudgetState, FolderState, UpdateState }
+import "./fonts/InterVariable.ttf";
+import "./fonts/InterVariable-Italic.ttf";
+
+export component MainWindow inherits Window {
+    init => {
+            GlobalUI.window-height = self.height;
+            GlobalUI.window-width = self.width;
+    }    
+    changed height => { GlobalUI.window-height = self.height; }
+    changed width => { GlobalUI.window-width = self.width; }
+    
+    title: "Automation-Tool";
+    default-font-family: "Inter Variable";
+    default-font-size: 14px;
+    preferred-width: 860px;
+    preferred-height: 720px;
+    min-width: 640px;
+    min-height: 480px;
+    max-width: 1920px;
+    max-height: 1080px;
+    background: Palette.background;
+
+    // --- Navigation & UI ---
+    in-out property <string> current_page: "home";
+    in-out property <bool> dark_mode: false;
+
+    callback toggle-dark-mode(bool);
+
+    // Klick auf Hintergrund nimmt Fokus von Eingabefeldern
+    fs := FocusScope { }
+
+    TouchArea {
+        clicked => {
+            fs.focus();
+        }
+    }
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 10px;
+
+        // ─── Header (immer sichtbar, überlagerte Layouts) ───
+        Rectangle {
+            min-height: 48px;
+            // Ebene 1: Titel links, Switch rechts
+            HorizontalLayout {
+                spacing: 8px;
+
+                if root.current-page == "home": HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    vertical-stretch: 1;
+
+                    VerticalLayout {
+                        alignment: center;
+                        Text {
+                            text: "v" + UpdateState.app-version;
+                            font-size: 11px;
+                            color: Palette.foreground;
+                            opacity: 0.5;
+                        }
+                    }
+
+                    VerticalLayout {
+                        alignment: center;
+                        Button {
+                            text: UpdateState.installed
+                                ? "Neu starten"
+                                : UpdateState.update-available
+                                    ? "Installieren"
+                                    : "Updates prüfen";
+                            enabled: !UpdateState.checking;
+                            width: 130px;
+                            clicked => {
+                                if UpdateState.installed {
+                                    UpdateState.restart();
+                                } else {
+                                    UpdateState.check-for-update();
+                                }
+                            }
+                        }
+                    }
+
+                    if UpdateState.status != "" : VerticalLayout {
+                        alignment: center;
+                        Text {
+                            text: UpdateState.status;
+                            font-size: 11px;
+                            color: UpdateState.update-available
+                                ? Palette.accent-background
+                                : Palette.foreground;
+                            opacity: 0.85;
+                        }
+                    }
+                }
+
+                if root.current-page != "home": VerticalLayout {
+                    spacing: 2px;
+                    alignment: center;
+                    Text {
+                        text: root.current-page == "fb" ? "FB-Generator" : (root.current-page == "budget" ? "Budget zu FB" : "Ordner erstellen");
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: Palette.foreground;
+                    }
+
+                    Text {
+                        text: root.current-page == "fb" ? "Excel-Vorlagen erstellen" : (root.current-page == "budget" ? "Budget-Dateien scannen & FB-Berichte erstellen" : "Standardisierte Projektordner anlegen");
+                        font-size: 13px;
+                        color: Palette.foreground;
+                        opacity: 0.55;
+                    }
+                }
+
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+
+                Switch {
+                    text: root.dark-mode ? "Dark" : "Light";
+                    checked <=> root.dark-mode;
+                    toggled => {
+                        root.toggle-dark-mode(root.dark-mode);
+                    }
+                }
+            }
+
+            // Ebene 2: Startmenü-Button absolut zentriert
+            if root.current-page != "home": HorizontalLayout {
+                alignment: center;
+                vertical-stretch: 1;
+                Rectangle {
+                    width: 120px;
+                    height: 36px;
+                    border-radius: 8px;
+                    background: home-ta.has-hover ? Palette.control-background.darker(0.05) : Palette.control-background;
+                    border-width: 1px;
+                    border-color: home-ta.has-hover ? Palette.accent-background : Palette.border;
+
+                    home-ta := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.current-page = "home";
+                        }
+                    }
+
+                    Image {
+                        source: @image-url("icons/home.svg");
+                        width: 16px;
+                        height: 16px;
+                        colorize: Palette.foreground;
+                        x: 10px;
+                        y: (parent.height - self.height) / 2;
+                    }
+
+                    Text {
+                        text: "Startmenü";
+                        font-size: 13px;
+                        color: Palette.foreground;
+                        x: 10px + 16px + 6px;
+                        y: 0;
+                        height: parent.height;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+
+        // ================================================================
+        // Startmenü
+        // ================================================================
+        if root.current-page == "home": HomePage {
+            navigate(page) => {
+                root.current-page = page;
+            }
+            vertical-stretch: 1;
+        }
+
+        // ================================================================
+        // Seite 1: FB-Generator
+        // ================================================================
+        if root.current-page == "fb": FBPage { }
+
+        // ================================================================
+        // Seite 2: Budget zu FB
+        // ================================================================
+        if root.current-page == "budget": BudgetPage { }
+
+        // ================================================================
+        // Seite 3: Ordner erstellen
+        // ================================================================
+        if root.current-page == "folder": FolderPage { }
+    }
+}
