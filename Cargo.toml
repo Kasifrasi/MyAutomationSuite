@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "core/budget_scanner",
     "core/folder_generator",
+    "core/excel_protection",
     "app"
 ]
 
@@ -16,6 +17,7 @@ license = "MIT OR Apache-2.0"
 # Deine internen Crates
 budget_scanner = { path = "core/budget_scanner" }
 folder_generator = { path = "core/folder_generator" }
+excel_protection = { path = "core/excel_protection" }
 
 # Geteilte externe Abhängigkeiten
 serde = { version = "1", features = ["derive"] }

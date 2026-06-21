@@ -578,6 +578,31 @@ fn apply_folder_defaults(ui: &MainWindow) {
 
 // Einstiegspunkt
 
+#[derive(serde::Serialize, Debug, Clone)]
+struct ExportOptions {
+    pub protect_sheet: bool,
+    pub protect_workbook: bool,
+    pub sheet_password: String,
+    pub workbook_password: String,
+    pub hide_columns: bool,
+    pub hide_lang_sheet: bool,
+    pub select_locked: bool,
+    pub select_unlocked: bool,
+    pub format_cells: bool,
+    pub format_columns: bool,
+    pub format_rows: bool,
+    pub insert_columns: bool,
+    pub insert_rows: bool,
+    pub insert_hyperlinks: bool,
+    pub delete_columns: bool,
+    pub delete_rows: bool,
+    pub sort: bool,
+    pub autofilter: bool,
+    pub pivot_tables: bool,
+    pub edit_objects: bool,
+    pub edit_scenarios: bool,
+}
+
 #[derive(serde::Deserialize, Debug)]
 struct ProgressMessage {
     pub status: String,
@@ -585,6 +610,41 @@ struct ProgressMessage {
     pub current: Option<u32>,
     pub total: Option<u32>,
     pub message: String,
+}
+
+fn get_sidecar_path() -> std::path::PathBuf {
+    // Hier binden wir die kompilierte Go-Exe direkt in die Rust-Anwendung ein!
+    let sidecar_bytes = include_bytes!("../../sidecars/Excelize/scanner.exe");
+
+    // Wir entpacken sie in den Temp-Ordner
+    let dir = std::env::temp_dir().join("MyAutomationSuite");
+    let _ = std::fs::create_dir_all(&dir);
+
+    let exe_name = if cfg!(windows) { "scanner.exe" } else { "scanner" };
+    let exe_path = dir.join(exe_name);
+
+    // Nur neu schreiben, wenn sie noch nicht existiert oder sich die Größe geändert hat (z.B. nach einem App-Update)
+    // Das verhindert unnötige Schreibvorgänge und beruhigt Antivirenscanner.
+    let needs_write = match std::fs::metadata(&exe_path) {
+        Ok(meta) => meta.len() as usize != sidecar_bytes.len(),
+        Err(_) => true,
+    };
+
+    if needs_write {
+        let _ = std::fs::write(&exe_path, sidecar_bytes);
+
+        // Auf Linux/macOS müssen wir die Datei ausführbar machen
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(mut perms) = std::fs::metadata(&exe_path).map(|m| m.permissions()) {
+                perms.set_mode(0o755);
+                let _ = std::fs::set_permissions(&exe_path, perms);
+            }
+        }
+    }
+
+    exe_path
 }
 
 fn main() -> Result<(), slint::PlatformError> {
@@ -774,6 +834,63 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 let version = fb.get_version().to_string();
 
+                let sp = fb.get_sheet_permissions();
+                let options = ExportOptions {
+                    protect_sheet: fb.get_protect_sheet(),
+                    protect_workbook: fb.get_protect_workbook(),
+                    sheet_password: fb.get_sheet_password().to_string(),
+                    workbook_password: fb.get_workbook_password().to_string(),
+                    hide_columns: fb.get_hide_columns(),
+                    hide_lang_sheet: fb.get_hide_lang_sheet(),
+                    select_locked: sp.select_locked,
+                    select_unlocked: sp.select_unlocked,
+                    format_cells: sp.format_cells,
+                    format_columns: sp.format_columns,
+                    format_rows: sp.format_rows,
+                    insert_columns: sp.insert_columns,
+                    insert_rows: sp.insert_rows,
+                    insert_hyperlinks: sp.insert_hyperlinks,
+                    delete_columns: sp.delete_columns,
+                    delete_rows: sp.delete_rows,
+                    sort: sp.sort,
+                    autofilter: sp.autofilter,
+                    pivot_tables: sp.pivot_tables,
+                    edit_objects: sp.edit_objects,
+                    edit_scenarios: sp.edit_scenarios,
+                };
+                let wb_hash = if options.protect_workbook {
+                    Some(excel_protection::precompute_hash(&options.workbook_password))
+                } else { None };
+
+                let sh_hash = if options.protect_sheet {
+                    Some(excel_protection::precompute_hash(&options.sheet_password))
+                } else { None };
+
+                let sh_opts = if options.protect_sheet {
+                    Some(excel_protection::SheetProtectionOptions {
+                        select_locked_cells: options.select_locked,
+                        select_unlocked_cells: options.select_unlocked,
+                        format_cells: options.format_cells,
+                        format_columns: options.format_columns,
+                        format_rows: options.format_rows,
+                        insert_columns: options.insert_columns,
+                        insert_rows: options.insert_rows,
+                        insert_hyperlinks: options.insert_hyperlinks,
+                        delete_columns: options.delete_columns,
+                        delete_rows: options.delete_rows,
+                        sort: options.sort,
+                        auto_filter: options.autofilter,
+                        pivot_tables: options.pivot_tables,
+                        objects: options.edit_objects,
+                        scenarios: options.edit_scenarios,
+                    })
+                } else { None };
+
+                let mut sidecar_options = options.clone();
+                sidecar_options.protect_sheet = false;
+                sidecar_options.protect_workbook = false;
+                let options_json = serde_json::to_string(&sidecar_options).unwrap_or_default();
+
                 let ui_handle_clone = ui_handle.clone();
                 std::thread::spawn(move || {
                     let mut templates = Vec::new();
@@ -834,17 +951,15 @@ fn main() -> Result<(), slint::PlatformError> {
                         return;
                     }
 
-                    let sidecar_exe = if cfg!(windows) {
-                        "sidecars/Excelize/scanner.exe"
-                    } else {
-                        "./sidecars/Excelize/scanner.exe"
-                    };
+                    let sidecar_exe = get_sidecar_path();
 
-                    let mut cmd = std::process::Command::new(sidecar_exe);
+                    let mut cmd = std::process::Command::new(&sidecar_exe);
                     cmd.arg("-input")
                         .arg(&tmp_json_path)
                         .arg("-output")
-                        .arg(&output_dir);
+                        .arg(&output_dir)
+                        .arg("-options")
+                        .arg(&options_json);
 
                     if !version.is_empty() {
                         cmd.arg("-filename")
@@ -862,7 +977,7 @@ fn main() -> Result<(), slint::PlatformError> {
                                 let fb = ui.global::<FBState>();
                                 fb.set_status_type("error".into());
                                 fb.set_status_message(
-                                    format!("Fehler beim Starten von {sidecar_exe}: {e}").into(),
+                                    format!("Fehler beim Starten von {}: {e}", sidecar_exe.display()).into(),
                                 );
                             });
                             return;
@@ -906,6 +1021,28 @@ fn main() -> Result<(), slint::PlatformError> {
 
                     let _ = child.wait();
                     let _ = std::fs::remove_file(&tmp_json_path);
+
+                    if wb_hash.is_some() || sh_hash.is_some() {
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let fb = ui.global::<FBState>();
+                            fb.set_status_message("Wende Verschlüsselung an...".into());
+                        });
+
+                        use rayon::prelude::*;
+                        if let Ok(entries) = std::fs::read_dir(&output_dir) {
+                            let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+                            paths.into_par_iter().for_each(|p| {
+                                if p.extension().map_or(false, |ext| ext == "xlsx") {
+                                    let _ = excel_protection::apply_protection_in_place(
+                                        &p,
+                                        wb_hash.as_ref(),
+                                        sh_hash.as_ref(),
+                                        sh_opts.as_ref()
+                                    );
+                                }
+                            });
+                        }
+                    }
                 });
             }
         }
@@ -964,6 +1101,65 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 let version = b2f.get_version().to_string();
 
+                let sp = b2f.get_sheet_permissions();
+                let options = ExportOptions {
+                    protect_sheet: b2f.get_protect_sheet(),
+                    protect_workbook: b2f.get_protect_workbook(),
+                    sheet_password: b2f.get_sheet_password().to_string(),
+                    workbook_password: b2f.get_workbook_password().to_string(),
+                    hide_columns: b2f.get_hide_columns(),
+                    hide_lang_sheet: b2f.get_hide_lang_sheet(),
+                    select_locked: sp.select_locked,
+                    select_unlocked: sp.select_unlocked,
+                    format_cells: sp.format_cells,
+                    format_columns: sp.format_columns,
+                    format_rows: sp.format_rows,
+                    insert_columns: sp.insert_columns,
+                    insert_rows: sp.insert_rows,
+                    insert_hyperlinks: sp.insert_hyperlinks,
+                    delete_columns: sp.delete_columns,
+                    delete_rows: sp.delete_rows,
+                    sort: sp.sort,
+                    autofilter: sp.autofilter,
+                    pivot_tables: sp.pivot_tables,
+                    edit_objects: sp.edit_objects,
+                    edit_scenarios: sp.edit_scenarios,
+                };
+
+                let wb_hash = if options.protect_workbook {
+                    Some(excel_protection::precompute_hash(&options.workbook_password))
+                } else { None };
+
+                let sh_hash = if options.protect_sheet {
+                    Some(excel_protection::precompute_hash(&options.sheet_password))
+                } else { None };
+
+                let sh_opts = if options.protect_sheet {
+                    Some(excel_protection::SheetProtectionOptions {
+                        select_locked_cells: options.select_locked,
+                        select_unlocked_cells: options.select_unlocked,
+                        format_cells: options.format_cells,
+                        format_columns: options.format_columns,
+                        format_rows: options.format_rows,
+                        insert_columns: options.insert_columns,
+                        insert_rows: options.insert_rows,
+                        insert_hyperlinks: options.insert_hyperlinks,
+                        delete_columns: options.delete_columns,
+                        delete_rows: options.delete_rows,
+                        sort: options.sort,
+                        auto_filter: options.autofilter,
+                        pivot_tables: options.pivot_tables,
+                        objects: options.edit_objects,
+                        scenarios: options.edit_scenarios,
+                    })
+                } else { None };
+
+                // Dem Sidecar geben wir protect=false mit, damit es das XML nicht verschlüsselt
+                let mut sidecar_options = options.clone();
+                sidecar_options.protect_sheet = false;
+                sidecar_options.protect_workbook = false;
+                let options_json = serde_json::to_string(&sidecar_options).unwrap_or_default();
+
                 let ui_handle_clone = ui_handle.clone();
                 std::thread::spawn(move || {
                     let src_path = std::path::PathBuf::from(&src);
@@ -1007,17 +1203,15 @@ fn main() -> Result<(), slint::PlatformError> {
                     }
 
                     // 5. Go Sidecar aufrufen
-                    let sidecar_exe = if cfg!(windows) {
-                        "sidecars/Excelize/scanner.exe"
-                    } else {
-                        "./sidecars/Excelize/scanner.exe"
-                    };
+                    let sidecar_exe = get_sidecar_path();
 
-                    let mut cmd = std::process::Command::new(sidecar_exe);
+                    let mut cmd = std::process::Command::new(&sidecar_exe);
                     cmd.arg("-input")
                         .arg(&tmp_json_path)
                         .arg("-output")
-                        .arg(&output_dir);
+                        .arg(&output_dir)
+                        .arg("-options")
+                        .arg(&options_json);
 
                     // Wenn version gesetzt ist, fügen wir es ins Namensmuster ein
                     if !version.is_empty() {
@@ -1036,7 +1230,7 @@ fn main() -> Result<(), slint::PlatformError> {
                                 let b2f = ui.global::<BudgetState>();
                                 b2f.set_status_type("error".into());
                                 b2f.set_status_message(
-                                    format!("Fehler beim Starten von {sidecar_exe}: {e}").into(),
+                                    format!("Fehler beim Starten von {}: {e}", sidecar_exe.display()).into(),
                                 );
                             });
                             return;
@@ -1080,6 +1274,30 @@ fn main() -> Result<(), slint::PlatformError> {
 
                     let _ = child.wait();
                     let _ = std::fs::remove_file(&tmp_json_path);
+
+                    // --- RUST EXCEL PROTECTION ---
+                    // Wir durchlaufen alle generierten XLSX Dateien und wenden den schnellen XML-Schutz an
+                    if wb_hash.is_some() || sh_hash.is_some() {
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let b2f = ui.global::<BudgetState>();
+                            b2f.set_status_message("Wende Verschlüsselung an...".into());
+                        });
+
+                        use rayon::prelude::*;
+                        if let Ok(entries) = std::fs::read_dir(&output_dir) {
+                            let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+                            paths.into_par_iter().for_each(|p| {
+                                if p.extension().map_or(false, |ext| ext == "xlsx") {
+                                    let _ = excel_protection::apply_protection_in_place(
+                                        &p,
+                                        wb_hash.as_ref(),
+                                        sh_hash.as_ref(),
+                                        sh_opts.as_ref()
+                                    );
+                                }
+                            });
+                        }
+                    }
 
                     // 6. Fehler-CSV schreiben
                     if !result.failures.is_empty() {
