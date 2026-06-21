@@ -1,0 +1,12 @@
+[package]
+name = "excel_protection"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64 = "0.22"
+byteorder = "1.5"
+quick-xml = "0.36"
+sha2 = "0.10"
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
+getrandom = "0.2"
