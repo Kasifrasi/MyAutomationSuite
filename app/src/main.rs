@@ -4,17 +4,12 @@ slint::include_modules!();
 
 mod updater;
 
-use fb_generator::{
-    Language, PositionEntry, ReportBody, ReportConfig, ReportHeader, ReportOptions, SheetProtection,
-};
 use slint::Model;
 use std::path::PathBuf;
 
 const APP_NAME: &str = "automation-tool";
 
-// ==========================================
 // Theme: Einstellungen
-// ==========================================
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ThemeSettings {
@@ -44,9 +39,7 @@ fn save_theme_settings(dark_mode: bool) {
     let _ = confy::store(APP_NAME, "theme", &ThemeSettings { dark_mode });
 }
 
-// ==========================================
 // Budget-Scanner & FB-Generator: Einstellungen
-// ==========================================
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct B2fSettings {
@@ -166,9 +159,7 @@ impl Default for FbSettings {
     }
 }
 
-// ==========================================
 // Budget-Scanner & FB-Generator: Laden / Speichern
-// ==========================================
 
 #[allow(clippy::too_many_arguments)]
 fn permissions_from_settings(
@@ -354,9 +345,7 @@ fn save_fb_settings(ui: &MainWindow) {
     let _ = confy::store(APP_NAME, "fb", &s);
 }
 
-// ==========================================
 // Budget-Scanner & FB-Generator: Standardwerte
-// ==========================================
 
 fn apply_fb_defaults(ui: &MainWindow) {
     let fb = ui.global::<FBState>();
@@ -450,9 +439,7 @@ fn apply_b2f_defaults(ui: &MainWindow) {
     });
 }
 
-// ==========================================
 // Ordner-Generator: Einstellungen & Hilfsfunktionen
-// ==========================================
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct FolderSettings {
@@ -466,7 +453,10 @@ impl Default for FolderSettings {
         Self {
             target_folder: String::new(),
             template_file: String::new(),
-            subfolders: folder_generator::SUBFOLDERS.iter().map(|s| s.to_string()).collect(),
+            subfolders: folder_generator::SUBFOLDERS
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
         }
     }
 }
@@ -532,7 +522,11 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
 }
 
 fn get_subfolders_vec(ui: &MainWindow) -> Vec<String> {
-    ui.global::<FolderState>().get_subfolders().iter().map(|s| s.to_string()).collect()
+    ui.global::<FolderState>()
+        .get_subfolders()
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
 }
 
 fn validate_project_name(ui: &MainWindow) {
@@ -575,13 +569,23 @@ fn apply_folder_defaults(ui: &MainWindow) {
     fs.set_csv_target_folder("".into());
     fs.set_status_type("idle".into());
     fs.set_status_message("".into());
-    let defaults: Vec<slint::SharedString> = folder_generator::SUBFOLDERS.iter().map(|s| (*s).into()).collect();
+    let defaults: Vec<slint::SharedString> = folder_generator::SUBFOLDERS
+        .iter()
+        .map(|s| (*s).into())
+        .collect();
     fs.set_subfolders(std::rc::Rc::new(slint::VecModel::from(defaults)).into());
 }
 
-// ==========================================
 // Einstiegspunkt
-// ==========================================
+
+#[derive(serde::Deserialize, Debug)]
+struct ProgressMessage {
+    pub status: String,
+    pub file: Option<String>,
+    pub current: Option<u32>,
+    pub total: Option<u32>,
+    pub message: String,
+}
 
 fn main() -> Result<(), slint::PlatformError> {
     let ui = MainWindow::new()?;
@@ -600,7 +604,8 @@ fn main() -> Result<(), slint::PlatformError> {
     // ==========================================
     // UpdateState: Versionsnummer + Callback
     // ==========================================
-    ui.global::<UpdateState>().set_app_version(env!("CARGO_PKG_VERSION").into());
+    ui.global::<UpdateState>()
+        .set_app_version(env!("CARGO_PKG_VERSION").into());
 
     // Beim Start automatisch nach Updates suchen
     updater::spawn_check(ui.as_weak());
@@ -731,19 +736,19 @@ fn main() -> Result<(), slint::PlatformError> {
                 let langs = fb.get_langs();
                 let mut lang_list = Vec::new();
                 if langs.de {
-                    lang_list.push(Language::Deutsch);
+                    lang_list.push("de");
                 }
                 if langs.en {
-                    lang_list.push(Language::English);
+                    lang_list.push("en");
                 }
                 if langs.fr {
-                    lang_list.push(Language::Francais);
+                    lang_list.push("fr");
                 }
                 if langs.es {
-                    lang_list.push(Language::Espanol);
+                    lang_list.push("es");
                 }
                 if langs.pt {
-                    lang_list.push(Language::Portugues);
+                    lang_list.push("pt");
                 }
 
                 if lang_list.is_empty() {
@@ -767,59 +772,141 @@ fn main() -> Result<(), slint::PlatformError> {
                     cats.cat8 as u16,
                 ];
 
-                let sheet_prot = if fb.get_protect_sheet() {
-                    let sp = fb.get_sheet_permissions();
-                    Some(
-                        SheetProtection::new()
-                            .with_password(fb.get_sheet_password().to_string())
-                            .allow_select_locked_cells(sp.select_locked)
-                            .allow_select_unlocked_cells(sp.select_unlocked)
-                            .allow_format_cells(sp.format_cells)
-                            .allow_format_columns(sp.format_columns)
-                            .allow_format_rows(sp.format_rows)
-                            .allow_insert_columns(sp.insert_columns)
-                            .allow_insert_rows(sp.insert_rows)
-                            .allow_insert_hyperlinks(sp.insert_hyperlinks)
-                            .allow_delete_columns(sp.delete_columns)
-                            .allow_delete_rows(sp.delete_rows)
-                            .allow_sort(sp.sort)
-                            .allow_autofilter(sp.autofilter)
-                            .allow_pivot_tables(sp.pivot_tables)
-                            .allow_edit_objects(sp.edit_objects)
-                            .allow_edit_scenarios(sp.edit_scenarios)
-                            .allow_contents(sp.contents),
-                    )
-                } else {
-                    None
-                };
+                let version = fb.get_version().to_string();
 
-                let workbook_pw = if fb.get_protect_workbook() {
-                    Some(fb.get_workbook_password().to_string())
-                } else {
-                    None
-                };
+                let ui_handle_clone = ui_handle.clone();
+                std::thread::spawn(move || {
+                    let mut templates = Vec::new();
 
-                match generate_excel(
-                    lang_list,
-                    counts,
-                    sheet_prot,
-                    workbook_pw.as_deref(),
-                    fb.get_hide_columns(),
-                    fb.get_hide_lang_sheet(),
-                    &folder,
-                    &version,
-                ) {
-                    Ok(count) => {
-                        fb.set_status_type("success".into());
-                        fb.set_status_message(
-                            format!("{count} Datei(en) erfolgreich erstellt!").into(),
-                        );
+                    for lang in &lang_list {
+                        let mut positions = Vec::new();
+                        for (i, &pos_count) in counts.iter().enumerate() {
+                            let category = i + 1;
+                            for p in 0..pos_count {
+                                positions.push(budget_scanner::BudgetPosition {
+                                    number: format!("{category}.{}", p + 1),
+                                    label: String::new(),
+                                    cost_col1: String::new(),
+                                    cost_col2: String::new(),
+                                });
+                            }
+                        }
+
+                        templates.push(budget_scanner::BudgetData {
+                            file_path: std::path::PathBuf::from(format!("Vorlage_{lang}.xlsx")),
+                            sheet_name: "Budget".into(),
+                            version: version.clone(),
+                            project_title: "".into(),
+                            project_number: "Vorlage".into(),
+                            language: lang.to_string(),
+                            local_currency: "".into(),
+                            cost_col1: 8,
+                            cost_col2: Some(13),
+                            eigenleistung: "0".into(),
+                            drittmittel: "0".into(),
+                            kmw_mittel: "0".into(),
+                            positions,
+                        });
                     }
-                    Err(e) => {
-                        fb.set_status_type("error".into());
-                        fb.set_status_message(format!("Fehler: {e}").into());
+
+                    let output_dir = std::path::PathBuf::from(&folder);
+                    let _ = std::fs::create_dir_all(&output_dir);
+
+                    let tmp_json_path = std::env::temp_dir().join(format!(
+                        "template_{}.json",
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_millis()
+                    ));
+                    if let Err(e) = std::fs::File::create(&tmp_json_path).and_then(|mut f| {
+                        let json = serde_json::to_string(&templates)?;
+                        std::io::Write::write_all(&mut f, json.as_bytes())?;
+                        Ok(())
+                    }) {
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let fb = ui.global::<FBState>();
+                            fb.set_status_type("error".into());
+                            fb.set_status_message(
+                                format!("Fehler beim Speichern der JSON: {e}").into(),
+                            );
+                        });
+                        return;
                     }
-                }
+
+                    let sidecar_exe = if cfg!(windows) {
+                        "sidecars/Excelize/scanner.exe"
+                    } else {
+                        "./sidecars/Excelize/scanner.exe"
+                    };
+
+                    let mut cmd = std::process::Command::new(sidecar_exe);
+                    cmd.arg("-input")
+                        .arg(&tmp_json_path)
+                        .arg("-output")
+                        .arg(&output_dir);
+
+                    if !version.is_empty() {
+                        cmd.arg("-filename")
+                            .arg(format!("Vorlage_{{la}}_{version}_FB.xlsx"));
+                    } else {
+                        cmd.arg("-filename").arg("Vorlage_{la}_FB.xlsx");
+                    }
+
+                    cmd.stdout(std::process::Stdio::piped());
+
+                    let mut child = match cmd.spawn() {
+                        Ok(c) => c,
+                        Err(e) => {
+                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                let fb = ui.global::<FBState>();
+                                fb.set_status_type("error".into());
+                                fb.set_status_message(
+                                    format!("Fehler beim Starten von {sidecar_exe}: {e}").into(),
+                                );
+                            });
+                            return;
+                        }
+                    };
+
+                    let stdout = child.stdout.take().unwrap();
+                    let reader = std::io::BufReader::new(stdout);
+
+                    use std::io::BufRead;
+                    for line in reader.lines().map_while(Result::ok) {
+                        if let Ok(msg) = serde_json::from_str::<ProgressMessage>(&line) {
+                            let _ = ui_handle_clone.upgrade_in_event_loop({
+                                let msg_status = msg.status.clone();
+                                let msg_text = msg.message.clone();
+                                let current = msg.current.unwrap_or(0);
+                                let total = msg.total.unwrap_or(0);
+
+                                move |ui| {
+                                    let fb = ui.global::<FBState>();
+
+                                    if msg_status == "error" {
+                                        fb.set_status_type("error".into());
+                                    } else if msg_status == "done" {
+                                        fb.set_status_type("success".into());
+                                    } else {
+                                        fb.set_status_type("pending".into());
+                                    }
+
+                                    if total > 0 {
+                                        fb.set_status_message(
+                                            format!("{current}/{total} - {msg_text}").into(),
+                                        );
+                                    } else {
+                                        fb.set_status_message(msg_text.into());
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    let _ = child.wait();
+                    let _ = std::fs::remove_file(&tmp_json_path);
+                });
             }
         }
     });
@@ -875,175 +962,185 @@ fn main() -> Result<(), slint::PlatformError> {
                 b2f.set_status_type("pending".into());
                 b2f.set_status_message("Scannt...".into());
 
-                let src_path = std::path::Path::new(&src);
-                let out_base_path = std::path::Path::new(&out_base);
-
-                // 1. Budget-Dateien scannen
-                let result = budget_scanner::scan_directory(src_path);
-
-                // 2. Output-Ordner bestimmen
-                let output_dir = budget_scanner::resolve_output_dir(out_base_path);
-
-                // 3. ReportOptions aus Settings bauen
-                let sheet_prot = if b2f.get_protect_sheet() {
-                    let sp = b2f.get_sheet_permissions();
-                    Some(
-                        SheetProtection::new()
-                            .with_password(b2f.get_sheet_password().to_string())
-                            .allow_select_locked_cells(sp.select_locked)
-                            .allow_select_unlocked_cells(sp.select_unlocked)
-                            .allow_format_cells(sp.format_cells)
-                            .allow_format_columns(sp.format_columns)
-                            .allow_format_rows(sp.format_rows)
-                            .allow_insert_columns(sp.insert_columns)
-                            .allow_insert_rows(sp.insert_rows)
-                            .allow_insert_hyperlinks(sp.insert_hyperlinks)
-                            .allow_delete_columns(sp.delete_columns)
-                            .allow_delete_rows(sp.delete_rows)
-                            .allow_sort(sp.sort)
-                            .allow_autofilter(sp.autofilter)
-                            .allow_pivot_tables(sp.pivot_tables)
-                            .allow_edit_objects(sp.edit_objects)
-                            .allow_edit_scenarios(sp.edit_scenarios)
-                            .allow_contents(sp.contents),
-                    )
-                } else {
-                    None
-                };
-
-                let mut options_builder = ReportOptions::builder();
-                if let Some(prot) = sheet_prot {
-                    options_builder = options_builder.sheet_protection(prot);
-                }
-                if b2f.get_protect_workbook() {
-                    let pw = b2f.get_workbook_password().to_string();
-                    options_builder = options_builder.workbook_password(pw);
-                }
-                options_builder = options_builder
-                    .hide_columns_qv(b2f.get_hide_columns())
-                    .hide_language_sheet(b2f.get_hide_lang_sheet());
-                let report_options = options_builder.build();
                 let version = b2f.get_version().to_string();
 
-                // 4. Finanzberichte generieren
-                let mut generated = 0u32;
-                let mut gen_errors: Vec<(String, String)> = Vec::new();
+                let ui_handle_clone = ui_handle.clone();
+                std::thread::spawn(move || {
+                    let src_path = std::path::PathBuf::from(&src);
+                    let out_base_path = std::path::PathBuf::from(&out_base);
 
-                for data in &result.successes {
-                    let relative = data
-                        .file_path
-                        .strip_prefix(src_path)
-                        .unwrap_or(&data.file_path);
+                    // 1. Budget-Dateien scannen
+                    let mut result = budget_scanner::scan_directory(&src_path);
 
-                    // _FB Suffix im Dateinamen
-                    let stem = relative
-                        .file_stem()
-                        .unwrap_or_default()
-                        .to_string_lossy();
-                    let fb_name = if version.is_empty() {
-                        format!("{stem}_FB.xlsx")
-                    } else {
-                        format!("{stem}_{version}_FB.xlsx")
-                    };
-                    let out_path = output_dir.join(
-                        relative.with_file_name(&fb_name),
-                    );
-
-                    // Verzeichnisse erstellen
-                    if let Some(parent) = out_path.parent() {
-                        if let Err(e) = std::fs::create_dir_all(parent) {
-                            gen_errors.push((
-                                data.file_path.display().to_string(),
-                                format!("Ordner erstellen fehlgeschlagen: {e}"),
-                            ));
-                            continue;
+                    // 2. Override version
+                    if !version.is_empty() {
+                        for data in &mut result.successes {
+                            data.version = version.clone();
                         }
                     }
 
-                    let config =
-                        budget_scanner::budget_to_report_config(data, report_options.clone(), &version);
-                    match config.write_to(&out_path) {
-                        Ok(()) => generated += 1,
-                        Err(e) => gen_errors.push((
-                            data.file_path.display().to_string(),
-                            format!("FB-Generierung fehlgeschlagen: {e}"),
-                        )),
-                    }
-                }
-
-                // 5. Fehler-CSV schreiben
-                if !result.failures.is_empty() {
-                    let csv_path = output_dir.join("scan_fehler.csv");
+                    // 3. Output-Ordner bestimmen
+                    let output_dir = budget_scanner::resolve_output_dir(&out_base_path);
                     let _ = std::fs::create_dir_all(&output_dir);
-                    let _ = budget_scanner::write_failure_report(&result.failures, &csv_path);
-                }
 
-                // 6. Tabelle aktualisieren
-                let mk_col = |t: &str| {
-                    let mut c = slint::TableColumn::default();
-                    c.title = t.into();
-                    c
-                };
-                let columns = slint::ModelRc::new(slint::VecModel::from(vec![
-                    mk_col("Dateiname"),
-                    mk_col("Status"),
-                    mk_col("Details"),
-                ]));
-                b2f.set_table_columns(columns);
+                    // 4. Temporäres JSON erstellen
+                    let tmp_json_path = std::env::temp_dir().join(format!(
+                        "scan_{}.json",
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_millis()
+                    ));
+                    if let Err(e) = std::fs::File::create(&tmp_json_path).and_then(|mut f| {
+                        let json = serde_json::to_string(&result.successes)?;
+                        std::io::Write::write_all(&mut f, json.as_bytes())?;
+                        Ok(())
+                    }) {
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let b2f = ui.global::<BudgetState>();
+                            b2f.set_status_type("error".into());
+                            b2f.set_status_message(
+                                format!("Fehler beim Speichern der JSON: {e}").into(),
+                            );
+                        });
+                        return;
+                    }
 
-                let mut rows: Vec<slint::ModelRc<slint::StandardListViewItem>> = Vec::new();
-
-                for data in &result.successes {
-                    let fname = data.file_path.file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_default();
-                    let status = if gen_errors.iter().any(|(p, _)| *p == data.file_path.display().to_string()) {
-                        "Fehler"
+                    // 5. Go Sidecar aufrufen
+                    let sidecar_exe = if cfg!(windows) {
+                        "sidecars/Excelize/scanner.exe"
                     } else {
-                        "OK"
+                        "./sidecars/Excelize/scanner.exe"
                     };
-                    let detail = gen_errors.iter()
-                        .find(|(p, _)| *p == data.file_path.display().to_string())
-                        .map(|(_, e)| e.as_str())
-                        .unwrap_or("FB erstellt");
 
-                    rows.push(slint::ModelRc::new(slint::VecModel::from(vec![
-                        slint::StandardListViewItem::from(slint::SharedString::from(&fname)),
-                        slint::StandardListViewItem::from(slint::SharedString::from(status)),
-                        slint::StandardListViewItem::from(slint::SharedString::from(detail)),
-                    ])));
-                }
+                    let mut cmd = std::process::Command::new(sidecar_exe);
+                    cmd.arg("-input")
+                        .arg(&tmp_json_path)
+                        .arg("-output")
+                        .arg(&output_dir);
 
-                for f in &result.failures {
-                    rows.push(slint::ModelRc::new(slint::VecModel::from(vec![
-                        slint::StandardListViewItem::from(slint::SharedString::from(&f.file_name)),
-                        slint::StandardListViewItem::from(slint::SharedString::from("Fehler")),
-                        slint::StandardListViewItem::from(slint::SharedString::from(f.reason.to_string())),
-                    ])));
-                }
+                    // Wenn version gesetzt ist, fügen wir es ins Namensmuster ein
+                    if !version.is_empty() {
+                        cmd.arg("-filename")
+                            .arg(format!("{{pn}}_{{la}}_{version}_FB.xlsx"));
+                    } else {
+                        cmd.arg("-filename").arg("{pn}_{la}_FB.xlsx");
+                    }
 
-                let table_data = slint::ModelRc::new(slint::VecModel::from(rows));
-                b2f.set_table_data(table_data);
+                    cmd.stdout(std::process::Stdio::piped());
 
-                // 7. Status
-                let scan_fail = result.failures.len();
-                let gen_fail = gen_errors.len();
-                let total = result.successes.len() + scan_fail;
+                    let mut child = match cmd.spawn() {
+                        Ok(c) => c,
+                        Err(e) => {
+                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                let b2f = ui.global::<BudgetState>();
+                                b2f.set_status_type("error".into());
+                                b2f.set_status_message(
+                                    format!("Fehler beim Starten von {sidecar_exe}: {e}").into(),
+                                );
+                            });
+                            return;
+                        }
+                    };
 
-                if scan_fail == 0 && gen_fail == 0 {
-                    b2f.set_status_type("success".into());
-                    b2f.set_status_message(
-                        format!("{generated}/{total} Finanzberichte erstellt → {}", output_dir.display()).into(),
-                    );
-                } else {
-                    b2f.set_status_type("error".into());
-                    b2f.set_status_message(
-                        format!(
-                            "{generated} FB erstellt, {scan_fail} Scan-Fehler, {gen_fail} Generierungs-Fehler → {}",
-                            output_dir.display()
-                        ).into(),
-                    );
-                }
+                    let stdout = child.stdout.take().unwrap();
+                    let reader = std::io::BufReader::new(stdout);
+
+                    use std::io::BufRead;
+                    for line in reader.lines().map_while(Result::ok) {
+                        if let Ok(msg) = serde_json::from_str::<ProgressMessage>(&line) {
+                            let _ = ui_handle_clone.upgrade_in_event_loop({
+                                let msg_status = msg.status.clone();
+                                let msg_text = msg.message.clone();
+                                let current = msg.current.unwrap_or(0);
+                                let total = msg.total.unwrap_or(0);
+
+                                move |ui| {
+                                    let b2f = ui.global::<BudgetState>();
+
+                                    if msg_status == "error" {
+                                        b2f.set_status_type("error".into());
+                                    } else if msg_status == "done" {
+                                        b2f.set_status_type("success".into());
+                                    } else {
+                                        b2f.set_status_type("pending".into());
+                                    }
+
+                                    if total > 0 {
+                                        b2f.set_status_message(
+                                            format!("{current}/{total} - {msg_text}").into(),
+                                        );
+                                    } else {
+                                        b2f.set_status_message(msg_text.into());
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    let _ = child.wait();
+                    let _ = std::fs::remove_file(&tmp_json_path);
+
+                    // 6. Fehler-CSV schreiben
+                    if !result.failures.is_empty() {
+                        let csv_path = output_dir.join("scan_fehler.csv");
+                        let _ = budget_scanner::write_failure_report(&result.failures, &csv_path);
+                    }
+
+                    // 7. Tabelle aktualisieren
+                    let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                        let b2f = ui.global::<BudgetState>();
+
+                        let mk_col = |t: &str| {
+                            let mut c = slint::TableColumn::default();
+                            c.title = t.into();
+                            c
+                        };
+                        let columns = slint::ModelRc::new(slint::VecModel::from(vec![
+                            mk_col("Dateiname"),
+                            mk_col("Status"),
+                            mk_col("Details"),
+                        ]));
+                        b2f.set_table_columns(columns);
+
+                        let mut rows: Vec<slint::ModelRc<slint::StandardListViewItem>> = Vec::new();
+
+                        for data in &result.successes {
+                            let fname = data
+                                .file_path
+                                .file_name()
+                                .map(|n| n.to_string_lossy().to_string())
+                                .unwrap_or_default();
+
+                            rows.push(slint::ModelRc::new(slint::VecModel::from(vec![
+                                slint::StandardListViewItem::from(slint::SharedString::from(
+                                    &fname,
+                                )),
+                                slint::StandardListViewItem::from(slint::SharedString::from("OK")),
+                                slint::StandardListViewItem::from(slint::SharedString::from(
+                                    "Generiert",
+                                )),
+                            ])));
+                        }
+
+                        for f in &result.failures {
+                            rows.push(slint::ModelRc::new(slint::VecModel::from(vec![
+                                slint::StandardListViewItem::from(slint::SharedString::from(
+                                    &f.file_name,
+                                )),
+                                slint::StandardListViewItem::from(slint::SharedString::from(
+                                    "Fehler",
+                                )),
+                                slint::StandardListViewItem::from(slint::SharedString::from(
+                                    f.reason.to_string(),
+                                )),
+                            ])));
+                        }
+
+                        let table_data = slint::ModelRc::new(slint::VecModel::from(rows));
+                        b2f.set_table_data(table_data);
+                    });
+                });
             }
         }
     });
@@ -1064,15 +1161,28 @@ fn main() -> Result<(), slint::PlatformError> {
                     let mut out = String::new();
                     let col_count = columns.row_count();
                     for c in 0..col_count {
-                        if c > 0 { out.push(';'); }
-                        out.push_str(&columns.row_data(c).map(|col| col.title.to_string()).unwrap_or_default());
+                        if c > 0 {
+                            out.push(';');
+                        }
+                        out.push_str(
+                            &columns
+                                .row_data(c)
+                                .map(|col| col.title.to_string())
+                                .unwrap_or_default(),
+                        );
                     }
                     out.push('\n');
                     for r in 0..table_data.row_count() {
                         if let Some(row) = table_data.row_data(r) {
                             for c in 0..col_count {
-                                if c > 0 { out.push(';'); }
-                                out.push_str(&row.row_data(c).map(|item| item.text.to_string()).unwrap_or_default());
+                                if c > 0 {
+                                    out.push(';');
+                                }
+                                out.push_str(
+                                    &row.row_data(c)
+                                        .map(|item| item.text.to_string())
+                                        .unwrap_or_default(),
+                                );
                             }
                             out.push('\n');
                         }
@@ -1080,7 +1190,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     match std::fs::write(&path, &out) {
                         Ok(()) => {
                             b2f.set_status_type("success".into());
-                            b2f.set_status_message(format!("CSV exportiert: {}", path.display()).into());
+                            b2f.set_status_message(
+                                format!("CSV exportiert: {}", path.display()).into(),
+                            );
                         }
                         Err(e) => {
                             b2f.set_status_type("error".into());
@@ -1111,7 +1223,10 @@ fn main() -> Result<(), slint::PlatformError> {
 
                     // Header
                     for c in 0..col_count {
-                        let title = columns.row_data(c).map(|col| col.title.to_string()).unwrap_or_default();
+                        let title = columns
+                            .row_data(c)
+                            .map(|col| col.title.to_string())
+                            .unwrap_or_default();
                         let _ = sheet.write_string(0, c as u16, &title);
                     }
 
@@ -1119,7 +1234,10 @@ fn main() -> Result<(), slint::PlatformError> {
                     for r in 0..table_data.row_count() {
                         if let Some(row) = table_data.row_data(r) {
                             for c in 0..col_count {
-                                let text = row.row_data(c).map(|item| item.text.to_string()).unwrap_or_default();
+                                let text = row
+                                    .row_data(c)
+                                    .map(|item| item.text.to_string())
+                                    .unwrap_or_default();
                                 let _ = sheet.write_string((r + 1) as u32, c as u16, &text);
                             }
                         }
@@ -1128,7 +1246,9 @@ fn main() -> Result<(), slint::PlatformError> {
                     match workbook.save(&path) {
                         Ok(()) => {
                             b2f.set_status_type("success".into());
-                            b2f.set_status_message(format!("Excel exportiert: {}", path.display()).into());
+                            b2f.set_status_message(
+                                format!("Excel exportiert: {}", path.display()).into(),
+                            );
                         }
                         Err(e) => {
                             b2f.set_status_type("error".into());
@@ -1290,7 +1410,10 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
                 if !template.exists() {
                     fs.set_status_type("error".into());
-                    fs.set_status_message("Excel-Vorlage nicht gefunden (oben im Einzelordner-Bereich auswählen).".into());
+                    fs.set_status_message(
+                        "Excel-Vorlage nicht gefunden (oben im Einzelordner-Bereich auswählen)."
+                            .into(),
+                    );
                     return;
                 }
 
@@ -1383,9 +1506,13 @@ fn main() -> Result<(), slint::PlatformError> {
         let ui_handle = ui.as_weak();
         move || {
             if let Some(ui) = ui_handle.upgrade() {
-                let mut defaults: Vec<slint::SharedString> = folder_generator::SUBFOLDERS.iter().map(|s| (*s).into()).collect();
+                let mut defaults: Vec<slint::SharedString> = folder_generator::SUBFOLDERS
+                    .iter()
+                    .map(|s| (*s).into())
+                    .collect();
                 sort_subfolders(&mut defaults);
-                ui.global::<FolderState>().set_subfolders(std::rc::Rc::new(slint::VecModel::from(defaults)).into());
+                ui.global::<FolderState>()
+                    .set_subfolders(std::rc::Rc::new(slint::VecModel::from(defaults)).into());
                 save_folder_settings(&ui);
             }
         }
@@ -1418,12 +1545,19 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 let subs = get_subfolders_vec(&ui);
                 let subs_refs: Vec<&str> = subs.iter().map(|s| s.as_str()).collect();
-                match folder_generator::create_project_folder(&project_name, &target, &template, &subs_refs) {
+                match folder_generator::create_project_folder(
+                    &project_name,
+                    &target,
+                    &template,
+                    &subs_refs,
+                ) {
                     Ok(root) => {
                         fs.set_project_name("".into());
                         fs.set_project_name_valid(false);
                         fs.set_status_type("success".into());
-                        fs.set_status_message(format!("Projektordner erstellt: {}", root.display()).into());
+                        fs.set_status_message(
+                            format!("Projektordner erstellt: {}", root.display()).into(),
+                        );
                     }
                     Err(e) => {
                         fs.set_status_type("error".into());
@@ -1435,89 +1569,4 @@ fn main() -> Result<(), slint::PlatformError> {
     });
 
     ui.run()
-}
-
-// ==========================================
-// FB-Generator: Excel-Ausgabe
-// ==========================================
-
-#[allow(clippy::too_many_arguments)]
-fn generate_excel(
-    langs: Vec<Language>,
-    counts: [u16; 8],
-    sheet_prot: Option<SheetProtection>,
-    workbook_pw: Option<&str>,
-    hide_columns: bool,
-    hide_lang_sheet: bool,
-    folder: &str,
-    version: &str,
-) -> Result<usize, fb_generator::ReportError> {
-    let folder_path = PathBuf::from(folder);
-    if !folder_path.exists() {
-        std::fs::create_dir_all(&folder_path)?;
-    }
-
-    // Mappenschutz-Hash vorab berechnen (~25ms Ersparnis pro Datei)
-    let precomputed_hash = workbook_pw.map(fb_generator::precompute_hash);
-
-    let mut count = 0;
-
-    for lang in langs {
-        let header = ReportHeader::builder()
-            .language(lang)
-            .version(version)
-            .build();
-
-        let mut body_builder = ReportBody::builder();
-        for (i, &pos_count) in counts.iter().enumerate() {
-            let category = (i + 1) as u8;
-            if pos_count > 0 {
-                let positions = (0..pos_count).map(|_| PositionEntry::builder().build());
-                body_builder = body_builder.add_positions(category, positions);
-            } else {
-                body_builder =
-                    body_builder.set_header_input(category, PositionEntry::builder().build());
-            }
-        }
-
-        let mut options_builder = ReportOptions::builder();
-        if let Some(ref prot) = sheet_prot {
-            options_builder = options_builder.sheet_protection(prot.clone());
-        }
-        if let Some(pw) = workbook_pw {
-            options_builder = options_builder.workbook_password(pw);
-        }
-        if hide_columns {
-            options_builder = options_builder.hide_columns_qv(true);
-        }
-        if hide_lang_sheet {
-            options_builder = options_builder.hide_language_sheet(true);
-        }
-
-        let config = ReportConfig::builder()
-            .header(header)
-            .body(body_builder.build())
-            .options(options_builder.build())
-            .build();
-
-        let lang_code = match lang {
-            Language::Deutsch => "de",
-            Language::English => "en",
-            Language::Francais => "fr",
-            Language::Espanol => "es",
-            Language::Portugues => "po",
-        };
-
-        let path = folder_path.join(format!("{version}_{lang_code}.xlsx"));
-
-        if let Some(ref hash) = precomputed_hash {
-            config.write_to_precomputed(&path, hash)?;
-        } else {
-            config.write_to(&path)?;
-        }
-
-        count += 1;
-    }
-
-    Ok(count)
 }

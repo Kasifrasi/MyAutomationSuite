@@ -1,5 +1,5 @@
 [package]
-name = "gui"
+name = "app"
 
 # Geerbt vom Workspace
 version.workspace = true
@@ -15,9 +15,9 @@ rust_xlsxwriter = { workspace = true }
 serde = { workspace = true }
 
 # Import deiner eigenen Logik über den Workspace
-fb_generator = { workspace = true }
 budget_scanner = { workspace = true }
 folder_generator = { workspace = true }
+serde_json = "1.0"
 
 slint = { workspace = true, features = ["backend-winit", "renderer-winit-software", "compat-1-2", "std"] }
 self_update = { version = "0.41", default-features = false, features = ["rustls"] }
