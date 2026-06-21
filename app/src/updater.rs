@@ -6,8 +6,8 @@ use crate::{MainWindow, UpdateState};
 use slint::{ComponentHandle, Weak};
 
 const GITHUB_OWNER: &str = "Kasifrasi";
-const GITHUB_REPO: &str = "Automation-Tool";
-const ASSET_NAME: &str = "gui";
+const GITHUB_REPO: &str = "MyAutomationSuite";
+const ASSET_NAME: &str = "app";
 
 // ── Öffentliche API ──────────────────────────────────────────────────────────
 
@@ -78,7 +78,9 @@ fn set_ui(handle: &Weak<MainWindow>, status: &str, checking: bool, update_availa
     });
 }
 
-fn build_updater() -> Result<self_update::backends::github::UpdateBuilder, Box<dyn std::error::Error + Send + Sync>> {
+fn build_updater(
+) -> Result<self_update::backends::github::UpdateBuilder, Box<dyn std::error::Error + Send + Sync>>
+{
     let mut builder = self_update::backends::github::Update::configure();
     builder
         .repo_owner(GITHUB_OWNER)
@@ -101,7 +103,8 @@ fn do_check() -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>
     let latest = updater.get_latest_release()?;
 
     // Ungültige Tags (z.B. "v_test") ignorieren → "Bereits aktuell"
-    let Some(latest_ver) = semver::Version::parse(latest.version.trim_start_matches('v')).ok() else {
+    let Some(latest_ver) = semver::Version::parse(latest.version.trim_start_matches('v')).ok()
+    else {
         return Ok(None);
     };
     let current_ver = semver::Version::parse(env!("CARGO_PKG_VERSION"))?;

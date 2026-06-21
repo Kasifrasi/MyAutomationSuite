@@ -1,10 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "budget_scanner",
-    "fb_generator",
-    "folder_generator",
-    "gui"
+    "core/budget_scanner",
+    "core/folder_generator",
+    "app"
 ]
 
 [workspace.package]
@@ -15,9 +14,8 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 # Deine internen Crates
-fb_generator = { path = "fb_generator" }
-budget_scanner = { path = "budget_scanner" }
-folder_generator = { path = "folder_generator" }
+budget_scanner = { path = "core/budget_scanner" }
+folder_generator = { path = "core/folder_generator" }
 
 # Geteilte externe Abhängigkeiten
 serde = { version = "1", features = ["derive"] }
