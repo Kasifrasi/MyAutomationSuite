@@ -8,7 +8,6 @@ target/
 # =========================
 # Project Outputs & Data
 # =========================
-*.xlsx
 **/examples/output/
 /tmp/
 

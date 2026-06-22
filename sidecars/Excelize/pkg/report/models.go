@@ -99,7 +99,6 @@ type ReportOptions struct {
 	SheetPassword    string `json:"sheet_password"`
 	WorkbookPassword string `json:"workbook_password"`
 	HideColumns      bool   `json:"hide_columns"`
-	HideLangSheet    bool   `json:"hide_lang_sheet"`
 	SelectLocked     bool   `json:"select_locked"`
 	SelectUnlocked   bool   `json:"select_unlocked"`
 	FormatCells      bool   `json:"format_cells"`
