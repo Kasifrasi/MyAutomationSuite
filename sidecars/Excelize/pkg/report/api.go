@@ -670,7 +670,7 @@ func (r *ExcelReport) updateGlobalSum() error {
 			catSumRow = r.CatEndRows[i]
 		}
 
-		if i > 1 {
+		if dSum != "" {
 			dSum += "+"
 			eSum += "+"
 			fSum += "+"
@@ -679,19 +679,25 @@ func (r *ExcelReport) updateGlobalSum() error {
 		eSum += fmt.Sprintf("E%d", catSumRow)
 		fSum += fmt.Sprintf("F%d", catSumRow)
 	}
+	if dSum == "" {
+		dSum = "0"
+		eSum = "0"
+		fSum = "0"
+	}
+
 	f := r.file
 	s := r.sheet
 
 	f.SetCellDefault(s, fmt.Sprintf("D%d", r.GlobalSumRow), "")
-	if err := f.SetCellFormula(s, fmt.Sprintf("D%d", r.GlobalSumRow), "="+dSum); err != nil {
+	if err := f.SetCellFormula(s, fmt.Sprintf("D%d", r.GlobalSumRow), dSum); err != nil {
 		return err
 	}
 	f.SetCellDefault(s, fmt.Sprintf("E%d", r.GlobalSumRow), "")
-	if err := f.SetCellFormula(s, fmt.Sprintf("E%d", r.GlobalSumRow), "="+eSum); err != nil {
+	if err := f.SetCellFormula(s, fmt.Sprintf("E%d", r.GlobalSumRow), eSum); err != nil {
 		return err
 	}
 	f.SetCellDefault(s, fmt.Sprintf("F%d", r.GlobalSumRow), "")
-	if err := f.SetCellFormula(s, fmt.Sprintf("F%d", r.GlobalSumRow), "="+fSum); err != nil {
+	if err := f.SetCellFormula(s, fmt.Sprintf("F%d", r.GlobalSumRow), fSum); err != nil {
 		return err
 	}
 	f.SetCellDefault(s, fmt.Sprintf("G%d", r.GlobalSumRow), "")
