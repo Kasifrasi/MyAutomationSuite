@@ -129,16 +129,13 @@ func main() {
 
 		for i, scanned := range scannedDaten {
 			// Konvertiere die gescannten Daten in ReportData
-			daten := mapScannedToReportData(&scanned)
+			daten := report.MapScannedToReportData(&scanned)
 			daten.Options = globalOptions
 			jobID := scanned.ProjectNumber
 			if jobID == "" {
 				jobID = fmt.Sprintf("PROJ-%03d", i+1)
 			}
 
-			// Setze das Flag, um Excel-Gruppierungen auf Wunsch zu entfernen
-			// Dies ist jetzt der Standard: Immer alle Zeilen/Spalten-Gruppierungen entfernen!
-			daten.RemoveGroupings = true
 			// Setze die globale EmptyRows Konfiguration
 			daten.EmptyRows.Global = globalOptions.EmptyRows
 			sprache := strings.ToLower(scanned.Language)
@@ -227,145 +224,4 @@ func uniqueOutputPath(basePath string) string {
 			return newPath
 		}
 	}
-}
-
-// Hilfsfunktion zum Parsen von Geldbeträgen aus Strings (z.B. "12.000,50" oder "12000.50")
-func parseAmount(s string) float64 {
-	s = strings.TrimSpace(s)
-	if s == "" || s == "-" {
-		return 0
-	}
-	// Wenn es Tausender-Punkte und ein Komma gibt (deutsche Formatierung)
-	if strings.Contains(s, ",") {
-		s = strings.ReplaceAll(s, ".", "")
-		s = strings.ReplaceAll(s, ",", ".")
-	}
-	v, _ := strconv.ParseFloat(s, 64)
-	return v
-}
-
-// mapScannedToReportData übersetzt das Rust Scanner-Modell in das Go Report-Modell
-func mapScannedToReportData(scanned *report.ScannedBudgetData) report.ReportData {
-	sprache := strings.ToLower(scanned.Language)
-
-	// Falls die Sprache nicht direkt passt, mappen wir sie grob
-	switch {
-	case strings.Contains(sprache, "de"):
-		sprache = "deutsch"
-	case strings.Contains(sprache, "en"):
-		sprache = "english"
-	case strings.Contains(sprache, "fr"):
-		sprache = "français"
-	case strings.Contains(sprache, "es"):
-		sprache = "español"
-	case strings.Contains(sprache, "pt") || strings.Contains(sprache, "po"):
-		sprache = "português"
-	default:
-		sprache = "deutsch" // Fallback
-	}
-
-	data := report.ReportData{
-		Sprache:       sprache,
-		Lokalwaehrung: scanned.LocalCurrency,
-		Projektnummer: scanned.ProjectNumber,
-		Projekttitel:  scanned.ProjectTitle,
-		EmptyRows: report.EmptyRowsConfig{
-			Global:            3, // Standardmäßig 3 leere Zeilen pro Kategorie beibehalten
-			CategoryOverrides: make(map[int]int),
-		},
-		Eigenleistung: report.FundingRecord{Budget: parseAmount(scanned.Eigenleistung)},
-		Drittmittel:   report.FundingRecord{Budget: parseAmount(scanned.Drittmittel)},
-		KMWMittel:     report.FundingRecord{Budget: parseAmount(scanned.KmwMittel)},
-		Categories:    make(map[int][]report.CostItem),
-		HeaderBudgets: make(map[int]interface{}),
-	}
-
-	// 1. Zuerst Hauptkategorien-Budgets ("1.", "6." etc.) aufsammeln
-	for _, pos := range scanned.Positions {
-		if len(pos.Number) == 0 {
-			continue
-		}
-		catID := int(pos.Number[0] - '0')
-		if catID < 1 || catID > 8 {
-			continue
-		}
-
-		if strings.HasSuffix(pos.Number, ".") {
-			// Es ist eine Hauptkategorie! Wir speichern uns ihren Wert.
-			budget := parseAmount(pos.CostCol1)
-			if budget >= 0 {
-				data.HeaderBudgets[catID] = budget
-			}
-		}
-	}
-
-	// 2. Jetzt die echten Unterpositionen zuweisen
-	for _, pos := range scanned.Positions {
-		if len(pos.Number) == 0 {
-			continue
-		}
-
-		catID := int(pos.Number[0] - '0')
-		if catID < 1 || catID > 8 {
-			continue
-		}
-
-		// Hauptkategorie-Zeilen überspringen (die haben wir oben als Header-Budgets verarbeitet)
-		if strings.HasSuffix(pos.Number, ".") {
-			continue
-		}
-
-		// ACHTUNG: pos.Number nicht mehr dem Namen voranstellen!
-		item := report.CostItem{
-			Name:   pos.Label,
-			Budget: parseAmount(pos.CostCol1),
-		}
-
-		data.Categories[catID] = append(data.Categories[catID], item)
-	}
-
-	// 2.5 Wir trimmen NUR abschließende Items mit Budget = 0 und leerem Namen.
-	// Führende leere Items MÜSSEN erhalten bleiben, damit die Nummerierung (z.B. 1.1, 1.2, etc.)
-	// nicht verschoben wird. Nur was am Ende "leer" dranhängt, wird weggeschnitten.
-	for catID := 1; catID <= 8; catID++ {
-		lastValid := -1
-
-		// Definiert, was eine "gültige" Kostenposition ausmacht:
-		// Entweder das Budget ist nicht 0 ODER der Name der Position ist nicht leer.
-		isValidItem := func(item report.CostItem) bool {
-			// Typischerweise ist Name ein string. Falls nicht, prüfen wir das hier.
-			nameStr, ok := item.Name.(string)
-			if !ok {
-				nameStr = ""
-			}
-
-			// Budget ist ein interface{}, wir müssen den Typ sicher asserten,
-			// da float64(0) != int(0) sonst in Go true ergibt.
-			var budget float64
-			switch v := item.Budget.(type) {
-			case float64:
-				budget = v
-			case int:
-				budget = float64(v)
-			}
-
-			return budget != 0 || strings.TrimSpace(nameStr) != ""
-		}
-
-		for i, item := range data.Categories[catID] {
-			if isValidItem(item) {
-				lastValid = i
-			}
-		}
-
-		if lastValid != -1 {
-			// Wir fangen immer bei 0 an und schneiden nur hinten ab!
-			data.Categories[catID] = data.Categories[catID][0 : lastValid+1]
-		} else {
-			// Alles war ungültig (kein Name, kein Budget) -> Kategorie komplett leeren
-			data.Categories[catID] = []report.CostItem{}
-		}
-	}
-
-	return data
 }

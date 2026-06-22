@@ -14,11 +14,11 @@ import (
 func UnshareAllFormulas(f *excelize.File, sheet string) error {
 	formulas := make(map[string]string)
 
-	// Pass 1: Alle existierenden Formeln in einem großzügigen Grid auslesen (1000 Zeilen x 100 Spalten).
+	// Pass 1: Alle existierenden Formeln in einem großzügigen Grid auslesen (300 Zeilen x 30 Spalten).
 	// GetRows() schneidet nämlich leere End-Zellen ab und findet sie nicht,
 	// daher iterieren wir sicherheitshalber stur über die Koordinaten.
-	for rNum := 1; rNum <= 1000; rNum++ {
-		for colIdx := 1; colIdx <= 100; colIdx++ {
+	for rNum := 1; rNum <= 300; rNum++ {
+		for colIdx := 1; colIdx <= 30; colIdx++ {
 			colName, err := excelize.ColumnNumberToName(colIdx)
 			if err != nil {
 				continue

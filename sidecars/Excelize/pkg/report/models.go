@@ -52,7 +52,6 @@ type ReportData struct {
 	ProjektlaufzeitEnde             interface{}
 	AktuellerBerichtszeitraumBeginn interface{}
 	AktuellerBerichtszeitraumEnde   interface{}
-	RemoveGroupings                 bool
 
 	// Konfiguration für das dynamische Einfügen/Löschen
 	EmptyRows EmptyRowsConfig
@@ -114,5 +113,7 @@ type ReportOptions struct {
 	PivotTables      bool   `json:"pivot_tables"`
 	EditObjects      bool   `json:"edit_objects"`
 	EditScenarios    bool   `json:"edit_scenarios"`
+	UnhideAllColumns bool   `json:"unhide_all_columns"`
+	UnhideAllRows    bool   `json:"unhide_all_rows"`
 	EmptyRows        int    `json:"empty_rows"`
 }

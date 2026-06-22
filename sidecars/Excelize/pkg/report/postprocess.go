@@ -7,13 +7,9 @@ import (
 	"regexp"
 )
 
-// regexOutline sucht nach outlineLevel="X" Attributen im XML
-var regexOutline = regexp.MustCompile(` outlineLevel="\d+"`)
-
-// PostProcessExcelFile entfernt Gruppierungen aus den Worksheets per Regex,
-// da Excelize hierfür keine Lösch-API bietet.
-func PostProcessExcelFile(excelData []byte, removeGroupings bool) ([]byte, error) {
-	if !removeGroupings {
+// PostProcessExcelFile entfernt versteckte Zeilen/Spalten aus den Worksheets per Regex
+func PostProcessExcelFile(excelData []byte, unhideCols bool, unhideRows bool) ([]byte, error) {
+	if !unhideCols && !unhideRows {
 		return excelData, nil
 	}
 
@@ -37,12 +33,23 @@ func PostProcessExcelFile(excelData []byte, removeGroupings bool) ([]byte, error
 			return nil, err
 		}
 
-		// Gruppierungen aus den Worksheets entfernen
 		if regexp.MustCompile(`^xl/worksheets/.*\.xml$`).MatchString(file.Name) {
-			content = regexOutline.ReplaceAll(content, []byte(""))
+			// Wir können <row ... hidden="1"> und <col ... hidden="1"> gezielt bereinigen.
+			// Der Einfachheit halber entfernen wir hidden="..." Attribute global in dem Worksheet,
+			// sofern Zeilen/Spalten eingeblendet werden sollen. Da Excelize die Q:V Ausblendung
+			// erst nach dem Preload (wo wir es theoretisch tun könnten) setzt,
+			// müssen wir hier vorsichtig sein, falls wir nur Rows unhiden wollen.
+			// Ein simpler Regex-Replace für <row> und <col> Tags:
+			if unhideRows {
+				// Ersetzt hidden="..." nur innerhalb von <row ...>
+				content = regexp.MustCompile(`(<row[^>]*?)\shidden="(?:1|true)"([^>]*>)`).ReplaceAll(content, []byte("$1$2"))
+			}
+			if unhideCols {
+				// Ersetzt hidden="..." nur innerhalb von <col ...>
+				content = regexp.MustCompile(`(<col[^>]*?)\shidden="(?:1|true)"([^>]*>)`).ReplaceAll(content, []byte("$1$2"))
+			}
 		}
 
-		// Datei wieder in die neue ZIP schreiben
 		fWriter, err := writer.Create(file.Name)
 		if err != nil {
 			return nil, err
