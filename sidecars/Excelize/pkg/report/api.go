@@ -306,7 +306,19 @@ func (r *ExcelReport) updateRates(data ReportData) error {
 	for i := 0; i < RatesCountBlock; i++ {
 		row := RatesStartRow + i
 		rate := data.Rates[i]
-		if err := r.file.SetSheetRow(r.sheet, fmt.Sprintf("%s%d", ColRates1Start, row), &[]interface{}{rate.Datum, rate.EUR, rate.LW, rate.WK}); err != nil {
+		// Anstatt SetSheetRow nutzen wir SetCellValue für jede Zelle einzeln.
+		// SetSheetRow löscht nämlich heimlich die Formeln in den umliegenden Zellen der gleichen Zeile
+		// oder überschreibt sie mit leeren Werten, da es ein Array variabler Länge schreibt.
+		if err := r.setIfObj(fmt.Sprintf("%s%d", ColRates1Start, row), rate.Datum); err != nil {
+			return err
+		}
+		if err := r.setIfObj(fmt.Sprintf("M%d", row), rate.EUR); err != nil {
+			return err
+		}
+		if err := r.setIfObj(fmt.Sprintf("N%d", row), rate.LW); err != nil {
+			return err
+		}
+		if err := r.setIfObj(fmt.Sprintf("O%d", row), rate.WK); err != nil {
 			return err
 		}
 	}
@@ -315,7 +327,16 @@ func (r *ExcelReport) updateRates(data ReportData) error {
 		idx := RatesCountBlock + i
 		row := RatesStartRow + i
 		rate := data.Rates[idx]
-		if err := r.file.SetSheetRow(r.sheet, fmt.Sprintf("%s%d", ColRates2Start, row), &[]interface{}{rate.Datum, rate.EUR, rate.LW, rate.WK}); err != nil {
+		if err := r.setIfObj(fmt.Sprintf("%s%d", ColRates2Start, row), rate.Datum); err != nil {
+			return err
+		}
+		if err := r.setIfObj(fmt.Sprintf("T%d", row), rate.EUR); err != nil {
+			return err
+		}
+		if err := r.setIfObj(fmt.Sprintf("U%d", row), rate.LW); err != nil {
+			return err
+		}
+		if err := r.setIfObj(fmt.Sprintf("V%d", row), rate.WK); err != nil {
 			return err
 		}
 	}
