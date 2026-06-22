@@ -35,24 +35,34 @@
         # --- Echte Helper-Skripte statt Bash-Aliase ---
         # Diese landen direkt im $PATH der Nix-Shell und funktionieren in JEDER Shell (auch Nushell).
         script-dev = pkgs.writeShellScriptBin "dev" ''
+          cd "$(git rev-parse --show-toplevel)" || exit 1
           SLINT_LIVE_PREVIEW=1 cargo run -p app --features dev-ui
         '';
 
         script-test = pkgs.writeShellScriptBin "test-rust" ''
+          cd "$(git rev-parse --show-toplevel)" || exit 1
           cargo nextest run
         '';
 
         script-lint = pkgs.writeShellScriptBin "lint" ''
+          cd "$(git rev-parse --show-toplevel)" || exit 1
           cargo clippy
         '';
 
         script-fmt = pkgs.writeShellScriptBin "fmt" ''
+          cd "$(git rev-parse --show-toplevel)" || exit 1
           cargo fmt
         '';
 
         script-build-go = pkgs.writeShellScriptBin "build-go" ''
-          cd sidecars/Excelize && go build -o generator.exe ./cmd/report_generator
+          cd "$(git rev-parse --show-toplevel)/sidecars/Excelize" || exit 1
+          go build -o generator.exe ./cmd/report_generator
           echo "Go Sidecar erfolgreich kompiliert (sidecars/Excelize/generator.exe)"
+        '';
+
+        script-run-vorpruefung = pkgs.writeShellScriptBin "run-vorpruefung" ''
+          cd "$(git rev-parse --show-toplevel)/sidecars/Vorpruefung" || exit 1
+          go build && ./vorpruefung
         '';
 
         # Build-time tools and dependencies
@@ -89,6 +99,7 @@
           script-lint
           script-fmt
           script-build-go
+          script-run-vorpruefung
         ] ++ runtimeLibs;
 
       in {
@@ -122,6 +133,7 @@
             echo '  test-rust    - cargo nextest run'
             echo '  lint         - cargo clippy'
             echo '  build-go     - Kompiliert das Go Sidecar'
+            echo '  run-vorpruefung - Baut und führt das Vorpruefung Go-Skript aus'
           '';
         };
       });
