@@ -69,6 +69,9 @@ func processSingleJob(job ReportJob) error {
 		return fmt.Errorf("update der Daten fehlgeschlagen: %w", err)
 	}
 
+	// Bugfix: Shared Formulas un-sharen, da Excelize RemoveRow diese korrumpiert!
+	rep.UnshareAllFormulas()
+
 	// Sollen die Gruppierungen restlos entfernt werden?
 	if job.Data.RemoveGroupings {
 		// Excelize bietet keine API, um Gruppierungen zu LÖSCHEN (SetRowOutlineLevel(0) wirft einen Fehler).
