@@ -35,7 +35,7 @@ func (r *ExcelReport) CleanUpNumberingFormulas() error {
 			if formula == "" {
 				// Es gibt keine Formel (also harter Text oder leere Zelle).
 				// Wir überschreiben es mit der dynamischen Excel-Formel.
-				formulaB := fmt.Sprintf(`=IF(ROW()<ROW($B$%d),"",IF(ROW()=ROW($B$%d),"%d.","%d."&(ROW()-ROW($B$%d))))`, startRow, startRow, catID, catID, startRow)
+				formulaB := fmt.Sprintf(`IF(ROW()<ROW($B$%d),"",IF(ROW()=ROW($B$%d),"%d.","%d."&(ROW()-ROW($B$%d))))`, startRow, startRow, catID, catID, startRow)
 
 				// Zellenwert bereinigen (SetCellDefault verhindert den Excelize-Bug mit veralteten Shared-String-Indizes)
 				f.SetCellDefault(s, cellName, "")
