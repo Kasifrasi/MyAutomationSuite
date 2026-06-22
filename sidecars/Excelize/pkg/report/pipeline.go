@@ -79,29 +79,8 @@ func processSingleJob(job ReportJob) error {
 		return fmt.Errorf("fehler beim Schreiben in Puffer: %w", err)
 	}
 
-	// Falls Post-Processing gewünscht ist, filtern wir das XML (z.B. für Sichtbarkeit)
-	finalBytes := buf.Bytes()
-	if job.Data.Options.UnhideAllColumns || job.Data.Options.UnhideAllRows {
-		// ACHTUNG: unhideCols wenden wir NICHT an, wenn hideColumns aktiv ist,
-		// da hideColumns gezielt Q:V nach dem Preprocessing ausblenden soll.
-		// Besser: Wir wenden unhideCols an, ABER reparieren Q:V in Go, oder wir belassen es
-		// hier. Wait, PostProcess wird am ENDE aufgerufen, also NACHDEM HideColumns ausgeführt wurde!
-		// D.h. wenn UnhideAllColumns auf true ist, würde es die Q:V Ausblendung von Excelize WIEDER kaputt machen.
-		// Deshalb: UnhideAllRows ist sicher. UnhideAllColumns darf nicht alles unhiden, wenn HideColumns an ist.
-		// Aber in der GUI soll das ja per Checkbox wählbar sein.
-		unhideCols := job.Data.Options.UnhideAllColumns
-		if job.Data.Options.HideColumns {
-			unhideCols = false // Wenn HideColumns Q:V an ist, darf Post-Process nicht alles wieder einblenden!
-		}
-
-		finalBytes, err = ProcessExcelVisibility(finalBytes, unhideCols, job.Data.Options.UnhideAllRows)
-		if err != nil {
-			return fmt.Errorf("fehler beim Post-Processing der Datei: %w", err)
-		}
-	}
-
 	// Bereinigte Datei auf Festplatte schreiben
-	if err := os.WriteFile(job.OutputPath, finalBytes, 0644); err != nil {
+	if err := os.WriteFile(job.OutputPath, buf.Bytes(), 0644); err != nil {
 		return fmt.Errorf("speichern unter %s fehlgeschlagen: %w", job.OutputPath, err)
 	}
 

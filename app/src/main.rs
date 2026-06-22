@@ -1043,7 +1043,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     if wb_hash.is_some() || sh_hash.is_some() {
                         let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                             let fb = ui.global::<FBState>();
-                            fb.set_status_message("Wende Verschlüsselung an...".into());
+                            fb.set_status_message("Wende Schutz an...".into());
                         });
 
                         use rayon::prelude::*;
@@ -1333,7 +1333,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     if wb_hash.is_some() || sh_hash.is_some() {
                         let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                             let b2f = ui.global::<BudgetState>();
-                            b2f.set_status_message("Wende Verschlüsselung an...".into());
+                            b2f.set_status_message("Wende Schutz an...".into());
                         });
 
                         use rayon::prelude::*;

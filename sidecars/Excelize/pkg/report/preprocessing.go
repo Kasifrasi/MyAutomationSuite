@@ -44,8 +44,8 @@ func PreloadAllTemplates(globalOpts ReportOptions) error {
 				return
 			}
 
-			// Immer zuerst alle Spalten und alle Zeilen blitzschnell per Regex-Postprocess einblenden (Clean Slate)
-			if cleaned, err := ProcessExcelVisibility(data, true, true); err == nil {
+			// Immer zuerst alle Spalten, Zeilen und Gruppierungen blitzschnell per Regex-Postprocess entfernen/einblenden (Clean Slate)
+			if cleaned, err := ProcessExcelVisibility(data, true, true, true); err == nil {
 				data = cleaned
 			}
 
@@ -244,9 +244,12 @@ func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
 	return data
 }
 
-// ProcessExcelVisibility entfernt versteckte Zeilen/Spalten aus den Worksheets per Regex
-func ProcessExcelVisibility(excelData []byte, unhideCols bool, unhideRows bool) ([]byte, error) {
-	if !unhideCols && !unhideRows {
+// regexOutline sucht nach outlineLevel="X" Attributen im XML
+var regexOutline = regexp.MustCompile(` outlineLevel="\d+"`)
+
+// ProcessExcelVisibility entfernt versteckte Zeilen/Spalten und optional Gruppierungen aus den Worksheets per Regex
+func ProcessExcelVisibility(excelData []byte, unhideCols bool, unhideRows bool, removeGroupings bool) ([]byte, error) {
+	if !unhideCols && !unhideRows && !removeGroupings {
 		return excelData, nil
 	}
 
@@ -284,6 +287,10 @@ func ProcessExcelVisibility(excelData []byte, unhideCols bool, unhideRows bool) 
 			if unhideCols {
 				// Ersetzt hidden="..." nur innerhalb von <col ...>
 				content = regexp.MustCompile(`(<col[^>]*?)\shidden="(?:1|true)"([^>]*>)`).ReplaceAll(content, []byte("$1$2"))
+			}
+			if removeGroupings {
+				// Entfernt outlineLevel Attribute komplett aus den Zeilen/Spalten (Gruppierungen entfernen)
+				content = regexOutline.ReplaceAll(content, []byte(""))
 			}
 		}
 
