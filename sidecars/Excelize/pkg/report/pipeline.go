@@ -72,29 +72,22 @@ func processSingleJob(job ReportJob) error {
 	// Bugfix: Shared Formulas un-sharen, da Excelize RemoveRow diese korrumpiert!
 	rep.UnshareAllFormulas()
 
-	// Sollen die Gruppierungen restlos entfernt werden?
-	if job.Data.RemoveGroupings {
-		// Excelize bietet keine API, um Gruppierungen zu LÖSCHEN (SetRowOutlineLevel(0) wirft einen Fehler).
-		// Daher schreiben wir den Report in den RAM, filtern das XML und speichern dann!
-		buf, err := rep.file.WriteToBuffer()
-		if err != nil {
-			return fmt.Errorf("fehler beim Schreiben in Puffer: %w", err)
-		}
+	// Excelize schreibt leider manchmal fehlerhafte CalcChain-Caches raus, wenn Zeilen gelöscht werden.
+	// Zudem bietet Excelize keine API, um Gruppierungen zu LÖSCHEN.
+	// Daher schreiben wir den Report IMMER in den RAM, filtern das XML und speichern dann!
+	buf, err := rep.file.WriteToBuffer()
+	if err != nil {
+		return fmt.Errorf("fehler beim Schreiben in Puffer: %w", err)
+	}
 
-		cleanBytes, err := RemoveGroupingsFromBytes(buf.Bytes())
-		if err != nil {
-			return fmt.Errorf("fehler beim Entfernen der Gruppierungen: %w", err)
-		}
+	cleanBytes, err := PostProcessExcelFile(buf.Bytes(), job.Data.RemoveGroupings)
+	if err != nil {
+		return fmt.Errorf("fehler beim Post-Processing: %w", err)
+	}
 
-		// Bereinigte Datei auf Festplatte schreiben
-		if err := os.WriteFile(job.OutputPath, cleanBytes, 0644); err != nil {
-			return fmt.Errorf("speichern unter %s fehlgeschlagen: %w", job.OutputPath, err)
-		}
-	} else {
-		// Report normal auf die Festplatte schreiben
-		if err := rep.SaveAs(job.OutputPath); err != nil {
-			return fmt.Errorf("speichern unter %s fehlgeschlagen: %w", job.OutputPath, err)
-		}
+	// Bereinigte Datei auf Festplatte schreiben
+	if err := os.WriteFile(job.OutputPath, cleanBytes, 0644); err != nil {
+		return fmt.Errorf("speichern unter %s fehlgeschlagen: %w", job.OutputPath, err)
 	}
 
 	return nil
