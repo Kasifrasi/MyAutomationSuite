@@ -893,6 +893,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 let ui_handle_clone = ui_handle.clone();
                 std::thread::spawn(move || {
+                    let start_time = std::time::Instant::now();
                     let mut templates = Vec::new();
 
                     for lang in &lang_list {
@@ -1042,12 +1043,21 @@ fn main() -> Result<(), slint::PlatformError> {
                                 }
                             });
                         }
-
-                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                            let fb = ui.global::<FBState>();
-                            fb.set_status_message("Export und Verschlüsselung erfolgreich abgeschlossen!".into());
-                        });
                     }
+
+                    let success_count = templates.len();
+                    let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                        let fb = ui.global::<FBState>();
+                        let elapsed_sec = start_time.elapsed().as_secs_f64();
+                        fb.set_status_type("success".into());
+                        fb.set_status_message(
+                            format!(
+                                "Erfolgreich abgeschlossen! {} Datei(en) in {:.2}s erstellt.",
+                                success_count, elapsed_sec
+                            )
+                            .into(),
+                        );
+                    });
                 });
             }
         }
@@ -1167,6 +1177,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 let ui_handle_clone = ui_handle.clone();
                 std::thread::spawn(move || {
+                    let start_time = std::time::Instant::now();
                     let src_path = std::path::PathBuf::from(&src);
                     let out_base_path = std::path::PathBuf::from(&out_base);
 
@@ -1302,11 +1313,6 @@ fn main() -> Result<(), slint::PlatformError> {
                                 }
                             });
                         }
-
-                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                            let b2f = ui.global::<BudgetState>();
-                            b2f.set_status_message("Scan und Verschlüsselung erfolgreich abgeschlossen!".into());
-                        });
                     }
 
                     // 6. Fehler-CSV schreiben
@@ -1316,6 +1322,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     }
 
                     // 7. Tabelle aktualisieren
+                    let success_count = result.successes.len();
                     let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                         let b2f = ui.global::<BudgetState>();
 
@@ -1367,6 +1374,16 @@ fn main() -> Result<(), slint::PlatformError> {
 
                         let table_data = slint::ModelRc::new(slint::VecModel::from(rows));
                         b2f.set_table_data(table_data);
+
+                        let elapsed_sec = start_time.elapsed().as_secs_f64();
+                        b2f.set_status_type("success".into());
+                        b2f.set_status_message(
+                            format!(
+                                "Erfolgreich abgeschlossen! {} Datei(en) in {:.2}s erstellt.",
+                                success_count, elapsed_sec
+                            )
+                            .into(),
+                        );
                     });
                 });
             }

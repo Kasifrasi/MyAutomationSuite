@@ -26,7 +26,7 @@ jobs:
       - name: Build Go Sidecar
         run: |
           cd sidecars/Excelize
-          go build -o scanner.exe ./cmd/budget_scanner
+          go build -o scanner.exe ./cmd/report_generator
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
