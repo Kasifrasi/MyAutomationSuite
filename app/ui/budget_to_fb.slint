@@ -11,6 +11,7 @@ import {
     Card,
     StatusBanner,
     SettingCheckBox,
+    CategorySpinBox,
     PasswordField,
 } from "components.slint";
 import { BudgetState } from "state.slint";
@@ -108,7 +109,7 @@ export component BudgetPage inherits VerticalLayout {
                         }
                     }
 
-                    // Sichtbarkeit & Schutz
+                    // Layout & Struktur
                     GridBox {
                         spacing: 10px;
                         Row {
@@ -121,6 +122,33 @@ export component BudgetPage inherits VerticalLayout {
                             }
                         }
 
+                        Row {
+                            HorizontalLayout {
+                                spacing: 10px;
+                                alignment: space-between;
+                                Text {
+                                    text: "Pufferzeilen in dynamischen Kategorien";
+                                    font-size: 13px;
+                                    opacity: 0.8;
+                                    vertical-alignment: center;
+                                }
+
+                                CategorySpinBox {
+                                    value <=> BudgetState.empty-rows;
+                                    minimum: 0;
+                                    maximum: 20;
+                                    max-width: 120px;
+                                    changed => {
+                                        BudgetState.save-settings();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Sichtbarkeit & Schutz
+                    GridBox {
+                        spacing: 10px;
                         Row {
                             SettingCheckBox {
                                 text: "Blattschutz";

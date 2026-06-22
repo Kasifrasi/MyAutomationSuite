@@ -49,13 +49,13 @@ export global GlobalUI {
     in-out property <length> window-height;
     in-out property <length> window-width;
 
-    // Dynamisches Spacing: 
+    // Dynamisches Spacing:
     out property <length> spacing: Math.max(2px, Math.min(8px, self.window-height * 0.008));
-    
+
     // Dynamisches Padding:
     out property <length> padding: Math.max(4px, Math.min(16px, self.window-width * 0.015));
 
-    // "Kompakt-Modus" Flag: Kannst du nutzen, um Texte zu verkleinern oder 
+    // "Kompakt-Modus" Flag: Kannst du nutzen, um Texte zu verkleinern oder
     // weniger wichtige Elemente komplett auszublenden.
     out property <bool> is-compact: self.window-height < 500px;
 }
@@ -77,6 +77,9 @@ export global FBState {
     in-out property <string> sheet-password;
     in-out property <string> workbook-password;
     in-out property <bool> hide-columns;
+     
+     
+    in-out property <int> empty-rows: 3;
     in-out property <bool> hide-lang-sheet;
 
     in-out property <bool> show-settings: true;
@@ -107,6 +110,9 @@ export global BudgetState {
     in-out property <string> sheet-password;
     in-out property <string> workbook-password;
     in-out property <bool> hide-columns;
+     
+     
+    in-out property <int> empty-rows: 3;
     in-out property <bool> hide-lang-sheet;
     in-out property <SheetPermissions> sheet-permissions;
 

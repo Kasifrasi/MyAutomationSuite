@@ -114,4 +114,5 @@ type ReportOptions struct {
 	PivotTables      bool   `json:"pivot_tables"`
 	EditObjects      bool   `json:"edit_objects"`
 	EditScenarios    bool   `json:"edit_scenarios"`
+	EmptyRows        int    `json:"empty_rows"`
 }
