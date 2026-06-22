@@ -69,24 +69,27 @@ func processSingleJob(job ReportJob) error {
 		return fmt.Errorf("update der Daten fehlgeschlagen: %w", err)
 	}
 
-	// Bugfix: Shared Formulas un-sharen, da Excelize RemoveRow diese korrumpiert!
-	rep.UnshareAllFormulas()
-
 	// Excelize schreibt leider manchmal fehlerhafte CalcChain-Caches raus, wenn Zeilen gelöscht werden.
-	// Zudem bietet Excelize keine API, um Gruppierungen zu LÖSCHEN.
-	// Daher schreiben wir den Report IMMER in den RAM, filtern das XML und speichern dann!
+	// Wir können Excelize aber nativ anweisen, die CalcChain komplett zu verwerfen:
+	rep.file.CalcChain = nil
+
+	// Report in den RAM schreiben
 	buf, err := rep.file.WriteToBuffer()
 	if err != nil {
 		return fmt.Errorf("fehler beim Schreiben in Puffer: %w", err)
 	}
 
-	cleanBytes, err := PostProcessExcelFile(buf.Bytes(), job.Data.RemoveGroupings)
-	if err != nil {
-		return fmt.Errorf("fehler beim Post-Processing: %w", err)
+	// Falls Gruppierungen entfernt werden sollen, filtern wir das XML
+	finalBytes := buf.Bytes()
+	if job.Data.RemoveGroupings {
+		finalBytes, err = PostProcessExcelFile(finalBytes, true)
+		if err != nil {
+			return fmt.Errorf("fehler beim Post-Processing der Gruppierungen: %w", err)
+		}
 	}
 
 	// Bereinigte Datei auf Festplatte schreiben
-	if err := os.WriteFile(job.OutputPath, cleanBytes, 0644); err != nil {
+	if err := os.WriteFile(job.OutputPath, finalBytes, 0644); err != nil {
 		return fmt.Errorf("speichern unter %s fehlgeschlagen: %w", job.OutputPath, err)
 	}
 
