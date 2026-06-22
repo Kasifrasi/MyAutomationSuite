@@ -94,7 +94,7 @@ func processSingleJob(job ReportJob) error {
 			unhideCols = false // Wenn HideColumns Q:V an ist, darf Post-Process nicht alles wieder einblenden!
 		}
 
-		finalBytes, err = PostProcessExcelFile(finalBytes, unhideCols, job.Data.Options.UnhideAllRows)
+		finalBytes, err = ProcessExcelVisibility(finalBytes, unhideCols, job.Data.Options.UnhideAllRows)
 		if err != nil {
 			return fmt.Errorf("fehler beim Post-Processing der Datei: %w", err)
 		}
