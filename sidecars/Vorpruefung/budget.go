@@ -134,9 +134,25 @@ func (g *Generator) CreateBudgetSheet() error {
 	// Section 1
 	g.bgSectionHeader(ws, r, "1. GEPLANTE EINNAHMEN / FINANZIERUNG")
 
-	// Budget-Kurs
-	g.setValue(ws, cellName(BG_COL_Y2, r), "€ Budget-Kurs:", StyleOptions{Size: 9, HAlign: "right", VAlign: "center"})
-	rateCellOpts := StyleOptions{NumFormat: BG_FMT_RATE, Italic: true, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER}
+	// Budget-Kurs (G4 und H4)
+	g.setValue(ws, cellName(BG_COL_Y2, r), "€ Budget-Kurs:", StyleOptions{
+		Size:         9,
+		HAlign:       "right",
+		VAlign:       "center",
+		FillColor:    BG_CLR_HEADER,
+		BorderTop:    2,
+		BorderBottom: 1,
+		BorderColor:  BG_CLR_BORDER,
+	})
+	rateCellOpts := StyleOptions{
+		NumFormat:    BG_FMT_RATE,
+		Italic:       true,
+		BorderTop:    2, // Durchgehender dicker Rahmen oben
+		BorderBottom: 1,
+		BorderLeft:   1,
+		BorderRight:  1,
+		BorderColor:  BG_CLR_BORDER,
+	}
 	g.setStyle(ws, cellName(BG_COL_Y3, r), cellName(BG_COL_Y3, r), rateCellOpts)
 	g.upsertNamedRange(BG_NAME_KURS, BG_COL_Y3, r)
 	r += 1
@@ -432,7 +448,17 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 	g.file.SetCellFormula(ws, cellName(col, rStatus), statusFormula)
 	g.file.SetCellStyle(ws, cellName(col, rStatus), cellName(col, rStatus), statusStyleId)
 
-	onStyleOpts := StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+	onStyleOpts := StyleOptions{
+		Bold:         true,
+		Size:         9,
+		FontColor:    BG_CLR_RES_ON_TXT,
+		FillColor:    BG_CLR_RES_ON,
+		BorderLeft:   2,
+		BorderRight:  2,
+		BorderTop:    1,
+		BorderBottom: 2,
+		BorderColor:  BG_CLR_BORDER,
+	}
 	g.addConditionalFormat(ws, cellName(col, rStatus), fmt.Sprintf(`%s="Ja"`, checkAddr), onStyleOpts)
 
 	g.styleOuterBorder(ws, rHead, col, rStatus, col, 2, BG_CLR_BORDER)
