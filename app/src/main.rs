@@ -65,6 +65,7 @@ struct B2fSettings {
     edit_objects: bool,
     edit_scenarios: bool,
     contents: bool,
+    pub empty_rows: i32,
 }
 
 impl Default for B2fSettings {
@@ -92,6 +93,7 @@ impl Default for B2fSettings {
             edit_objects: false,
             edit_scenarios: true,
             contents: false,
+            empty_rows: 3,
         }
     }
 }
@@ -122,6 +124,7 @@ struct FbSettings {
     edit_objects: bool,
     edit_scenarios: bool,
     contents: bool,
+    pub empty_rows: i32,
 }
 
 impl Default for FbSettings {
@@ -151,6 +154,7 @@ impl Default for FbSettings {
             edit_objects: false,
             edit_scenarios: true,
             contents: false,
+            empty_rows: 3,
         }
     }
 }
@@ -205,6 +209,7 @@ fn load_b2f_settings(ui: &MainWindow) {
     b2f.set_sheet_password(s.sheet_password.into());
     b2f.set_workbook_password(s.workbook_password.into());
     b2f.set_hide_columns(s.hide_columns);
+    b2f.set_empty_rows(s.empty_rows);
     b2f.set_sheet_permissions(permissions_from_settings(
         s.select_locked,
         s.select_unlocked,
@@ -251,6 +256,7 @@ fn save_b2f_settings(ui: &MainWindow) {
         edit_objects: sp.edit_objects,
         edit_scenarios: sp.edit_scenarios,
         contents: sp.contents,
+        empty_rows: b2f.get_empty_rows(),
     };
     let _ = confy::store(APP_NAME, "b2f", &s);
 }
@@ -281,6 +287,7 @@ fn load_fb_settings(ui: &MainWindow) {
     fb.set_sheet_password(s.sheet_password.into());
     fb.set_workbook_password(s.workbook_password.into());
     fb.set_hide_columns(s.hide_columns);
+    fb.set_empty_rows(s.empty_rows);
     fb.set_sheet_permissions(permissions_from_settings(
         s.select_locked,
         s.select_unlocked,
@@ -333,6 +340,7 @@ fn save_fb_settings(ui: &MainWindow) {
         edit_objects: sp.edit_objects,
         edit_scenarios: sp.edit_scenarios,
         contents: sp.contents,
+        empty_rows: fb.get_empty_rows(),
     };
     let _ = confy::store(APP_NAME, "fb", &s);
 }
@@ -593,6 +601,7 @@ struct ExportOptions {
     pub pivot_tables: bool,
     pub edit_objects: bool,
     pub edit_scenarios: bool,
+    pub empty_rows: i32,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -771,6 +780,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.global::<FBState>().on_generate_report({
         let ui_handle = ui.as_weak();
+
         move || {
             if let Some(ui) = ui_handle.upgrade() {
                 let fb = ui.global::<FBState>();
@@ -853,6 +863,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     pivot_tables: sp.pivot_tables,
                     edit_objects: sp.edit_objects,
                     edit_scenarios: sp.edit_scenarios,
+                    empty_rows: fb.get_empty_rows(),
                 };
                 let wb_hash = if options.protect_workbook {
                     Some(excel_protection::precompute_hash(
@@ -1156,6 +1167,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     pivot_tables: sp.pivot_tables,
                     edit_objects: sp.edit_objects,
                     edit_scenarios: sp.edit_scenarios,
+                    empty_rows: b2f.get_empty_rows(),
                 };
 
                 let wb_hash = if options.protect_workbook {
