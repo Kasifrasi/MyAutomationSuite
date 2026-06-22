@@ -228,7 +228,7 @@ export component FBPage inherits VerticalLayout {
                             }
                         }
                     }
-                    // Sichtbarkeit & Schutz
+                    // Layout & Struktur
                     GridBox {
                         spacing: 10px;
                         Row {
@@ -241,6 +241,33 @@ export component FBPage inherits VerticalLayout {
                             }
                         }
 
+                        Row {
+                            HorizontalLayout {
+                                spacing: 10px;
+                                alignment: space-between;
+                                Text {
+                                    text: "Pufferzeilen in dynamischen Kategorien";
+                                    font-size: 13px;
+                                    opacity: 0.8;
+                                    vertical-alignment: center;
+                                }
+
+                                CategorySpinBox {
+                                    value <=> FBState.empty-rows;
+                                    minimum: 0;
+                                    maximum: 20;
+                                    max-width: 120px;
+                                    changed => {
+                                        FBState.save-settings();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Sichtbarkeit & Schutz
+                    GridBox {
+                        spacing: 10px;
                         Row {
                             SettingCheckBox {
                                 text: "Blattschutz";

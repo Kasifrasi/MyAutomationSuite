@@ -137,7 +137,10 @@ func main() {
 			}
 
 			// Setze das Flag, um Excel-Gruppierungen auf Wunsch zu entfernen
+			// Dies ist jetzt der Standard: Immer alle Zeilen/Spalten-Gruppierungen entfernen!
 			daten.RemoveGroupings = true
+			// Setze die globale EmptyRows Konfiguration
+			daten.EmptyRows.Global = globalOptions.EmptyRows
 			sprache := strings.ToLower(scanned.Language)
 
 			base := baseNames[i]

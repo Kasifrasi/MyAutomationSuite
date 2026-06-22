@@ -39,7 +39,18 @@ func PreloadAllTemplates(globalOpts ReportOptions) error {
 				if len(sheets) > 0 {
 					mainSheet := sheets[0]
 
-					// Spalten Q-V verstecken (Nur EINMAL pro Vorlage im RAM!)
+					// Immer Alle Spalten einblenden (Clean Slate)
+					for c := 1; c <= 100; c++ {
+						colName, _ := excelize.ColumnNumberToName(c)
+						f.SetColVisible(mainSheet, colName, true)
+					}
+
+					// Immer Alle Zeilen einblenden (Clean Slate)
+					for r := 1; r <= 1500; r++ {
+						f.SetRowVisible(mainSheet, r, true)
+					}
+
+					// Spalten Q-V verstecken (falls gewünscht)
 					if globalOpts.HideColumns {
 						for _, col := range []string{"Q", "R", "S", "T", "U", "V"} {
 							f.SetColVisible(mainSheet, col, false)
