@@ -27,8 +27,9 @@ type StyleOptions struct {
 }
 
 type Generator struct {
-	file       *excelize.File
-	styleCache map[string]int
+	file           *excelize.File
+	styleCache     map[string]int
+	condStyleCache map[string]int
 }
 
 func colLetter(col int) string {
@@ -125,6 +126,90 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 		return 0, err
 	}
 	g.styleCache[key] = id
+	return id, nil
+}
+
+func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) {
+	key := fmt.Sprintf("cond-%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%s-%t",
+		opts.Bold, opts.Italic, opts.Size, opts.FontColor, opts.FillColor,
+		opts.HAlign, opts.VAlign, opts.NumFormat,
+		opts.BorderTop, opts.BorderBottom, opts.BorderLeft, opts.BorderRight,
+		opts.BorderColor, opts.WrapText)
+
+	if id, exists := g.condStyleCache[key]; exists {
+		return id, nil
+	}
+
+	style := &excelize.Style{}
+
+	// Font
+	font := &excelize.Font{
+		Family: "Segoe UI",
+		Size:   opts.Size,
+		Bold:   opts.Bold,
+		Italic: opts.Italic,
+	}
+	if opts.FontColor != "" {
+		font.Color = strings.TrimPrefix(opts.FontColor, "#")
+	} else {
+		font.Color = "000000"
+	}
+	style.Font = font
+
+	// Fill
+	if opts.FillColor != "" {
+		style.Fill = excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{strings.TrimPrefix(opts.FillColor, "#")},
+			Pattern: 1,
+		}
+	}
+
+	// Alignment
+	alignment := &excelize.Alignment{
+		WrapText: opts.WrapText,
+	}
+	if opts.HAlign != "" {
+		alignment.Horizontal = opts.HAlign
+	}
+	if opts.VAlign != "" {
+		alignment.Vertical = opts.VAlign
+	}
+	style.Alignment = alignment
+
+	// Number Format
+	if opts.NumFormat != "" {
+		style.CustomNumFmt = &opts.NumFormat
+	}
+
+	// Borders
+	var borders []excelize.Border
+	borderColor := "808080"
+	if opts.BorderColor != "" {
+		borderColor = strings.TrimPrefix(opts.BorderColor, "#")
+	}
+
+	if opts.BorderTop > 0 {
+		borders = append(borders, excelize.Border{Type: "top", Color: borderColor, Style: opts.BorderTop})
+	}
+	if opts.BorderBottom > 0 {
+		borders = append(borders, excelize.Border{Type: "bottom", Color: borderColor, Style: opts.BorderBottom})
+	}
+	if opts.BorderLeft > 0 {
+		borders = append(borders, excelize.Border{Type: "left", Color: borderColor, Style: opts.BorderLeft})
+	}
+	if opts.BorderRight > 0 {
+		borders = append(borders, excelize.Border{Type: "right", Color: borderColor, Style: opts.BorderRight})
+	}
+	if len(borders) > 0 {
+		style.Border = borders
+	}
+
+	id, err := g.file.NewConditionalStyle(style)
+	if err != nil {
+		return 0, err
+	}
+	g.condStyleCache[key] = id
 	return id, nil
 }
 
@@ -294,7 +379,6 @@ func (g *Generator) styleHeader(sheet string, r1, c1, r2, c2 int) error {
 	return nil
 }
 
-
 func (g *Generator) styleOuterBorder(sheet string, r1, c1, r2, c2 int, weight int, color string) error {
 	for r := r1; r <= r2; r++ {
 		for c := c1; c <= c2; c++ {
@@ -380,12 +464,18 @@ func (g *Generator) styleTotalRow(sheet string, row int) error {
 	return nil
 }
 
-func (g *Generator) addConditionalFormat(sheet, cell, formula string, styleID int) error {
+func (g *Generator) addConditionalFormat(sheet, cell, formula string, opts StyleOptions) error {
+	styleID, err := g.getOrCreateConditionalStyle(opts)
+	if err != nil {
+		return err
+	}
+	// Führendes '=' entfernen, um doppelte Gleichheitszeichen im generierten XML zu vermeiden
+	formula = strings.TrimPrefix(formula, "=")
 	return g.file.SetConditionalFormat(sheet, cell, []excelize.ConditionalFormatOptions{
 		{
-			Type:   "expression",
-			Format: &styleID,
-			Value:  formula,
+			Type:     "formula",
+			Criteria: formula,
+			Format:   &styleID,
 		},
 	})
 }
@@ -398,8 +488,9 @@ func main() {
 	f := excelize.NewFile()
 
 	g := &Generator{
-		file:       f,
-		styleCache: make(map[string]int),
+		file:           f,
+		styleCache:     make(map[string]int),
+		condStyleCache: make(map[string]int),
 	}
 
 	// 1. Erstelle das Budget-Blatt
