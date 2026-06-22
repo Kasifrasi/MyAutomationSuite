@@ -390,16 +390,41 @@ func (r *ExcelReport) updateAllCategories(data ReportData) error {
 
 		// WICHTIGER FIX:
 		// Wenn die Kategorie aktuell im Template im Modus 0 ist (startRow == endRow)
-		// und wir KEINE Unterpositionen scannen konnten (len(items) == 0),
-		// dann dürfen wir auf GAR KEINEN FALL die globale EmptyRows-Regel anwenden,
-		// sonst zwingen wir das Template grundlos in den Modus N.
+		// und es kommt keine oder nur EINE Kostenposition rein (len(items) <= 1),
+		// dann bleiben wir in Modus 0 und wechseln nicht grundlos in Modus N.
 		var emptyCount int
-		if wasMode0 && len(items) == 0 {
+		if wasMode0 && len(items) <= 1 {
 			emptyCount = 0
+
+			// Falls es genau eine Unterposition gab, retten wir ihr Budget in den
+			// Header der Kategorie, damit es nicht verloren geht.
+			if len(items) == 1 {
+				currentHeader := data.HeaderBudgets[catID]
+				var currentVal float64
+				switch v := currentHeader.(type) {
+				case float64:
+					currentVal = v
+				case int:
+					currentVal = float64(v)
+				}
+				if currentVal == 0 {
+					if data.HeaderBudgets == nil {
+						data.HeaderBudgets = make(map[int]interface{})
+					}
+					data.HeaderBudgets[catID] = items[0].Budget
+				}
+			}
+			// Liste explizit leeren, damit targetPos = 0 bleibt (Modus 0 Definition)
+			items = []CostItem{}
 		} else {
 			emptyCount = data.EmptyRows.Global
 			if override, ok := data.EmptyRows.CategoryOverrides[catID]; ok {
 				emptyCount = override
+			}
+			// Sicherstellen, dass niemals automatisch in den Modus 0 gewechselt wird,
+			// indem immer mindestens 2 leere Puffer-Zeilen am Ende verbleiben.
+			if emptyCount < 2 {
+				emptyCount = 2
 			}
 		}
 
@@ -432,9 +457,11 @@ func (r *ExcelReport) processCategory(catID int, items []CostItem, targetPos int
 
 	// 1. FAST PATH: Kein Modus-Wechsel und Ziel ist Modus 0.
 	if wasMode0 && isMode0 {
-		// Update den Budget-Wert für die Hauptkategorie, falls vorhanden
+		// Update den Budget-Wert für die Hauptkategorie
 		if budget, ok := data.HeaderBudgets[catID]; ok {
 			r.setIfObj(fmt.Sprintf("D%d", startRow), budget)
+		} else {
+			r.setIfObj(fmt.Sprintf("D%d", startRow), 0)
 		}
 		return nil
 	}
@@ -473,6 +500,8 @@ func (r *ExcelReport) processCategory(catID int, items []CostItem, targetPos int
 		// Wert eintragen
 		if budget, ok := data.HeaderBudgets[catID]; ok {
 			r.setIfObj(fmt.Sprintf("D%d", startRow), budget)
+		} else {
+			r.setIfObj(fmt.Sprintf("D%d", startRow), 0)
 		}
 
 		r.CatEndRows[catID] = startRow // Subtotal existiert nicht mehr, wir referenzieren den Header
@@ -555,14 +584,26 @@ func (r *ExcelReport) processCategory(catID int, items []CostItem, targetPos int
 	}
 
 	// Daten in die Zielzeilen eintragen (Batch-Insert für C bis F)
-	for i, item := range items {
+	for i := 0; i < targetPos; i++ {
 		rowIdx := startRow + 1 + i
-		rowValues := []interface{}{item.Name, item.Budget, item.AusgabenBZ, item.AusgabenGS}
+		var rowValues []interface{}
+		var begruendung interface{}
+
+		if i < len(items) {
+			item := items[i]
+			rowValues = []interface{}{item.Name, item.Budget, item.AusgabenBZ, item.AusgabenGS}
+			begruendung = item.Begruendung
+		} else {
+			// Leere Zeilen: wir schreiben nur eine 0 in die Budget-Spalte (Index 1)
+			rowValues = []interface{}{"", 0, "", ""}
+			begruendung = ""
+		}
+
 		if err := f.SetSheetRow(s, fmt.Sprintf("C%d", rowIdx), &rowValues); err != nil {
 			return err
 		}
 		// H separat einfügen, um die Formel in G intakt zu lassen
-		if err := r.setIfObj(fmt.Sprintf("H%d", rowIdx), item.Begruendung); err != nil {
+		if err := r.setIfObj(fmt.Sprintf("H%d", rowIdx), begruendung); err != nil {
 			return err
 		}
 	}

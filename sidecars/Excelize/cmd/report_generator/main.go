@@ -290,7 +290,7 @@ func mapScannedToReportData(scanned *report.ScannedBudgetData) report.ReportData
 		if strings.HasSuffix(pos.Number, ".") {
 			// Es ist eine Hauptkategorie! Wir speichern uns ihren Wert.
 			budget := parseAmount(pos.CostCol1)
-			if budget > 0 {
+			if budget >= 0 {
 				data.HeaderBudgets[catID] = budget
 			}
 		}
@@ -321,13 +321,46 @@ func mapScannedToReportData(scanned *report.ScannedBudgetData) report.ReportData
 		data.Categories[catID] = append(data.Categories[catID], item)
 	}
 
-	// 3. Fallback: Kategorien, die im Template in Modus 0 waren
-	// sollten nicht durch die globale "3 leere Zeilen"-Regel in Modus N gezwungen werden.
-	// Das überlassen wir der api.go (aber zur Sicherheit definieren wir hier,
-	// dass wir 0 Zeilen generieren wollen, wenn keine Items da sind)
+	// 2.5 Wir trimmen NUR abschließende Items mit Budget = 0 und leerem Namen.
+	// Führende leere Items MÜSSEN erhalten bleiben, damit die Nummerierung (z.B. 1.1, 1.2, etc.)
+	// nicht verschoben wird. Nur was am Ende "leer" dranhängt, wird weggeschnitten.
 	for catID := 1; catID <= 8; catID++ {
-		if len(data.Categories[catID]) == 0 {
-			data.EmptyRows.CategoryOverrides[catID] = 0
+		lastValid := -1
+
+		// Definiert, was eine "gültige" Kostenposition ausmacht:
+		// Entweder das Budget ist nicht 0 ODER der Name der Position ist nicht leer.
+		isValidItem := func(item report.CostItem) bool {
+			// Typischerweise ist Name ein string. Falls nicht, prüfen wir das hier.
+			nameStr, ok := item.Name.(string)
+			if !ok {
+				nameStr = ""
+			}
+
+			// Budget ist ein interface{}, wir müssen den Typ sicher asserten,
+			// da float64(0) != int(0) sonst in Go true ergibt.
+			var budget float64
+			switch v := item.Budget.(type) {
+			case float64:
+				budget = v
+			case int:
+				budget = float64(v)
+			}
+
+			return budget != 0 || strings.TrimSpace(nameStr) != ""
+		}
+
+		for i, item := range data.Categories[catID] {
+			if isValidItem(item) {
+				lastValid = i
+			}
+		}
+
+		if lastValid != -1 {
+			// Wir fangen immer bei 0 an und schneiden nur hinten ab!
+			data.Categories[catID] = data.Categories[catID][0 : lastValid+1]
+		} else {
+			// Alles war ungültig (kein Name, kein Budget) -> Kategorie komplett leeren
+			data.Categories[catID] = []report.CostItem{}
 		}
 	}
 
