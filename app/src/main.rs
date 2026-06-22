@@ -1042,6 +1042,11 @@ fn main() -> Result<(), slint::PlatformError> {
                                 }
                             });
                         }
+
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let fb = ui.global::<FBState>();
+                            fb.set_status_message("Export und Verschlüsselung erfolgreich abgeschlossen!".into());
+                        });
                     }
                 });
             }
@@ -1297,6 +1302,11 @@ fn main() -> Result<(), slint::PlatformError> {
                                 }
                             });
                         }
+
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let b2f = ui.global::<BudgetState>();
+                            b2f.set_status_message("Scan und Verschlüsselung erfolgreich abgeschlossen!".into());
+                        });
                     }
 
                     // 6. Fehler-CSV schreiben
