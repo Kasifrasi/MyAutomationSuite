@@ -606,16 +606,16 @@ struct ProgressMessage {
 
 fn get_sidecar_path() -> std::path::PathBuf {
     // Hier binden wir die kompilierte Go-Exe direkt in die Rust-Anwendung ein!
-    let sidecar_bytes = include_bytes!("../../sidecars/Excelize/scanner.exe");
+    let sidecar_bytes = include_bytes!("../../sidecars/Excelize/generator.exe");
 
     // Wir entpacken sie in den Temp-Ordner
     let dir = std::env::temp_dir().join("MyAutomationSuite");
     let _ = std::fs::create_dir_all(&dir);
 
     let exe_name = if cfg!(windows) {
-        "scanner.exe"
+        "generator.exe"
     } else {
-        "scanner"
+        "generator"
     };
     let exe_path = dir.join(exe_name);
 

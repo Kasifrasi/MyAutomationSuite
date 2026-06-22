@@ -1,5 +1,5 @@
 fn main() {
-    println!("cargo:rerun-if-changed=../sidecars/Excelize/scanner.exe");
+    println!("cargo:rerun-if-changed=../sidecars/Excelize/generator.exe");
 
     let config = slint_build::CompilerConfiguration::new().with_style("fluent".into());
 

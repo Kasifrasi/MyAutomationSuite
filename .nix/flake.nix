@@ -51,8 +51,8 @@
         '';
 
         script-build-go = pkgs.writeShellScriptBin "build-go" ''
-          cd sidecars/Excelize && go build -o scanner.exe ./cmd/report_generator
-          echo "Go Sidecar erfolgreich kompiliert (sidecars/Excelize/scanner.exe)"
+          cd sidecars/Excelize && go build -o generator.exe ./cmd/report_generator
+          echo "Go Sidecar erfolgreich kompiliert (sidecars/Excelize/generator.exe)"
         '';
 
         # Build-time tools and dependencies
