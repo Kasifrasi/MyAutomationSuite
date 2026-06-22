@@ -129,8 +129,6 @@ func (g *Generator) CreateBudgetSheet() error {
 	_ = f.SetRowHeight(ws, r, 24)
 	r += 2
 
-	g.bgDrawDrittmittelTable(ws)
-
 	// Section 1
 	g.bgSectionHeader(ws, r, "1. GEPLANTE EINNAHMEN / FINANZIERUNG")
 
@@ -302,6 +300,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	_ = f.SetColVisible(ws, colLetter(BG_COL_LIST_ID), false)
 
 	g.bgBuildLookupLists(ws)
+	g.bgDrawDrittmittelTable(ws, ausgHdrRow)
 
 	g.styleOuterBorder(ws, 2, BG_COL_LABEL, ausgLastRow, BG_COL_EUR, 2, BG_CLR_BORDER)
 
@@ -316,9 +315,11 @@ func (g *Generator) CreateBudgetSheet() error {
 	return nil
 }
 
-func (g *Generator) bgDrawDrittmittelTable(ws string) {
+func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	cName, cLc, cEur := BG_COL_STATUS, BG_COL_CHECK, BG_COL_BEGR_2
-	titleRow, headerRow, dataRows := 14, 15, 3
+	titleRow := ausgHdrRow - 1
+	headerRow := ausgHdrRow
+	dataRows := 3
 
 	g.mergeCells(ws, cellName(cName, titleRow), cellName(cEur, titleRow), "Drittmittel – Aufstellung je Geber", StyleOptions{
 		Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center",
@@ -508,10 +509,35 @@ func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, inc
 		g.file.SetCellStyle(ws, valCell, valCell, valStyleId)
 
 		valAddr := absName(cVal, rr)
-		okStyleOpts := StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+		bBottom := 1
+		if i == len(checks)-1 {
+			bBottom = 2
+		}
+
+		okStyleOpts := StyleOptions{
+			Bold:         true,
+			Size:         9,
+			FontColor:    BG_CLR_RES_ON_TXT,
+			FillColor:    BG_CLR_RES_ON,
+			BorderLeft:   1,
+			BorderTop:    1,
+			BorderRight:  2,
+			BorderBottom: bBottom,
+			BorderColor:  BG_CLR_BORDER,
+		}
 		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`%s="OK"`, valAddr), okStyleOpts)
 
-		badStyleOpts := StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BAD_TXT, FillColor: BG_CLR_BAD, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+		badStyleOpts := StyleOptions{
+			Bold:         true,
+			Size:         9,
+			FontColor:    BG_CLR_BAD_TXT,
+			FillColor:    BG_CLR_BAD,
+			BorderLeft:   1,
+			BorderTop:    1,
+			BorderRight:  2,
+			BorderBottom: bBottom,
+			BorderColor:  BG_CLR_BORDER,
+		}
 		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`%s<>"OK"`, valAddr), badStyleOpts)
 	}
 
