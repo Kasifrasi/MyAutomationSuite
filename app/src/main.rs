@@ -43,6 +43,8 @@ fn save_theme_settings(dark_mode: bool) {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct B2fSettings {
+    src_folder: String,
+    out_folder: String,
     protect_sheet: bool,
     protect_workbook: bool,
     sheet_password: String,
@@ -71,6 +73,8 @@ struct B2fSettings {
 impl Default for B2fSettings {
     fn default() -> Self {
         Self {
+            src_folder: String::new(),
+            out_folder: String::new(),
             protect_sheet: true,
             protect_workbook: true,
             sheet_password: String::new(),
@@ -210,6 +214,12 @@ fn load_b2f_settings(ui: &MainWindow) {
     b2f.set_workbook_password(s.workbook_password.into());
     b2f.set_hide_columns(s.hide_columns);
     b2f.set_empty_rows(s.empty_rows);
+    if !s.src_folder.is_empty() {
+        b2f.set_src_folder(s.src_folder.into());
+    }
+    if !s.out_folder.is_empty() {
+        b2f.set_out_folder(s.out_folder.into());
+    }
     b2f.set_sheet_permissions(permissions_from_settings(
         s.select_locked,
         s.select_unlocked,
@@ -234,6 +244,8 @@ fn save_b2f_settings(ui: &MainWindow) {
     let b2f = ui.global::<BudgetState>();
     let sp = b2f.get_sheet_permissions();
     let s = B2fSettings {
+        src_folder: b2f.get_src_folder().to_string(),
+        out_folder: b2f.get_out_folder().to_string(),
         version: b2f.get_version().to_string(),
         protect_sheet: b2f.get_protect_sheet(),
         protect_workbook: b2f.get_protect_workbook(),
@@ -1102,6 +1114,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 if let Some(path) = rfd::FileDialog::new().pick_folder() {
                     ui.global::<BudgetState>()
                         .set_src_folder(path.to_string_lossy().to_string().into());
+                    save_b2f_settings(&ui);
                 }
             }
         }
@@ -1114,6 +1127,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 if let Some(path) = rfd::FileDialog::new().pick_folder() {
                     ui.global::<BudgetState>()
                         .set_out_folder(path.to_string_lossy().to_string().into());
+                    save_b2f_settings(&ui);
                 }
             }
         }
