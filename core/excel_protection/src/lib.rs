@@ -85,7 +85,7 @@ impl SheetProtectionOptions {
         let select_unlocked = if self.select_unlocked_cells { "0" } else { "1" };
 
         format!(
-            r#"selectLockedCells="{}" selectUnlockedCells="{}" formatCells="{}" formatColumns="{}" formatRows="{}" insertColumns="{}" insertRows="{}" insertHyperlinks="{}" deleteColumns="{}" deleteRows="{}" sort="{}" autoFilter="{}" pivotTables="{}" objects="{}" scenarios="{}""#,
+            r#"sheet="1" selectLockedCells="{}" selectUnlockedCells="{}" formatCells="{}" formatColumns="{}" formatRows="{}" insertColumns="{}" insertRows="{}" insertHyperlinks="{}" deleteColumns="{}" deleteRows="{}" sort="{}" autoFilter="{}" pivotTables="{}" objects="{}" scenarios="{}""#,
             select_locked,
             select_unlocked,
             b2s(self.format_cells),
@@ -150,14 +150,14 @@ pub fn precompute_hash(password: &str) -> PrecomputedHash {
 // XML INJECTION LOGIK (Workbook)
 // ============================================================================
 
-pub fn inject_workbook_protection(xml_content: &[u8], hash: &PrecomputedHash) -> Result<Vec<u8>, ProtectionError> {
-    let protection_tag = if hash.password_empty {
-        r#"<workbookProtection lockStructure="1"/>"#.to_string()
-    } else {
-        format!(
+pub fn inject_workbook_protection(xml_content: &[u8], hash: Option<&PrecomputedHash>) -> Result<Vec<u8>, ProtectionError> {
+    let protection_tag = match hash {
+        Some(h) if h.password_empty => r#"<workbookProtection lockStructure="1"/>"#.to_string(),
+        Some(h) => format!(
             r#"<workbookProtection lockStructure="1" workbookAlgorithmName="SHA-512" workbookHashValue="{}" workbookSaltValue="{}" workbookSpinCount="{}"/>"#,
-            hash.hash_b64, hash.salt_b64, hash.spin_count
-        )
+            h.hash_b64, h.salt_b64, h.spin_count
+        ),
+        None => "".to_string(),
     };
 
     let mut reader = Reader::from_reader(xml_content);
@@ -165,22 +165,28 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: &PrecomputedHash) ->
     let mut buf = Vec::new();
     let mut inserted = false;
 
+    let try_insert = |w: &mut Writer<_>, tag: &str, inserted: &mut bool| -> Result<(), ProtectionError> {
+        if !*inserted {
+            if !tag.is_empty() {
+                write_tag(w, tag)?;
+            }
+            *inserted = true;
+        }
+        Ok(())
+    };
+
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
                 if !inserted && (name_str == "sheets" || name_str == "bookViews" || name_str == "functionGroups") {
-                    write_tag(&mut writer, &protection_tag)?;
-                    inserted = true;
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
                 }
 
                 if name_str == "workbookProtection" {
                     let target_name = name_str.as_bytes().to_vec();
-                    if !inserted {
-                        write_tag(&mut writer, &protection_tag)?;
-                        inserted = true;
-                    }
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
 
                     // Skip the existing tag and its content
                     let mut depth = 1;
@@ -210,15 +216,11 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: &PrecomputedHash) ->
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
                 if !inserted && (name_str == "sheets" || name_str == "bookViews" || name_str == "functionGroups") {
-                    write_tag(&mut writer, &protection_tag)?;
-                    inserted = true;
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
                 }
 
                 if name_str == "workbookProtection" {
-                    if !inserted {
-                        write_tag(&mut writer, &protection_tag)?;
-                        inserted = true;
-                    }
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
                     continue;
                 }
                 writer.write_event(Event::Empty(e.clone()))?;
@@ -226,8 +228,7 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: &PrecomputedHash) ->
             Ok(Event::End(ref e)) => {
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
                 if !inserted && name_str == "workbook" {
-                    write_tag(&mut writer, &protection_tag)?;
-                    inserted = true;
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
                 }
                 writer.write_event(Event::End(e.clone()))?;
             }
@@ -245,22 +246,36 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: &PrecomputedHash) ->
 // XML INJECTION LOGIK (Worksheet)
 // ============================================================================
 
-pub fn inject_sheet_protection(xml_content: &[u8], hash: &PrecomputedHash, options: &SheetProtectionOptions) -> Result<Vec<u8>, ProtectionError> {
-    let opts_str = options.to_xml_attributes();
-
-    let protection_tag = if hash.password_empty {
-        format!(r#"<sheetProtection {}/>"#, opts_str)
-    } else {
-        format!(
-            r#"<sheetProtection algorithmName="SHA-512" hashValue="{}" saltValue="{}" spinCount="{}" {}/>"#,
-            hash.hash_b64, hash.salt_b64, hash.spin_count, opts_str
-        )
+pub fn inject_sheet_protection(xml_content: &[u8], hash: Option<&PrecomputedHash>, options: Option<&SheetProtectionOptions>) -> Result<Vec<u8>, ProtectionError> {
+    let protection_tag = match (hash, options) {
+        (Some(h), Some(opts)) => {
+            let opts_str = opts.to_xml_attributes();
+            if h.password_empty {
+                format!(r#"<sheetProtection {}/>"#, opts_str)
+            } else {
+                format!(
+                    r#"<sheetProtection algorithmName="SHA-512" hashValue="{}" saltValue="{}" spinCount="{}" {}/>"#,
+                    h.hash_b64, h.salt_b64, h.spin_count, opts_str
+                )
+            }
+        }
+        _ => "".to_string(),
     };
 
     let mut reader = Reader::from_reader(xml_content);
     let mut writer = Writer::new(Cursor::new(Vec::new()));
     let mut buf = Vec::new();
     let mut inserted = false;
+
+    let try_insert = |w: &mut Writer<_>, tag: &str, inserted: &mut bool| -> Result<(), ProtectionError> {
+        if !*inserted {
+            if !tag.is_empty() {
+                write_tag(w, tag)?;
+            }
+            *inserted = true;
+        }
+        Ok(())
+    };
 
     loop {
         match reader.read_event_into(&mut buf) {
@@ -269,10 +284,7 @@ pub fn inject_sheet_protection(xml_content: &[u8], hash: &PrecomputedHash, optio
 
                 if name_str == "sheetProtection" {
                     let target_name = name_str.as_bytes().to_vec();
-                    if !inserted {
-                        write_tag(&mut writer, &protection_tag)?;
-                        inserted = true;
-                    }
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
 
                     // Skip the existing tag and its content
                     let mut depth = 1;
@@ -298,33 +310,27 @@ pub fn inject_sheet_protection(xml_content: &[u8], hash: &PrecomputedHash, optio
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
                 if name_str == "sheetProtection" {
-                    if !inserted {
-                        write_tag(&mut writer, &protection_tag)?;
-                        inserted = true;
-                    }
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
                     continue;
                 }
 
                 writer.write_event(Event::Empty(e.clone()))?;
 
                 if !inserted && name_str == "sheetData" {
-                    write_tag(&mut writer, &protection_tag)?;
-                    inserted = true;
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
                 }
             }
             Ok(Event::End(ref e)) => {
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
                 if !inserted && name_str == "worksheet" {
-                    write_tag(&mut writer, &protection_tag)?;
-                    inserted = true;
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
                 }
 
                 writer.write_event(Event::End(e.clone()))?;
 
                 if !inserted && name_str == "sheetData" {
-                    write_tag(&mut writer, &protection_tag)?;
-                    inserted = true;
+                    try_insert(&mut writer, &protection_tag, &mut inserted)?;
                 }
             }
             Ok(Event::Eof) => break,
@@ -357,10 +363,6 @@ pub fn apply_protection_in_place(
     sheet_hash: Option<&PrecomputedHash>,
     sheet_opts: Option<&SheetProtectionOptions>,
 ) -> Result<(), ProtectionError> {
-    if wb_hash.is_none() && sheet_hash.is_none() {
-        return Ok(());
-    }
-
     let file = File::open(path)?;
     let mut archive = ZipArchive::new(file)?;
 
@@ -374,19 +376,19 @@ pub fn apply_protection_in_place(
         let compression = file.compression();
         let unix_mode = file.unix_mode();
 
-        if let Some(wbh) = wb_hash.filter(|_| name == "xl/workbook.xml") {
+        if name == "xl/workbook.xml" {
             let mut content = Vec::new();
             file.read_to_end(&mut content)?;
-            let new_xml = inject_workbook_protection(&content, wbh)?;
+            let new_xml = inject_workbook_protection(&content, wb_hash)?;
             let options = FileOptions::<()>::default()
                 .compression_method(compression)
                 .unix_permissions(unix_mode.unwrap_or(0o644));
             zip_writer.start_file(&name, options)?;
             zip_writer.write_all(&new_xml)?;
-        } else if let Some(sh) = sheet_hash.filter(|_| name.starts_with("xl/worksheets/sheet") && name.ends_with(".xml")) {
+        } else if name.starts_with("xl/worksheets/sheet") && name.ends_with(".xml") {
             let mut content = Vec::new();
             file.read_to_end(&mut content)?;
-            let new_xml = inject_sheet_protection(&content, sh, sheet_opts.unwrap())?;
+            let new_xml = inject_sheet_protection(&content, sheet_hash, sheet_opts)?;
             let options = FileOptions::<()>::default()
                 .compression_method(compression)
                 .unix_permissions(unix_mode.unwrap_or(0o644));
