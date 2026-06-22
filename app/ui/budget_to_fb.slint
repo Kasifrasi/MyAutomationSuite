@@ -89,22 +89,37 @@ export component BudgetPage inherits VerticalLayout {
                 VerticalLayout {
                     spacing: 12px;
 
-                    // Version
-                    VerticalLayout {
-                        spacing: 4px;
-                        Text {
-                            text: "* Version";
-                            font-size: 13px;
-                            font-weight: 600;
-                            opacity: 0.8;
+                    // Dateiname / Muster
+                    HorizontalLayout {
+                        spacing: 16px;
+                        alignment: start;
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text {
+                                text: "* Dateinamens-Muster";
+                                font-size: 13px;
+                                font-weight: 600;
+                                opacity: 0.8;
+                            }
+
+                            LineEdit {
+                                text <=> BudgetState.name;
+                                placeholder-text: "* z.B. {pn}_{la}_{version}_FB.xlsx";
+                                width: 280px;
+                                edited => {
+                                    BudgetState.save-settings();
+                                }
+                            }
                         }
 
-                        LineEdit {
-                            text <=> BudgetState.version;
-                            placeholder-text: "* z.B. v2025-1";
-                            width: 160px;
-                            edited => {
-                                BudgetState.save-settings();
+                        VerticalLayout {
+                            spacing: 4px;
+                            alignment: center;
+                            Text {
+                                text: "💡 Platzhalter:\n{pn} = Projektnummer\n{la} = Sprache\n{version} = Version aus Budget\n{i} = Duplikate-Zähler";
+                                font-size: 12px;
+                                opacity: 0.7;
+                                vertical-alignment: center;
                             }
                         }
                     }
@@ -415,7 +430,7 @@ export component BudgetPage inherits VerticalLayout {
         Button {
             text: BudgetState.status-type == "pending" ? "Scannt..." : "Scan starten (F5)";
             primary: true;
-            enabled: BudgetState.src-folder != "" && BudgetState.out-folder != "" && BudgetState.version != "" && BudgetState.status-type != "pending";
+            enabled: BudgetState.src-folder != "" && BudgetState.out-folder != "" && BudgetState.name != "" && BudgetState.status-type != "pending";
             clicked => {
                 BudgetState.scan();
             }

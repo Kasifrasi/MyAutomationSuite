@@ -103,8 +103,13 @@ func main() {
 		// Basis-Name berechnen (ohne {i}), um echte Namens-Kollisionen zu finden
 		base := *filenameFlag
 		base = strings.ReplaceAll(base, "{i}", "")
+		base = strings.ReplaceAll(base, "{I}", "")
 		base = strings.ReplaceAll(base, "{pn}", jobID)
+		base = strings.ReplaceAll(base, "{PN}", jobID)
 		base = strings.ReplaceAll(base, "{la}", sprache)
+		base = strings.ReplaceAll(base, "{LA}", sprache)
+		base = strings.ReplaceAll(base, "{version}", scanned.Version)
+		base = strings.ReplaceAll(base, "{VERSION}", scanned.Version)
 
 		baseNames[i] = base
 		nameCounts[base]++
@@ -145,13 +150,19 @@ func main() {
 
 			dateiname := *filenameFlag
 			dateiname = strings.ReplaceAll(dateiname, "{pn}", jobID)
+			dateiname = strings.ReplaceAll(dateiname, "{PN}", jobID)
 			dateiname = strings.ReplaceAll(dateiname, "{la}", sprache)
+			dateiname = strings.ReplaceAll(dateiname, "{LA}", sprache)
+			dateiname = strings.ReplaceAll(dateiname, "{version}", scanned.Version)
+			dateiname = strings.ReplaceAll(dateiname, "{VERSION}", scanned.Version)
 
 			if nameCounts[base] > 1 {
 				// Es gibt mehrere Dateien, die (ohne Zähler) gleich heißen würden
 				countStr := strconv.Itoa(duplicatesCounter[base])
 				if strings.Contains(dateiname, "{i}") {
 					dateiname = strings.ReplaceAll(dateiname, "{i}", countStr)
+				} else if strings.Contains(dateiname, "{I}") {
+					dateiname = strings.ReplaceAll(dateiname, "{I}", countStr)
 				} else {
 					// Wenn der Nutzer {i} nicht im Muster angegeben hat, fügen wir es vor .xlsx ein
 					ext := filepath.Ext(dateiname)
@@ -165,6 +176,7 @@ func main() {
 			} else {
 				// Die Datei ist einzigartig in diesem Durchlauf
 				dateiname = strings.ReplaceAll(dateiname, "{i}", "")
+				dateiname = strings.ReplaceAll(dateiname, "{I}", "")
 				// Kleine Schönheitskorrektur, falls durch das Entfernen von {i} Reste bleiben
 				dateiname = strings.ReplaceAll(dateiname, "__", "_")
 				dateiname = strings.ReplaceAll(dateiname, "_.xlsx", ".xlsx")

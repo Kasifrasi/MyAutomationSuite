@@ -209,22 +209,37 @@ export component FBPage inherits VerticalLayout {
                 clip: true;
                 VerticalLayout {
                     spacing: 12px;
-                    // Version
-                    VerticalLayout {
-                        spacing: 4px;
-                        Text {
-                            text: "* Version";
-                            font-size: 13px;
-                            font-weight: 600;
-                            opacity: 0.8;
+                    // Dateiname / Muster
+                    HorizontalLayout {
+                        spacing: 16px;
+                        alignment: start;
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text {
+                                text: "* Dateinamens-Muster";
+                                font-size: 13px;
+                                font-weight: 600;
+                                opacity: 0.8;
+                            }
+
+                            LineEdit {
+                                text <=> FBState.name;
+                                placeholder-text: "* z.B. Vorlage_{la}_{version}_FB.xlsx";
+                                width: 280px;
+                                edited => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
 
-                        LineEdit {
-                            text <=> FBState.version;
-                            placeholder-text: "* z.B. v2025-1";
-                            width: 160px;
-                            edited => {
-                                FBState.save-settings();
+                        VerticalLayout {
+                            spacing: 4px;
+                            alignment: center;
+                            Text {
+                                text: "💡 Platzhalter:\n{la} = Sprache\n{version} = Beliebiger Text\n{i} = Duplikate-Zähler";
+                                font-size: 12px;
+                                opacity: 0.7;
+                                vertical-alignment: center;
                             }
                         }
                     }
@@ -509,7 +524,7 @@ export component FBPage inherits VerticalLayout {
         Button {
             text: FBState.status-type == "pending" ? "Wird erstellt..." : "Berichte generieren";
             primary: true;
-            enabled: FBState.folder != "" && FBState.version != "" && FBState.status-type != "pending" && (FBState.langs.de || FBState.langs.en || FBState.langs.fr || FBState.langs.es || FBState.langs.pt);
+            enabled: FBState.folder != "" && FBState.name != "" && FBState.status-type != "pending" && (FBState.langs.de || FBState.langs.en || FBState.langs.fr || FBState.langs.es || FBState.langs.pt);
             clicked => {
                 FBState.generate-report();
             }
