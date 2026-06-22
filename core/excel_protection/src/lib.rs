@@ -19,7 +19,6 @@ use zip::write::FileOptions;
 use zip::{ZipArchive, ZipWriter};
 
 const DEFAULT_SPIN_COUNT: u32 = 100_000;
-const SALT_SIZE: usize = 16;
 
 #[derive(Debug)]
 pub enum ProtectionError {
@@ -126,7 +125,7 @@ pub fn precompute_hash(password: &str) -> PrecomputedHash {
 
     let pw_utf16: Vec<u8> = password.encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
     let mut hasher = Sha512::new();
-    hasher.update(&FIXED_SALT);
+    hasher.update(FIXED_SALT);
     hasher.update(&pw_utf16);
     let mut hash = hasher.finalize();
 
@@ -168,10 +167,48 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: &PrecomputedHash) ->
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+            Ok(Event::Start(ref e)) => {
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
-                // Workbook-Regel: WorkbookProtection muss VOR sheets, bookViews oder functionGroups kommen
+                if !inserted && (name_str == "sheets" || name_str == "bookViews" || name_str == "functionGroups") {
+                    write_tag(&mut writer, &protection_tag)?;
+                    inserted = true;
+                }
+
+                if name_str == "workbookProtection" {
+                    let target_name = name_str.as_bytes().to_vec();
+                    if !inserted {
+                        write_tag(&mut writer, &protection_tag)?;
+                        inserted = true;
+                    }
+
+                    // Skip the existing tag and its content
+                    let mut depth = 1;
+                    let mut skip_buf = Vec::new();
+                    loop {
+                        match reader.read_event_into(&mut skip_buf) {
+                            Ok(Event::Start(e)) if e.name().into_inner() == target_name => {
+                                depth += 1
+                            }
+                            Ok(Event::End(e)) if e.name().into_inner() == target_name => {
+                                depth -= 1;
+                                if depth == 0 {
+                                    break;
+                                }
+                            }
+                            Ok(Event::Eof) => break,
+                            Err(_) => break,
+                            _ => {}
+                        }
+                        skip_buf.clear();
+                    }
+                    continue;
+                }
+                writer.write_event(Event::Start(e.clone()))?;
+            }
+            Ok(Event::Empty(ref e)) => {
+                let name_str = std::str::from_utf8(e.name().into_inner())?;
+
                 if !inserted && (name_str == "sheets" || name_str == "bookViews" || name_str == "functionGroups") {
                     write_tag(&mut writer, &protection_tag)?;
                     inserted = true;
@@ -182,17 +219,17 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: &PrecomputedHash) ->
                         write_tag(&mut writer, &protection_tag)?;
                         inserted = true;
                     }
-                    continue; // Altes Tag überspringen
+                    continue;
                 }
-
-                if let Ok(Event::Start(_)) = reader.read_event_into(&mut Vec::new()) {
-                    // Start tag handling (not shown fully here for brevity, standard copy)
+                writer.write_event(Event::Empty(e.clone()))?;
+            }
+            Ok(Event::End(ref e)) => {
+                let name_str = std::str::from_utf8(e.name().into_inner())?;
+                if !inserted && name_str == "workbook" {
+                    write_tag(&mut writer, &protection_tag)?;
+                    inserted = true;
                 }
-
-                // Wir schreiben das Tag normal weiter
-                if e.name().into_inner() != b"workbookProtection" {
-                     // TODO: Exact copy logic
-                }
+                writer.write_event(Event::End(e.clone()))?;
             }
             Ok(Event::Eof) => break,
             Ok(e) => { writer.write_event(e)?; }
@@ -227,28 +264,62 @@ pub fn inject_sheet_protection(xml_content: &[u8], hash: &PrecomputedHash, optio
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+            Ok(Event::Start(ref e)) => {
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
-                // Worksheet-Regel: sheetProtection muss NACH sheetData kommen, aber VOR autoFilter, mergeCells etc.
-                // Da XML oft keine autoFilter etc. hat, fügen wir es direkt am Ende von sheetData ein (wenn es sich schließt)
-                // Oder wenn wir ein Element finden, das danach kommen MUSS.
+                if name_str == "sheetProtection" {
+                    let target_name = name_str.as_bytes().to_vec();
+                    if !inserted {
+                        write_tag(&mut writer, &protection_tag)?;
+                        inserted = true;
+                    }
+
+                    // Skip the existing tag and its content
+                    let mut depth = 1;
+                    let mut skip_buf = Vec::new();
+                    loop {
+                        match reader.read_event_into(&mut skip_buf) {
+                            Ok(Event::Start(e)) if e.name().into_inner() == target_name => depth += 1,
+                            Ok(Event::End(e)) if e.name().into_inner() == target_name => {
+                                depth -= 1;
+                                if depth == 0 { break; }
+                            }
+                            Ok(Event::Eof) | Err(_) => break,
+                            _ => {}
+                        }
+                        skip_buf.clear();
+                    }
+                    continue;
+                }
+
+                writer.write_event(Event::Start(e.clone()))?;
+            }
+            Ok(Event::Empty(ref e)) => {
+                let name_str = std::str::from_utf8(e.name().into_inner())?;
 
                 if name_str == "sheetProtection" {
                     if !inserted {
                         write_tag(&mut writer, &protection_tag)?;
                         inserted = true;
                     }
-                    continue; // Altes Tag überspringen
+                    continue;
                 }
 
-                // Wir schreiben das Event
-                writer.write_event(Event::Start(e.clone()))?;
+                writer.write_event(Event::Empty(e.clone()))?;
+
+                if !inserted && name_str == "sheetData" {
+                    write_tag(&mut writer, &protection_tag)?;
+                    inserted = true;
+                }
             }
             Ok(Event::End(ref e)) => {
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
-                // Wir fügen den Tag genau dann ein, wenn sich <sheetData> schließt
+                if !inserted && name_str == "worksheet" {
+                    write_tag(&mut writer, &protection_tag)?;
+                    inserted = true;
+                }
+
                 writer.write_event(Event::End(e.clone()))?;
 
                 if !inserted && name_str == "sheetData" {
@@ -256,13 +327,7 @@ pub fn inject_sheet_protection(xml_content: &[u8], hash: &PrecomputedHash, optio
                     inserted = true;
                 }
             }
-            Ok(Event::Eof) => {
-                // Falls sheetData leer war oder fehlte
-                if !inserted {
-                    write_tag(&mut writer, &protection_tag)?;
-                }
-                break;
-            }
+            Ok(Event::Eof) => break,
             Ok(e) => { writer.write_event(e)?; }
             Err(e) => return Err(e.into()),
         }
@@ -309,19 +374,19 @@ pub fn apply_protection_in_place(
         let compression = file.compression();
         let unix_mode = file.unix_mode();
 
-        if wb_hash.is_some() && name == "xl/workbook.xml" {
+        if let Some(wbh) = wb_hash.filter(|_| name == "xl/workbook.xml") {
             let mut content = Vec::new();
             file.read_to_end(&mut content)?;
-            let new_xml = inject_workbook_protection(&content, wb_hash.unwrap())?;
+            let new_xml = inject_workbook_protection(&content, wbh)?;
             let options = FileOptions::<()>::default()
                 .compression_method(compression)
                 .unix_permissions(unix_mode.unwrap_or(0o644));
             zip_writer.start_file(&name, options)?;
             zip_writer.write_all(&new_xml)?;
-        } else if sheet_hash.is_some() && name.starts_with("xl/worksheets/sheet") && name.ends_with(".xml") {
+        } else if let Some(sh) = sheet_hash.filter(|_| name.starts_with("xl/worksheets/sheet") && name.ends_with(".xml")) {
             let mut content = Vec::new();
             file.read_to_end(&mut content)?;
-            let new_xml = inject_sheet_protection(&content, sheet_hash.unwrap(), sheet_opts.unwrap())?;
+            let new_xml = inject_sheet_protection(&content, sh, sheet_opts.unwrap())?;
             let options = FileOptions::<()>::default()
                 .compression_method(compression)
                 .unix_permissions(unix_mode.unwrap_or(0o644));
