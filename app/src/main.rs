@@ -956,9 +956,18 @@ fn main() -> Result<(), slint::PlatformError> {
                         return;
                     }
 
+                    // 4. Go Sidecar aufrufen
                     let sidecar_exe = get_sidecar_path();
 
                     let mut cmd = std::process::Command::new(&sidecar_exe);
+
+                    #[cfg(target_os = "windows")]
+                    {
+                        use std::os::windows::process::CommandExt;
+                        const CREATE_NO_WINDOW: u32 = 0x08000000;
+                        cmd.creation_flags(CREATE_NO_WINDOW);
+                    }
+
                     cmd.arg("-input")
                         .arg(&tmp_json_path)
                         .arg("-output")
@@ -1238,6 +1247,14 @@ fn main() -> Result<(), slint::PlatformError> {
                     let sidecar_exe = get_sidecar_path();
 
                     let mut cmd = std::process::Command::new(&sidecar_exe);
+
+                    #[cfg(target_os = "windows")]
+                    {
+                        use std::os::windows::process::CommandExt;
+                        const CREATE_NO_WINDOW: u32 = 0x08000000;
+                        cmd.creation_flags(CREATE_NO_WINDOW);
+                    }
+
                     cmd.arg("-input")
                         .arg(&tmp_json_path)
                         .arg("-output")
