@@ -11,10 +11,7 @@ import (
 // Da Excelize beim Ändern einer Master-Zelle sofort den Cache für die Slave-Zellen löscht,
 // muss dies in einem 2-Pass-Verfahren passieren: Erst alle Formeln in den RAM laden,
 // dann alle Zellen nacheinander überschreiben.
-func (r *ExcelReport) UnshareAllFormulas() error {
-	f := r.file
-	s := r.sheet
-
+func UnshareAllFormulas(f *excelize.File, sheet string) error {
 	formulas := make(map[string]string)
 
 	// Pass 1: Alle existierenden Formeln in einem großzügigen Grid auslesen (1000 Zeilen x 100 Spalten).
@@ -28,7 +25,7 @@ func (r *ExcelReport) UnshareAllFormulas() error {
 			}
 			cellName := fmt.Sprintf("%s%d", colName, rNum)
 
-			form, err := f.GetCellFormula(s, cellName)
+			form, err := f.GetCellFormula(sheet, cellName)
 			if err == nil && form != "" {
 				formulas[cellName] = form
 			}
@@ -37,8 +34,8 @@ func (r *ExcelReport) UnshareAllFormulas() error {
 
 	// Pass 2: Formel löschen und als reguläre (nicht-shared) Formel wieder einfügen
 	for cell, form := range formulas {
-		f.SetCellFormula(s, cell, "")
-		f.SetCellFormula(s, cell, form)
+		f.SetCellFormula(sheet, cell, "")
+		f.SetCellFormula(sheet, cell, form)
 	}
 
 	return nil

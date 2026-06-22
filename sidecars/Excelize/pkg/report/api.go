@@ -46,6 +46,15 @@ func PreloadAllTemplates(globalOpts ReportOptions) error {
 						}
 					}
 
+					// Einmalig alle Formeln "un-sharen", damit sie beim Kopieren/Löschen
+					// von Zeilen später nicht korrumpieren (spart ca. 40ms pro Pipeline-Job)
+					_ = UnshareAllFormulas(f, mainSheet)
+
+					// Alle eventuell versteckten Zeilen in der Vorlage wieder sichtbar machen
+					for rNum := 1; rNum <= 1000; rNum++ {
+						_ = f.SetRowVisible(mainSheet, rNum, true)
+					}
+
 					// Wenn wir schon dabei sind: Wir können hier auch direkt Unprotect aufrufen,
 					// falls das Template geschützt war, aber der User keinen Schutz möchte.
 					if !globalOpts.ProtectSheet {
