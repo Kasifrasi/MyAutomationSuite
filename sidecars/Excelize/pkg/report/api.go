@@ -11,16 +11,46 @@ import (
 
 var templateCache sync.Map // map[string][]byte
 
-// PreloadAllTemplates lädt alle Sprach-Vorlagen initial in den Arbeitsspeicher.
-// Dies sollte einmalig beim App-Start (z.B. in der main.go) aufgerufen werden,
-// damit die parallelen Worker keine Dateizugriffe (I/O-Locks) auslösen.
-func PreloadAllTemplates() error {
+// func PreloadAllTemplates() error
+// Da wir hier einmalig HideColumns anwenden wollen, müssen wir die Options übergeben
+func PreloadAllTemplates(globalOpts ReportOptions) error {
 	for _, filename := range LanguageToTemplate {
 		path := "templates/" + filename
 		data, err := templateFiles.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("fehler beim Preload von %s: %w", path, err)
 		}
+
+		// Einmalig die globalen Layout-Einstellungen für diese Vorlage anwenden
+		f, err := excelize.OpenReader(bytes.NewReader(data))
+		if err == nil {
+			sheets := f.GetSheetList()
+			if len(sheets) > 0 {
+				mainSheet := sheets[0]
+
+				// Spalten Q-V verstecken (Nur EINMAL pro Vorlage im RAM!)
+				if globalOpts.HideColumns {
+					for _, col := range []string{"Q", "R", "S", "T", "U", "V"} {
+						f.SetColVisible(mainSheet, col, false)
+					}
+				}
+
+				// Wenn wir schon dabei sind: Wir können hier auch direkt Unprotect aufrufen,
+				// falls das Template geschützt war, aber der User keinen Schutz möchte.
+				if !globalOpts.ProtectSheet {
+					_ = f.UnprotectSheet(mainSheet)
+				}
+				if !globalOpts.ProtectWorkbook {
+					_ = f.UnprotectWorkbook()
+				}
+			}
+
+			var buf bytes.Buffer
+			if err := f.Write(&buf); err == nil {
+				data = buf.Bytes()
+			}
+		}
+
 		templateCache.Store(path, data)
 	}
 	return nil
@@ -662,18 +692,6 @@ func (r *ExcelReport) updateSaldoBreakdown(data ReportData) error {
 }
 
 func (r *ExcelReport) ApplyOptions(opts ReportOptions) error {
-	// Spalten Q-V verstecken
-	if opts.HideColumns {
-		for _, col := range []string{"Q", "R", "S", "T", "U", "V"} {
-			r.file.SetColVisible(r.sheet, col, false)
-		}
-	}
-
-	// Language Sheet verstecken
-	if opts.HideLangSheet {
-		r.file.SetSheetVisible("Language", false)
-	}
-
 	// Blattschutz (Worksheet)
 	if opts.ProtectSheet {
 		err := r.file.ProtectSheet(r.sheet, &excelize.SheetProtectionOptions{

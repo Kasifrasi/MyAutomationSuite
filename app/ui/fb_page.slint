@@ -5,7 +5,14 @@ import {
     GridBox,
     ScrollView,
 } from "std-widgets.slint";
-import { Card, StatusBanner, CategorySpinBox, CategoryField, SettingCheckBox, PasswordField  } from "components.slint";
+import {
+    Card,
+    StatusBanner,
+    CategorySpinBox,
+    CategoryField,
+    SettingCheckBox,
+    PasswordField,
+} from "components.slint";
 import { GlobalUI, FBState } from "state.slint";
 
 export component FBPage inherits VerticalLayout {
@@ -20,7 +27,9 @@ export component FBPage inherits VerticalLayout {
         if FBState.status-type != "idle": StatusBanner {
             status-type: FBState.status-type;
             status-message: FBState.status-message;
-            dismiss => { FBState.dismiss-status(); }
+            dismiss => {
+                FBState.dismiss-status();
+            }
         }
 
         HorizontalLayout {
@@ -32,9 +41,12 @@ export component FBPage inherits VerticalLayout {
                 placeholder-text: "* Ausgabeordner...";
                 horizontal-stretch: 1;
             }
+
             Button {
                 text: "Durchsuchen...";
-                clicked => { FBState.select-folder(); }
+                clicked => {
+                    FBState.select-folder();
+                }
             }
         }
     }
@@ -51,10 +63,10 @@ export component FBPage inherits VerticalLayout {
             Card {
                 title: "Zielsprachen";
                 vertical-stretch: 0;
-                VerticalLayout {                    
+                VerticalLayout {
                     spacing: 6px;
                     property <bool> alle: FBState.langs.de && FBState.langs.en && FBState.langs.fr && FBState.langs.es && FBState.langs.pt;
-                    HorizontalLayout {                                
+                    HorizontalLayout {
                         spacing: 16px;
                         CheckBox {
                             text: "Alle";
@@ -69,15 +81,49 @@ export component FBPage inherits VerticalLayout {
                             }
                         }
 
-                        CheckBox { text: "Deutsch"; checked <=> FBState.langs.de; toggled => { update_langs() } }
-                        CheckBox { text: "English"; checked <=> FBState.langs.en; toggled => { update_langs() } }
-                        CheckBox { text: "Français"; checked <=> FBState.langs.fr; toggled => { update_langs() } }
-                        CheckBox { text: "Español"; checked <=> FBState.langs.es; toggled => { update_langs() } }
-                        CheckBox { text: "Português"; checked <=> FBState.langs.pt; toggled => { update_langs() } }
-                        
+                        CheckBox {
+                            text: "Deutsch";
+                            checked <=> FBState.langs.de;
+                            toggled => {
+                                update_langs()
+                            }
+                        }
+
+                        CheckBox {
+                            text: "English";
+                            checked <=> FBState.langs.en;
+                            toggled => {
+                                update_langs()
+                            }
+                        }
+
+                        CheckBox {
+                            text: "Français";
+                            checked <=> FBState.langs.fr;
+                            toggled => {
+                                update_langs()
+                            }
+                        }
+
+                        CheckBox {
+                            text: "Español";
+                            checked <=> FBState.langs.es;
+                            toggled => {
+                                update_langs()
+                            }
+                        }
+
+                        CheckBox {
+                            text: "Português";
+                            checked <=> FBState.langs.pt;
+                            toggled => {
+                                update_langs()
+                            }
+                        }
+
                         function update_langs() {
-                                FBState.all-langs = FBState.langs.de && FBState.langs.en && FBState.langs.fr && FBState.langs.es && FBState.langs.pt;
-                                FBState.save-settings();
+                            FBState.all-langs = FBState.langs.de && FBState.langs.en && FBState.langs.fr && FBState.langs.es && FBState.langs.pt;
+                            FBState.save-settings();
                         }
                     }
                 }
@@ -93,18 +139,65 @@ export component FBPage inherits VerticalLayout {
                     GridBox {
                         horizontal-stretch: 1;
                         spacing: 2px;
-                        Row { CategoryField { label: "1. Bauausgaben"; val <=> FBState.categories.cat1; } }
-                        Row { CategoryField { label: "2. Investitionen"; val <=> FBState.categories.cat2; } }
-                        Row { CategoryField { label: "3. Personalkosten"; val <=> FBState.categories.cat3; } }
-                        Row { CategoryField { label: "4. Projektaktivitäten"; val <=> FBState.categories.cat4; } }
+                        Row {
+                            CategoryField {
+                                label: "1. Bauausgaben";
+                                val <=> FBState.categories.cat1;
+                            }
+                        }
+
+                        Row {
+                            CategoryField {
+                                label: "2. Investitionen";
+                                val <=> FBState.categories.cat2;
+                            }
+                        }
+
+                        Row {
+                            CategoryField {
+                                label: "3. Personalkosten";
+                                val <=> FBState.categories.cat3;
+                            }
+                        }
+
+                        Row {
+                            CategoryField {
+                                label: "4. Projektaktivitäten";
+                                val <=> FBState.categories.cat4;
+                            }
+                        }
                     }
+
                     GridBox {
                         horizontal-stretch: 1;
                         spacing: 2px;
-                        Row { CategoryField { label: "5. Projektverwaltung"; val <=> FBState.categories.cat5; } }
-                        Row { CategoryField { label: "6. Evaluierung"; val <=> FBState.categories.cat6; } }
-                        Row { CategoryField { label: "7. Audit"; val <=> FBState.categories.cat7; } }
-                        Row { CategoryField { label: "8. Reserve"; val <=> FBState.categories.cat8; } }
+                        Row {
+                            CategoryField {
+                                label: "5. Projektverwaltung";
+                                val <=> FBState.categories.cat5;
+                            }
+                        }
+
+                        Row {
+                            CategoryField {
+                                label: "6. Evaluierung";
+                                val <=> FBState.categories.cat6;
+                            }
+                        }
+
+                        Row {
+                            CategoryField {
+                                label: "7. Audit";
+                                val <=> FBState.categories.cat7;
+                            }
+                        }
+
+                        Row {
+                            CategoryField {
+                                label: "8. Reserve";
+                                val <=> FBState.categories.cat8;
+                            }
+                        }
                     }
                 }
             }
@@ -119,77 +212,242 @@ export component FBPage inherits VerticalLayout {
                     // Version
                     VerticalLayout {
                         spacing: 4px;
-                        Text { text: "* Version"; font-size: 13px; font-weight: 600; opacity: 0.8; }
+                        Text {
+                            text: "* Version";
+                            font-size: 13px;
+                            font-weight: 600;
+                            opacity: 0.8;
+                        }
+
                         LineEdit {
                             text <=> FBState.version;
                             placeholder-text: "* z.B. v2025-1";
                             width: 160px;
-                            edited => { FBState.save-settings(); }
+                            edited => {
+                                FBState.save-settings();
+                            }
                         }
                     }
                     // Sichtbarkeit & Schutz
                     GridBox {
                         spacing: 10px;
                         Row {
-                            SettingCheckBox { text: "Spalten Q:V ausblenden"; value <=> FBState.hide-columns; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Sprachblatt ausblenden"; value <=> FBState.hide-lang-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Spalten Q:V ausblenden";
+                                value <=> FBState.hide-columns;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
+
                         Row {
-                            SettingCheckBox { text: "Blattschutz"; value <=> FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Mappenschutz"; value <=> FBState.protect-workbook; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Blattschutz";
+                                value <=> FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Mappenschutz";
+                                value <=> FBState.protect-workbook;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
                     }
                     // Passwörter
                     HorizontalLayout {
                         spacing: 8px;
-                        PasswordField { 
-                            label: "Blatt-Passwort"; password <=> FBState.sheet-password; 
-                            is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); }
+                        PasswordField {
+                            label: "Blatt-Passwort";
+                            password <=> FBState.sheet-password;
+                            is-enabled: FBState.protect-sheet;
+                            changed => {
+                                FBState.save-settings();
+                            }
                         }
-                        PasswordField { 
-                            label: "Mappen-Passwort"; password <=> FBState.workbook-password; 
-                            is-enabled: FBState.protect-workbook; changed => { FBState.save-settings(); }
+
+                        PasswordField {
+                            label: "Mappen-Passwort";
+                            password <=> FBState.workbook-password;
+                            is-enabled: FBState.protect-workbook;
+                            changed => {
+                                FBState.save-settings();
+                            }
                         }
                     }
                     // Berechtigungen
                     Text {
                         text: "Erlaubte Aktionen bei Blattschutz";
-                        font-size: 13px; font-weight: 600;
+                        font-size: 13px;
+                        font-weight: 600;
                         opacity: FBState.protect-sheet ? 0.6 : 0.3;
                     }
+
                     GridBox {
                         spacing: 2px;
                         Row {
-                            SettingCheckBox { text: "Gesperrte Zellen wählen"; value <=> FBState.sheet-permissions.select-locked; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Spalten löschen"; value <=> FBState.sheet-permissions.delete-columns; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Gesperrte Zellen wählen";
+                                value <=> FBState.sheet-permissions.select-locked;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Spalten löschen";
+                                value <=> FBState.sheet-permissions.delete-columns;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
+
                         Row {
-                            SettingCheckBox { text: "Freie Zellen wählen"; value <=> FBState.sheet-permissions.select-unlocked; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Zeilen löschen"; value <=> FBState.sheet-permissions.delete-rows; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Freie Zellen wählen";
+                                value <=> FBState.sheet-permissions.select-unlocked;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Zeilen löschen";
+                                value <=> FBState.sheet-permissions.delete-rows;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
+
                         Row {
-                            SettingCheckBox { text: "Zellen formatieren"; value <=> FBState.sheet-permissions.format-cells; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Sortieren"; value <=> FBState.sheet-permissions.sort; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Zellen formatieren";
+                                value <=> FBState.sheet-permissions.format-cells;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Sortieren";
+                                value <=> FBState.sheet-permissions.sort;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
+
                         Row {
-                            SettingCheckBox { text: "Spalten formatieren"; value <=> FBState.sheet-permissions.format-columns; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Autofilter"; value <=> FBState.sheet-permissions.autofilter; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Spalten formatieren";
+                                value <=> FBState.sheet-permissions.format-columns;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Autofilter";
+                                value <=> FBState.sheet-permissions.autofilter;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
+
                         Row {
-                            SettingCheckBox { text: "Zeilen formatieren"; value <=> FBState.sheet-permissions.format-rows; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Pivot-Tabellen"; value <=> FBState.sheet-permissions.pivot-tables; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Zeilen formatieren";
+                                value <=> FBState.sheet-permissions.format-rows;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Pivot-Tabellen";
+                                value <=> FBState.sheet-permissions.pivot-tables;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
+
                         Row {
-                            SettingCheckBox { text: "Spalten einfügen"; value <=> FBState.sheet-permissions.insert-columns; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Objekte bearbeiten"; value <=> FBState.sheet-permissions.edit-objects; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Spalten einfügen";
+                                value <=> FBState.sheet-permissions.insert-columns;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Objekte bearbeiten";
+                                value <=> FBState.sheet-permissions.edit-objects;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
+
                         Row {
-                            SettingCheckBox { text: "Zeilen einfügen"; value <=> FBState.sheet-permissions.insert-rows; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Szenarien"; value <=> FBState.sheet-permissions.edit-scenarios; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Zeilen einfügen";
+                                value <=> FBState.sheet-permissions.insert-rows;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Szenarien";
+                                value <=> FBState.sheet-permissions.edit-scenarios;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
+
                         Row {
-                            SettingCheckBox { text: "Links einfügen"; value <=> FBState.sheet-permissions.insert-hyperlinks; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
-                            SettingCheckBox { text: "Inhalte schützen"; value <=> FBState.sheet-permissions.contents; is-enabled: FBState.protect-sheet; changed => { FBState.save-settings(); } }
+                            SettingCheckBox {
+                                text: "Links einfügen";
+                                value <=> FBState.sheet-permissions.insert-hyperlinks;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Inhalte schützen";
+                                value <=> FBState.sheet-permissions.contents;
+                                is-enabled: FBState.protect-sheet;
+                                changed => {
+                                    FBState.save-settings();
+                                }
+                            }
                         }
                     }
                 }
@@ -204,21 +462,30 @@ export component FBPage inherits VerticalLayout {
 
         Button {
             text: FBState.show-settings ? "Einstellungen ▲" : "Einstellungen ▼";
-            clicked => { FBState.toggle-settings(); }
+            clicked => {
+                FBState.toggle-settings();
+            }
         }
+
         Button {
             text: "Zurücksetzen";
             enabled: FBState.status-type != "pending";
-            clicked => { FBState.reset(); }
+            clicked => {
+                FBState.reset();
+            }
         }
 
-        Rectangle { horizontal-stretch: 1; }
+        Rectangle {
+            horizontal-stretch: 1;
+        }
 
         Button {
             text: FBState.status-type == "pending" ? "Wird erstellt..." : "Berichte generieren";
             primary: true;
             enabled: FBState.folder != "" && FBState.version != "" && FBState.status-type != "pending" && (FBState.langs.de || FBState.langs.en || FBState.langs.fr || FBState.langs.es || FBState.langs.pt);
-            clicked => { FBState.generate-report(); }
+            clicked => {
+                FBState.generate-report();
+            }
             width: 200px;
         }
     }

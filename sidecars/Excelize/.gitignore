@@ -19,8 +19,8 @@ go.work.sum
 # Project specific outputs
 output/
 test/
-*.xlsx
 !data/excel_templates/*.xlsx
+/data
 
 # Editor & OS files
 .idea/

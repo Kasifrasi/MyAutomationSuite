@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -55,8 +56,16 @@ func main() {
 
 	printUI("start", "", "App gestartet", 0, 0)
 
-	// 2. Templates aus dem RAM laden (via //go:embed)
-	if err := report.PreloadAllTemplates(); err != nil {
+	var globalOptions report.ReportOptions
+	if *optionsFlag != "" {
+		if err := json.Unmarshal([]byte(*optionsFlag), &globalOptions); err != nil {
+			printUI("error", "", fmt.Sprintf("Konnte -options JSON nicht parsen: %v", err), 0, 0)
+			os.Exit(1)
+		}
+	}
+
+	// 2. Templates aus dem RAM laden (via //go:embed) und globale Einstellungen anwenden
+	if err := report.PreloadAllTemplates(globalOptions); err != nil {
 		printUI("error", "", fmt.Sprintf("Fehler beim Preload: %v", err), 0, 0)
 		os.Exit(1)
 	}
@@ -72,14 +81,6 @@ func main() {
 	if err := json.Unmarshal(bytes, &scannedDaten); err != nil {
 		printUI("error", "", fmt.Sprintf("Konnte JSON-Daten nicht parsen (sollte ein Array von ScannedBudgetData sein): %v", err), 0, 0)
 		os.Exit(1)
-	}
-
-	var globalOptions report.ReportOptions
-	if *optionsFlag != "" {
-		if err := json.Unmarshal([]byte(*optionsFlag), &globalOptions); err != nil {
-			printUI("error", "", fmt.Sprintf("Konnte -options JSON nicht parsen: %v", err), 0, 0)
-			os.Exit(1)
-		}
 	}
 
 	totalFiles := len(scannedDaten)
@@ -109,9 +110,17 @@ func main() {
 		nameCounts[base]++
 	}
 
-	// 4. Stream & Pipeline einrichten (50 parallele Worker für maximale Geschwindigkeit)
+	// 4. Stream & Pipeline einrichten (dynamisch skalierend anhand der CPU-Kerne)
 	jobs := make(chan report.ReportJob, totalFiles)
-	numWorkers := 50
+
+	// Sweet Spot: 2x bis 3x die Anzahl der CPU-Kerne für gemischte (CPU + I/O) Lasten.
+	// Damit verhindern wir, dass auf schwachen Systemen der RAM (durch 50 gleichzeitige Excelize-Instanzen)
+	// vollläuft, nutzen aber auf starken Systemen die volle Leistung aus.
+	numWorkers := runtime.NumCPU() * 2
+	if numWorkers > 32 {
+		numWorkers = 32 // Cap, um exzessiven RAM-Verbrauch und I/O-Stau zu vermeiden
+	}
+
 	results := report.StartPipeline(numWorkers, jobs)
 
 	// Gescannten Daten direkt in Jobs umwandeln und in die Pipeline schicken

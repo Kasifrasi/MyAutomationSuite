@@ -48,7 +48,6 @@ struct B2fSettings {
     sheet_password: String,
     workbook_password: String,
     hide_columns: bool,
-    hide_lang_sheet: bool,
     version: String,
     select_locked: bool,
     select_unlocked: bool,
@@ -76,7 +75,6 @@ impl Default for B2fSettings {
             sheet_password: String::new(),
             workbook_password: String::new(),
             hide_columns: true,
-            hide_lang_sheet: true,
             version: String::new(),
             select_locked: true,
             select_unlocked: true,
@@ -107,7 +105,6 @@ struct FbSettings {
     sheet_password: String,
     workbook_password: String,
     hide_columns: bool,
-    hide_lang_sheet: bool,
     version: String,
     select_locked: bool,
     select_unlocked: bool,
@@ -137,7 +134,6 @@ impl Default for FbSettings {
             sheet_password: String::new(),
             workbook_password: String::new(),
             hide_columns: true,
-            hide_lang_sheet: true,
             version: String::new(),
             select_locked: true,
             select_unlocked: true,
@@ -209,7 +205,6 @@ fn load_b2f_settings(ui: &MainWindow) {
     b2f.set_sheet_password(s.sheet_password.into());
     b2f.set_workbook_password(s.workbook_password.into());
     b2f.set_hide_columns(s.hide_columns);
-    b2f.set_hide_lang_sheet(s.hide_lang_sheet);
     b2f.set_sheet_permissions(permissions_from_settings(
         s.select_locked,
         s.select_unlocked,
@@ -240,7 +235,6 @@ fn save_b2f_settings(ui: &MainWindow) {
         sheet_password: b2f.get_sheet_password().to_string(),
         workbook_password: b2f.get_workbook_password().to_string(),
         hide_columns: b2f.get_hide_columns(),
-        hide_lang_sheet: b2f.get_hide_lang_sheet(),
         select_locked: sp.select_locked,
         select_unlocked: sp.select_unlocked,
         format_cells: sp.format_cells,
@@ -287,7 +281,6 @@ fn load_fb_settings(ui: &MainWindow) {
     fb.set_sheet_password(s.sheet_password.into());
     fb.set_workbook_password(s.workbook_password.into());
     fb.set_hide_columns(s.hide_columns);
-    fb.set_hide_lang_sheet(s.hide_lang_sheet);
     fb.set_sheet_permissions(permissions_from_settings(
         s.select_locked,
         s.select_unlocked,
@@ -324,7 +317,6 @@ fn save_fb_settings(ui: &MainWindow) {
         sheet_password: fb.get_sheet_password().to_string(),
         workbook_password: fb.get_workbook_password().to_string(),
         hide_columns: fb.get_hide_columns(),
-        hide_lang_sheet: fb.get_hide_lang_sheet(),
         select_locked: sp.select_locked,
         select_unlocked: sp.select_unlocked,
         format_cells: sp.format_cells,
@@ -620,7 +612,11 @@ fn get_sidecar_path() -> std::path::PathBuf {
     let dir = std::env::temp_dir().join("MyAutomationSuite");
     let _ = std::fs::create_dir_all(&dir);
 
-    let exe_name = if cfg!(windows) { "scanner.exe" } else { "scanner" };
+    let exe_name = if cfg!(windows) {
+        "scanner.exe"
+    } else {
+        "scanner"
+    };
     let exe_path = dir.join(exe_name);
 
     // Nur neu schreiben, wenn sie noch nicht existiert oder sich die Größe geändert hat (z.B. nach einem App-Update)
@@ -859,12 +855,18 @@ fn main() -> Result<(), slint::PlatformError> {
                     edit_scenarios: sp.edit_scenarios,
                 };
                 let wb_hash = if options.protect_workbook {
-                    Some(excel_protection::precompute_hash(&options.workbook_password))
-                } else { None };
+                    Some(excel_protection::precompute_hash(
+                        &options.workbook_password,
+                    ))
+                } else {
+                    None
+                };
 
                 let sh_hash = if options.protect_sheet {
                     Some(excel_protection::precompute_hash(&options.sheet_password))
-                } else { None };
+                } else {
+                    None
+                };
 
                 let sh_opts = if options.protect_sheet {
                     Some(excel_protection::SheetProtectionOptions {
@@ -884,7 +886,9 @@ fn main() -> Result<(), slint::PlatformError> {
                         objects: options.edit_objects,
                         scenarios: options.edit_scenarios,
                     })
-                } else { None };
+                } else {
+                    None
+                };
 
                 let mut sidecar_options = options.clone();
                 sidecar_options.protect_sheet = false;
@@ -978,7 +982,11 @@ fn main() -> Result<(), slint::PlatformError> {
                                 let fb = ui.global::<FBState>();
                                 fb.set_status_type("error".into());
                                 fb.set_status_message(
-                                    format!("Fehler beim Starten von {}: {e}", sidecar_exe.display()).into(),
+                                    format!(
+                                        "Fehler beim Starten von {}: {e}",
+                                        sidecar_exe.display()
+                                    )
+                                    .into(),
                                 );
                             });
                             return;
@@ -1038,7 +1046,7 @@ fn main() -> Result<(), slint::PlatformError> {
                                         &p,
                                         wb_hash.as_ref(),
                                         sh_hash.as_ref(),
-                                        sh_opts.as_ref()
+                                        sh_opts.as_ref(),
                                     );
                                 }
                             });
@@ -1142,12 +1150,18 @@ fn main() -> Result<(), slint::PlatformError> {
                 };
 
                 let wb_hash = if options.protect_workbook {
-                    Some(excel_protection::precompute_hash(&options.workbook_password))
-                } else { None };
+                    Some(excel_protection::precompute_hash(
+                        &options.workbook_password,
+                    ))
+                } else {
+                    None
+                };
 
                 let sh_hash = if options.protect_sheet {
                     Some(excel_protection::precompute_hash(&options.sheet_password))
-                } else { None };
+                } else {
+                    None
+                };
 
                 let sh_opts = if options.protect_sheet {
                     Some(excel_protection::SheetProtectionOptions {
@@ -1167,7 +1181,9 @@ fn main() -> Result<(), slint::PlatformError> {
                         objects: options.edit_objects,
                         scenarios: options.edit_scenarios,
                     })
-                } else { None };
+                } else {
+                    None
+                };
 
                 // Dem Sidecar geben wir protect=false mit, damit es das XML nicht verschlüsselt
                 let mut sidecar_options = options.clone();
@@ -1246,7 +1262,11 @@ fn main() -> Result<(), slint::PlatformError> {
                                 let b2f = ui.global::<BudgetState>();
                                 b2f.set_status_type("error".into());
                                 b2f.set_status_message(
-                                    format!("Fehler beim Starten von {}: {e}", sidecar_exe.display()).into(),
+                                    format!(
+                                        "Fehler beim Starten von {}: {e}",
+                                        sidecar_exe.display()
+                                    )
+                                    .into(),
                                 );
                             });
                             return;
@@ -1308,7 +1328,7 @@ fn main() -> Result<(), slint::PlatformError> {
                                         &p,
                                         wb_hash.as_ref(),
                                         sh_hash.as_ref(),
-                                        sh_opts.as_ref()
+                                        sh_opts.as_ref(),
                                     );
                                 }
                             });
