@@ -220,12 +220,12 @@ func (g *Generator) CreateBudgetSheet() error {
 	catArrayStr := `{"` + strings.Join(BG_CATEGORIES, `";"`) + `"}`
 	for i := 0; i < ausgDataRows; i++ {
 		row := r + i
-		g.setValue(ws, cellName(BG_COL_LABEL, row), BG_CATEGORIES[i], StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center"})
+		g.setValue(ws, cellName(BG_COL_LABEL, row), BG_CATEGORIES[i], StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
 		formulaID := fmt.Sprintf(`=IF(B%d="","",MATCH(B%d,%s,0)&"."&COUNTIF(B$%d:B%d,B%d))`, row, row, catArrayStr, r, row, row)
-		g.setFormula(ws, cellName(BG_COL_ID, row), formulaID, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center"})
+		g.setFormula(ws, cellName(BG_COL_ID, row), formulaID, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
-		g.setValue(ws, cellName(BG_COL_POS, row), "", StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center"})
+		g.setValue(ws, cellName(BG_COL_POS, row), "", StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 		g.bgInput(ws, cellName(BG_COL_LC, row), BG_FMT_LC)
 		g.bgInput(ws, cellName(BG_COL_Y1, row), BG_FMT_LC)
 		g.bgInput(ws, cellName(BG_COL_Y2, row), BG_FMT_LC)
@@ -233,7 +233,6 @@ func (g *Generator) CreateBudgetSheet() error {
 		g.bgInput(ws, cellName(BG_COL_EUR, row), BG_FMT_EUR)
 	}
 
-	g.bgBoxBorders(ws, r, BG_COL_LABEL, r+ausgDataRows-1, BG_COL_EUR)
 	g.bgTableHeader(ws, ausgHdrRow, BG_COL_LABEL, BG_COL_EUR)
 
 	dv := excelize.NewDataValidation(true)
@@ -255,7 +254,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	_ = f.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, ausgHdrRow), cellName(BG_COL_EUR, ausgTotalsRow)),
 		Name:           BG_TABLE_AUSG,
-		StyleName:      "TableStyleLight1",
+		StyleName:      "TableStyleNone",
 		ShowRowStripes: falsePtr(),
 	})
 
@@ -288,7 +287,7 @@ func (g *Generator) CreateBudgetSheet() error {
 
 	g.bgBuildLookupLists(ws)
 
-	g.styleOuterBorder(ws, 1, BG_COL_LABEL, ausgLastRow, BG_COL_EUR, 2, BG_CLR_BORDER)
+	g.styleOuterBorder(ws, 2, BG_COL_LABEL, ausgLastRow, BG_COL_EUR, 2, BG_CLR_BORDER)
 
 	reserveCheckAddr := g.bgDrawReserveBox(ws, reserveEurAddr)
 	g.bgDrawBegruendung(ws, reserveCheckAddr)
@@ -303,7 +302,7 @@ func (g *Generator) CreateBudgetSheet() error {
 
 func (g *Generator) bgDrawDrittmittelTable(ws string) {
 	cName, cLc, cEur := BG_COL_STATUS, BG_COL_CHECK, BG_COL_BEGR_2
-	titleRow, headerRow, dataRows := 15, 16, 3
+	titleRow, headerRow, dataRows := 14, 15, 3
 
 	g.mergeCells(ws, cellName(cName, titleRow), cellName(cEur, titleRow), "Drittmittel – Aufstellung je Geber", StyleOptions{
 		Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center",
@@ -314,18 +313,16 @@ func (g *Generator) bgDrawDrittmittelTable(ws string) {
 
 	for i := 0; i < dataRows; i++ {
 		row := headerRow + 1 + i
-		g.setValue(ws, cellName(cName, row), "", StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center"})
+		g.setValue(ws, cellName(cName, row), "", StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 		g.bgInput(ws, cellName(cLc, row), BG_FMT_LC)
 		g.bgInput(ws, cellName(cEur, row), BG_FMT_EUR)
 	}
 
 	g.bgTableHeader(ws, headerRow, cName, cEur)
-	g.bgBoxBorders(ws, headerRow+1, cName, headerRow+dataRows, cEur)
-
 	_ = g.file.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(cName, headerRow), cellName(cEur, headerRow+dataRows)),
 		Name:           BG_TABLE_NAME,
-		StyleName:      "TableStyleLight1",
+		StyleName:      "TableStyleNone",
 		ShowRowStripes: falsePtr(),
 	})
 	g.styleOuterBorder(ws, titleRow, cName, headerRow+dataRows, cEur, 2, BG_CLR_BORDER)
@@ -399,9 +396,7 @@ func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
 	_ = g.file.SetRowHeight(ws, r, 20)
 }
 
-func (g *Generator) bgBoxBorders(ws string, r1, c1, r2, c2 int) {
-	g.styleBox(ws, r1, c1, r2, c2, StyleOptions{BorderColor: BG_CLR_GRID, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1})
-}
+
 
 func (g *Generator) bgBuildLookupLists(ws string) {
 	g.setFormula(ws, cellName(BG_COL_LIST_GEBER, 1), fmt.Sprintf(`=VSTACK({"Projektpartner";"Bank"},IFERROR(FILTER(%s[Name des Gebers],%s[Name des Gebers]<>""),""))`, BG_TABLE_NAME, BG_TABLE_NAME), StyleOptions{})
@@ -415,28 +410,27 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 	c, col := BG_COL_STATUS, BG_COL_STATUS
 	rHead, rAmount, rCapt, rCheck, rStatus := 2, 3, 4, 5, 6
 
-	g.setValue(ws, cellName(col, rHead), "Reserve Freigabe", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center"})
+	g.setValue(ws, cellName(col, rHead), "Reserve Freigabe", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
 	if reserveEurAddr != "" {
-		g.setFormula(ws, cellName(col, rAmount), fmt.Sprintf("=%s", reserveEurAddr), StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_FONT, HAlign: "center", VAlign: "center", NumFormat: BG_FMT_EUR})
+		g.setFormula(ws, cellName(col, rAmount), fmt.Sprintf("=%s", reserveEurAddr), StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_FONT, HAlign: "center", VAlign: "center", NumFormat: BG_FMT_EUR, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	} else {
-		g.setValue(ws, cellName(col, rAmount), 0, StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_FONT, HAlign: "center", VAlign: "center", NumFormat: BG_FMT_EUR})
+		g.setValue(ws, cellName(col, rAmount), 0, StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_FONT, HAlign: "center", VAlign: "center", NumFormat: BG_FMT_EUR, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	}
 
-	g.setValue(ws, cellName(col, rCapt), "Reserve freigeben:", StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, Italic: true, HAlign: "center", VAlign: "center"})
+	g.setValue(ws, cellName(col, rCapt), "Reserve freigeben:", StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, Italic: true, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
-	g.setValue(ws, cellName(col, rCheck), false, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center"})
+	g.setValue(ws, cellName(col, rCheck), false, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	checkAddr := absName(c, rCheck)
 
 	statusFormula := fmt.Sprintf(`=IF(%s=TRUE,"FREIGEGEBEN","NICHT FREIGEGEBEN")`, checkAddr)
-	statusStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center"})
+	statusStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	g.file.SetCellFormula(ws, cellName(col, rStatus), statusFormula)
 	g.file.SetCellStyle(ws, cellName(col, rStatus), cellName(col, rStatus), statusStyleId)
 
-	onStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON})
+	onStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	g.addConditionalFormat(ws, cellName(col, rStatus), fmt.Sprintf(`=%s=TRUE`, checkAddr), onStyleId)
 
-	g.styleBox(ws, rHead, col, rStatus, col, StyleOptions{BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_GRID})
 	g.styleOuterBorder(ws, rHead, col, rStatus, col, 2, BG_CLR_BORDER)
 	g.upsertNamedRange(BG_NAME_RESERVE, c, rCheck)
 	return checkAddr
@@ -444,7 +438,7 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 
 func (g *Generator) bgDrawBegruendung(ws string, reserveCheckAddr string) {
 	c1, c2 := BG_COL_BEGR_1, BG_COL_BEGR_2
-	hdrRow, areaTop, areaRows := 9, 10, 4
+	hdrRow, areaTop, areaRows := 8, 9, 4
 
 	g.mergeCells(ws, cellName(c1, hdrRow), cellName(c2, hdrRow), "Begruendung", StyleOptions{Bold: true, Size: 9, FontColor: "FFFFFF", HAlign: "center", VAlign: "center"})
 	g.mergeCells(ws, cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1), "", StyleOptions{HAlign: "left", VAlign: "top", WrapText: true})
@@ -460,7 +454,7 @@ func (g *Generator) bgDrawBegruendung(ws string, reserveCheckAddr string) {
 func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr, rateCellAddr string) {
 	cLbl, cVal := BG_COL_LABEL, BG_COL_LC
 
-	g.mergeCells(ws, cellName(cLbl, top), cellName(cVal, top), "Budgetpruefung", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center"})
+	g.mergeCells(ws, cellName(cLbl, top), cellName(cVal, top), "Budgetpruefung", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
 	checks := []struct{ lbl, fml string }{
 		{"Einnahmen = Ausgaben (LC)", fmt.Sprintf(`=IF(ROUND(%s-%s,2)=0,"OK","Abweichung")`, incLocAddr, expLocAddr)},
@@ -472,21 +466,20 @@ func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, inc
 
 	for i, chk := range checks {
 		rr := top + 1 + i
-		g.mergeCells(ws, cellName(cLbl, rr), cellName(BG_COL_POS, rr), chk.lbl, StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, HAlign: "left", VAlign: "center"})
+		g.mergeCells(ws, cellName(cLbl, rr), cellName(BG_COL_POS, rr), chk.lbl, StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
 		valCell := cellName(cVal, rr)
-		valStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center"})
+		valStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 		g.file.SetCellFormula(ws, valCell, chk.fml)
 		g.file.SetCellStyle(ws, valCell, valCell, valStyleId)
 
 		valAddr := absName(cVal, rr)
-		okStyle, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON})
+		okStyle, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`=%s="OK"`, valAddr), okStyle)
 
-		badStyle, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BAD_TXT, FillColor: BG_CLR_BAD})
+		badStyle, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BAD_TXT, FillColor: BG_CLR_BAD, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`=%s<>"OK"`, valAddr), badStyle)
 	}
 
-	g.styleBox(ws, top, cLbl, top+len(checks), cVal, StyleOptions{BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_GRID})
 	g.styleOuterBorder(ws, top, cLbl, top+len(checks), cVal, 2, BG_CLR_BORDER)
 }

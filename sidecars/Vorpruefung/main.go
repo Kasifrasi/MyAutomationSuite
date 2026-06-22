@@ -294,45 +294,6 @@ func (g *Generator) styleHeader(sheet string, r1, c1, r2, c2 int) error {
 	return nil
 }
 
-func (g *Generator) styleBox(sheet string, r1, c1, r2, c2 int, opts StyleOptions) error {
-	for r := r1; r <= r2; r++ {
-		for c := c1; c <= c2; c++ {
-			cellOpts := opts
-
-			if r == r1 {
-				cellOpts.BorderTop = 2
-			} else {
-				cellOpts.BorderTop = 1
-			}
-
-			if r == r2 {
-				cellOpts.BorderBottom = 2
-			} else {
-				cellOpts.BorderBottom = 1
-			}
-
-			if c == c1 {
-				cellOpts.BorderLeft = 2
-			} else {
-				cellOpts.BorderLeft = 1
-			}
-
-			if c == c2 {
-				cellOpts.BorderRight = 2
-			} else {
-				cellOpts.BorderRight = 1
-			}
-
-			cellOpts.BorderColor = BG_CLR_BORDER
-			cell := cellName(c, r)
-			err := g.setStyle(sheet, cell, cell, cellOpts)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
 
 func (g *Generator) styleOuterBorder(sheet string, r1, c1, r2, c2 int, weight int, color string) error {
 	for r := r1; r <= r2; r++ {
