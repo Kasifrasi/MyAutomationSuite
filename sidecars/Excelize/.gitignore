@@ -1,0 +1,35 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Go workspace
+go.work
+go.work.sum
+
+# Profiling and coverage
+*.out
+*.prof
+
+# Project specific outputs
+output/
+test/
+*.xlsx
+!data/excel_templates/*.xlsx
+
+# Editor & OS files
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# direnv cache
+.direnv/
+# rust target directories
+target/
+test_main
