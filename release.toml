@@ -1,6 +1,8 @@
 # Nicht auf crates.io publishen – nur Tag + Push für GitHub Actions
 publish = false
 
+allow-branch = ["*", "HEAD"]
+
 # Tag-Format passend zum GitHub Workflow (erwartet "v*")
 tag-name = "v{{version}}"
 
