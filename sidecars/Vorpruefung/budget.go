@@ -418,22 +418,22 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 
 	g.setValue(ws, cellName(col, rCapt), "Reserve freigeben:", StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, Italic: true, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
-	g.setValue(ws, cellName(col, rCheck), false, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+	g.setValue(ws, cellName(col, rCheck), "Nein", StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	checkAddr := absName(c, rCheck)
 
-	// Dropdown-Auswahl für TRUE/FALSE hinzufügen, um die Bedienung zu erleichtern
+	// Dropdown-Auswahl Ja/Nein hinzufügen
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = cellName(col, rCheck)
-	dv.SetDropList([]string{"TRUE", "FALSE"})
+	dv.SetDropList([]string{"Ja", "Nein"})
 	_ = g.file.AddDataValidation(ws, dv)
 
-	statusFormula := fmt.Sprintf(`=IF(%s=TRUE,"FREIGEGEBEN","NICHT FREIGEGEBEN")`, checkAddr)
+	statusFormula := fmt.Sprintf(`=IF(%s="Ja","FREIGEGEBEN","NICHT FREIGEGEBEN")`, checkAddr)
 	statusStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	g.file.SetCellFormula(ws, cellName(col, rStatus), statusFormula)
 	g.file.SetCellStyle(ws, cellName(col, rStatus), cellName(col, rStatus), statusStyleId)
 
-	onStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-	g.addConditionalFormat(ws, cellName(col, rStatus), fmt.Sprintf(`=%s=TRUE`, checkAddr), onStyleId)
+	onStyleOpts := StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+	g.addConditionalFormat(ws, cellName(col, rStatus), fmt.Sprintf(`%s="Ja"`, checkAddr), onStyleOpts)
 
 	g.styleOuterBorder(ws, rHead, col, rStatus, col, 2, BG_CLR_BORDER)
 	g.upsertNamedRange(BG_NAME_RESERVE, c, rCheck)
@@ -444,15 +444,19 @@ func (g *Generator) bgDrawBegruendung(ws string, reserveCheckAddr string) {
 	c1, c2 := BG_COL_BEGR_1, BG_COL_BEGR_2
 	hdrRow, areaTop, areaRows := 8, 9, 4
 
-	g.mergeCells(ws, cellName(c1, hdrRow), cellName(c2, hdrRow), "Begruendung", StyleOptions{Bold: true, Size: 9, FontColor: "FFFFFF", HAlign: "center", VAlign: "center"})
-	g.mergeCells(ws, cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1), "", StyleOptions{HAlign: "left", VAlign: "top", WrapText: true})
+	// Inaktiver Standard-Stil: Grau hinterlegt, grauer Text, dünner grauer Rahmen
+	g.mergeCells(ws, cellName(c1, hdrRow), cellName(c2, hdrRow), "Begruendung", StyleOptions{Bold: true, Size: 9, FontColor: "7F7F7F", FillColor: "F2F2F2", HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: "D3D3D3"})
+	g.mergeCells(ws, cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1), "", StyleOptions{FillColor: "F2F2F2", HAlign: "left", VAlign: "top", WrapText: true, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: "D3D3D3"})
 
-	condFormula := fmt.Sprintf(`=%s=TRUE`, reserveCheckAddr)
-	styleBlackText, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER})
-	g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(c1, hdrRow), cellName(c2, hdrRow)), condFormula, styleBlackText)
+	condFormula := fmt.Sprintf(`%s="Ja"`, reserveCheckAddr)
 
-	styleBorder, _ := g.getOrCreateStyle(StyleOptions{BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER})
-	g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1)), condFormula, styleBorder)
+	// Aktiver Stil für Header bei TRUE: Dunkelgrauer Header mit weißem Text und deutlichem Rahmen
+	styleActiveHeaderOpts := StyleOptions{Bold: true, Size: 9, FontColor: "FFFFFF", FillColor: "3C3C3C", HAlign: "center", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER}
+	g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(c1, hdrRow), cellName(c2, hdrRow)), condFormula, styleActiveHeaderOpts)
+
+	// Aktiver Stil für Eingabebereich bei TRUE: Zartgelb (BG_CLR_INPUT) mit deutlichem Rahmen
+	styleActiveAreaOpts := StyleOptions{FillColor: BG_CLR_INPUT, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER}
+	g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1)), condFormula, styleActiveAreaOpts)
 }
 
 func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr, rateCellAddr string) {
@@ -478,11 +482,11 @@ func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, inc
 		g.file.SetCellStyle(ws, valCell, valCell, valStyleId)
 
 		valAddr := absName(cVal, rr)
-		okStyle, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`=%s="OK"`, valAddr), okStyle)
+		okStyleOpts := StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_ON_TXT, FillColor: BG_CLR_RES_ON, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`%s="OK"`, valAddr), okStyleOpts)
 
-		badStyle, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BAD_TXT, FillColor: BG_CLR_BAD, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`=%s<>"OK"`, valAddr), badStyle)
+		badStyleOpts := StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BAD_TXT, FillColor: BG_CLR_BAD, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`%s<>"OK"`, valAddr), badStyleOpts)
 	}
 
 	g.styleOuterBorder(ws, top, cLbl, top+len(checks), cVal, 2, BG_CLR_BORDER)
