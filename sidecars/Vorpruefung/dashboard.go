@@ -124,7 +124,7 @@ func (g *Generator) drawDashboardHeader(ws string) error {
 		FillColor:    DB_CLR_HEADER_BG,
 		VAlign:       "center",
 		HAlign:       "left",
-		BorderBottom: 5, // Thick bottom border (in excelize: 5)
+		BorderBottom: 5, // Thick bottom border
 		BorderColor:  DB_CLR_HEADER_ACCENT,
 	}
 	err := g.mergeCells(ws, cellName(DB_C_LBL1, DB_HEADER_ROW), cellName(DB_C_IN2, DB_HEADER_ROW), "  DASHBOARD ("+DB_APP_VERSION+")", headerOpts)
@@ -160,7 +160,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 
 	r := DB_TITLE_ROW + 1
 
-	// --- Zeile: Projektnummer | Vorprojekt vorhanden (Checkbox) ---
+	// --- Zeile: Projektnummer | Vorprojekt vorhanden (Dropdown Ja/Nein) ---
 	err = g.dbLabel(ws, r, DB_C_LBL1, "Projektnummer")
 	if err != nil {
 		return err
@@ -173,14 +173,14 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
-	err = g.dbCheckbox(ws, r, DB_C_IN2, true, DB_CLR_INPUT)
+	err = g.dbDropdownJaNein(ws, r, DB_C_IN2, "Ja", DB_CLR_INPUT)
 	if err != nil {
 		return err
 	}
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
-	// --- Zeile: Projekttitel (über B:D in TS zusammengefasst -> C:E) ---
+	// --- Zeile: Projekttitel (C:E zusammengefasst) ---
 	err = g.dbLabel(ws, r, DB_C_LBL1, "Projekttitel")
 	if err != nil {
 		return err
@@ -430,22 +430,13 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 		return err
 	}
 
-	// Checkboxen (D15:D21) und Texte (E15:E21)
+	// Dropdowns (D15:D21) und Texte (E15:E21)
 	for i, docName := range DB_DOCS {
 		row := docStart + i
 		_ = g.file.SetRowHeight(ws, row, 22.0)
 
-		// Checkbox (Spalte D)
-		chkOpts := StyleOptions{
-			VAlign:       "center",
-			HAlign:       "center",
-			BorderTop:    1,
-			BorderBottom: 1,
-			BorderLeft:   1,
-			BorderRight:  1,
-			BorderColor:  DB_CLR_BORDER,
-		}
-		err = g.setValue(ws, cellName(DB_C_LBL2, row), false, chkOpts)
+		// Ja/Nein Dropdown (Spalte D)
+		err = g.dbDropdownJaNein(ws, row, DB_C_LBL2, "Nein", "")
 		if err != nil {
 			return err
 		}
@@ -480,37 +471,37 @@ func (g *Generator) applyConditionalFormatting(
 	vpStart, vpEnd int,
 	docStart, docEnd int,
 ) error {
-	// Adresse der "Vorprojekt vorhanden"-Checkbox (E5 -> $E$5)
+	// Adresse der "Vorprojekt vorhanden"-Dropdown (E5 -> $E$5)
 	vpAddr := absName(DB_C_IN2, DB_TITLE_ROW+1)
 
-	// 1) Vorprojekt-Block ausgrauen, wenn "Vorprojekt vorhanden" NICHT gesetzt. (=$E$5=FALSE)
+	// 1) Vorprojekt-Block ausgrauen, wenn "Vorprojekt vorhanden" auf "Nein" steht.
 	vpCfOpts := StyleOptions{
 		FillColor: DB_CLR_DISABLED,
 		FontColor: DB_CLR_FONT_GRAY,
 	}
-	err := g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_LBL1, vpStart), cellName(DB_C_IN2, vpEnd)), fmt.Sprintf("=%s=FALSE", vpAddr), vpCfOpts)
+	err := g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_LBL1, vpStart), cellName(DB_C_IN2, vpEnd)), fmt.Sprintf("=%s=\"Nein\"", vpAddr), vpCfOpts)
 	if err != nil {
 		return err
 	}
 
-	// 2) Dokument-Text durchstreichen + ausgrauen, solange die zugehörige Checkbox (Spalte D) NICHT gesetzt ist.
-	//    Bezug relativ ($D15=FALSE) -> gilt zeilenweise. Range: E15:E21
+	// 2) Dokument-Text durchstreichen + ausgrauen, solange die zugehörige Dropdown (Spalte D) auf "Nein" steht.
+	//    Bezug relativ ($D15="Nein") -> gilt zeilenweise. Range: E15:E21
 	docCfOpts := StyleOptions{
 		FontColor: DB_CLR_FONT_GRAY,
 		Strike:    true,
 	}
-	err = g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_IN2, docStart), cellName(DB_C_IN2, docEnd)), fmt.Sprintf("=$%s%d=FALSE", colLetter(DB_C_LBL2), docStart), docCfOpts)
+	err = g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_IN2, docStart), cellName(DB_C_IN2, docEnd)), fmt.Sprintf("=$%s%d=\"Nein\"", colLetter(DB_C_LBL2), docStart), docCfOpts)
 	if err != nil {
 		return err
 	}
 
 	// 3) Ohne Vorprojekt kann es keinen Vorprojektsaldo-Nachweis geben:
-	//    Erste Dokumentzeile (Checkbox + Text) D15:E15 ausgrauen, wenn kein Vorprojekt.
+	//    Erste Dokumentzeile (Dropdown + Text) D15:E15 ausgrauen, wenn kein Vorprojekt ("Nein").
 	nachweisCfOpts := StyleOptions{
 		FillColor: DB_CLR_DISABLED,
 		FontColor: DB_CLR_FONT_GRAY,
 	}
-	err = g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_LBL2, docStart), cellName(DB_C_IN2, docStart)), fmt.Sprintf("=%s=FALSE", vpAddr), nachweisCfOpts)
+	err = g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_LBL2, docStart), cellName(DB_C_IN2, docStart)), fmt.Sprintf("=%s=\"Nein\"", vpAddr), nachweisCfOpts)
 	if err != nil {
 		return err
 	}
@@ -552,7 +543,7 @@ func (g *Generator) dbInput(sheet string, row, col int, numFmt string) error {
 	return g.setValue(sheet, cellName(col, row), "", opts)
 }
 
-func (g *Generator) dbCheckbox(sheet string, row, col int, checked bool, fillColor string) error {
+func (g *Generator) dbDropdownJaNein(sheet string, row, col int, defaultValue string, fillColor string) error {
 	opts := StyleOptions{
 		FillColor:    fillColor,
 		VAlign:       "center",
@@ -563,7 +554,14 @@ func (g *Generator) dbCheckbox(sheet string, row, col int, checked bool, fillCol
 		BorderRight:  1,
 		BorderColor:  DB_CLR_BORDER,
 	}
-	return g.setValue(sheet, cellName(col, row), checked, opts)
+	err := g.setValue(sheet, cellName(col, row), defaultValue, opts)
+	if err != nil {
+		return err
+	}
+	dv := excelize.NewDataValidation(true)
+	dv.Sqref = cellName(col, row)
+	dv.SetDropList([]string{"Ja", "Nein"})
+	return g.file.AddDataValidation(sheet, dv)
 }
 
 func (g *Generator) dbCurrencyValidation(sheet string, row, col int) error {
@@ -586,11 +584,16 @@ func (g *Generator) dbEnsureCurrencyList(sheet string) error {
 }
 
 func (g *Generator) dbSetupColumnWidths(sheet string) {
+	// Spalte A: leerer Rand
+	// Spalte B: Label 1 (32.0, passend für längere Beschriftungen wie "Projektlaufzeit (geplant)")
+	// Spalte C: Eingabe 1 (25.0)
+	// Spalte D: Label 2 / Ja/Nein Dropdowns in der Checkliste (24.0, passend für "VP-Berichtswaehrung" und komfortable Ja/Nein-Auswahl)
+	// Spalte E: Eingabe 2 / Dokumentenname (35.0, passend für längere Dokumentnamen der Checkliste)
 	g.setColWidth(sheet, 1, 3.0)
-	g.setColWidth(sheet, 2, 25.0)
-	g.setColWidth(sheet, 3, 31.0)
-	g.setColWidth(sheet, 4, 22.5)
-	g.setColWidth(sheet, 5, 25.0)
+	g.setColWidth(sheet, 2, 32.0)
+	g.setColWidth(sheet, 3, 25.0)
+	g.setColWidth(sheet, 4, 24.0)
+	g.setColWidth(sheet, 5, 35.0)
 }
 
 func (g *Generator) dbUpsertNamedRange(sheet string, name string, col, row int) {
