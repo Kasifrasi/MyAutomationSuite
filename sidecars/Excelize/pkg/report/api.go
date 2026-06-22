@@ -432,6 +432,7 @@ func (r *ExcelReport) processCategory(catID int, items []CostItem, targetPos int
 		f.SetCellStyle(s, fmt.Sprintf("F%d", startRow), fmt.Sprintf("F%d", startRow), styleFFFF)
 		f.SetCellStyle(s, fmt.Sprintf("H%d", startRow), fmt.Sprintf("H%d", startRow), styleHFFF)
 
+		f.SetCellDefault(s, fmt.Sprintf("G%d", startRow), "")
 		f.SetCellFormula(s, fmt.Sprintf("G%d", startRow), fmt.Sprintf("=IFERROR(F%d/D%d,0)", startRow, startRow))
 
 		formulaB := r.generateCategoryFormula(startRow, catID)
@@ -599,12 +600,15 @@ func (r *ExcelReport) styleCategory(startRow, endRow, catID int, modeChanged, ro
 		// Zwischensummen-Zeile formatieren
 		f.UnmergeCell(s, fmt.Sprintf("B%d", endRow), fmt.Sprintf("C%d", endRow))
 
+		f.SetCellDefault(s, fmt.Sprintf("B%d", endRow), "")
+		f.SetCellDefault(s, fmt.Sprintf("C%d", endRow), "")
 		f.SetCellFormula(s, fmt.Sprintf("B%d", endRow), "")
 		f.SetCellFormula(s, fmt.Sprintf("C%d", endRow), "")
 		f.SetCellValue(s, fmt.Sprintf("C%d", endRow), "")
 
 		// Dynamische Formel für Zwischensumme
 		vlookupIdx := VLookupBaseIdx + (catID * VLookupMult)
+		f.SetCellDefault(s, fmt.Sprintf("B%d", endRow), "")
 		if err := f.SetCellFormula(s, fmt.Sprintf("B%d", endRow), fmt.Sprintf(`=IF($E$2="","",VLOOKUP($E$2,Sprachversionen!$B:$BN,%d,FALSE))`, vlookupIdx)); err != nil {
 			return err
 		}
@@ -627,15 +631,19 @@ func (r *ExcelReport) styleCategory(startRow, endRow, catID int, modeChanged, ro
 	// SUM Formeln müssen wir aktualisieren, wenn sich die ANZAHL der Zeilen geändert hat
 	// oder wenn wir neu in Modus N gekommen sind.
 	if modeChanged || rowsChanged {
+		f.SetCellDefault(s, fmt.Sprintf("D%d", endRow), "")
 		if err := f.SetCellFormula(s, fmt.Sprintf("D%d", endRow), fmt.Sprintf("=SUM(D%d:D%d)", startRow+1, endRow-1)); err != nil {
 			return err
 		}
+		f.SetCellDefault(s, fmt.Sprintf("E%d", endRow), "")
 		if err := f.SetCellFormula(s, fmt.Sprintf("E%d", endRow), fmt.Sprintf("=SUM(E%d:E%d)", startRow+1, endRow-1)); err != nil {
 			return err
 		}
+		f.SetCellDefault(s, fmt.Sprintf("F%d", endRow), "")
 		if err := f.SetCellFormula(s, fmt.Sprintf("F%d", endRow), fmt.Sprintf("=SUM(F%d:F%d)", startRow+1, endRow-1)); err != nil {
 			return err
 		}
+		f.SetCellDefault(s, fmt.Sprintf("G%d", endRow), "")
 		if err := f.SetCellFormula(s, fmt.Sprintf("G%d", endRow), fmt.Sprintf("=IFERROR(F%d/D%d,0)", endRow, endRow)); err != nil {
 			return err
 		}
@@ -674,15 +682,19 @@ func (r *ExcelReport) updateGlobalSum() error {
 	f := r.file
 	s := r.sheet
 
+	f.SetCellDefault(s, fmt.Sprintf("D%d", r.GlobalSumRow), "")
 	if err := f.SetCellFormula(s, fmt.Sprintf("D%d", r.GlobalSumRow), "="+dSum); err != nil {
 		return err
 	}
+	f.SetCellDefault(s, fmt.Sprintf("E%d", r.GlobalSumRow), "")
 	if err := f.SetCellFormula(s, fmt.Sprintf("E%d", r.GlobalSumRow), "="+eSum); err != nil {
 		return err
 	}
+	f.SetCellDefault(s, fmt.Sprintf("F%d", r.GlobalSumRow), "")
 	if err := f.SetCellFormula(s, fmt.Sprintf("F%d", r.GlobalSumRow), "="+fSum); err != nil {
 		return err
 	}
+	f.SetCellDefault(s, fmt.Sprintf("G%d", r.GlobalSumRow), "")
 	if err := f.SetCellFormula(s, fmt.Sprintf("G%d", r.GlobalSumRow), fmt.Sprintf("=IFERROR(F%d/D%d,0)", r.GlobalSumRow, r.GlobalSumRow)); err != nil {
 		return err
 	}
