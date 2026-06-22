@@ -24,6 +24,7 @@ type StyleOptions struct {
 	BorderRight  int
 	BorderColor  string
 	WrapText     bool
+	Strike       bool
 }
 
 type Generator struct {
@@ -46,11 +47,11 @@ func absName(col, row int) string {
 }
 
 func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
-	key := fmt.Sprintf("%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%s-%t",
+	key := fmt.Sprintf("%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%s-%t-%t",
 		opts.Bold, opts.Italic, opts.Size, opts.FontColor, opts.FillColor,
 		opts.HAlign, opts.VAlign, opts.NumFormat,
 		opts.BorderTop, opts.BorderBottom, opts.BorderLeft, opts.BorderRight,
-		opts.BorderColor, opts.WrapText)
+		opts.BorderColor, opts.WrapText, opts.Strike)
 
 	if id, exists := g.styleCache[key]; exists {
 		return id, nil
@@ -64,6 +65,7 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 		Size:   opts.Size,
 		Bold:   opts.Bold,
 		Italic: opts.Italic,
+		Strike: opts.Strike,
 	}
 	if opts.FontColor != "" {
 		font.Color = strings.TrimPrefix(opts.FontColor, "#")
@@ -130,11 +132,11 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 }
 
 func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) {
-	key := fmt.Sprintf("cond-%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%s-%t",
+	key := fmt.Sprintf("cond-%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%s-%t-%t",
 		opts.Bold, opts.Italic, opts.Size, opts.FontColor, opts.FillColor,
 		opts.HAlign, opts.VAlign, opts.NumFormat,
 		opts.BorderTop, opts.BorderBottom, opts.BorderLeft, opts.BorderRight,
-		opts.BorderColor, opts.WrapText)
+		opts.BorderColor, opts.WrapText, opts.Strike)
 
 	if id, exists := g.condStyleCache[key]; exists {
 		return id, nil
@@ -148,6 +150,7 @@ func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) 
 		Size:   opts.Size,
 		Bold:   opts.Bold,
 		Italic: opts.Italic,
+		Strike: opts.Strike,
 	}
 	if opts.FontColor != "" {
 		font.Color = strings.TrimPrefix(opts.FontColor, "#")
@@ -493,8 +496,14 @@ func main() {
 		condStyleCache: make(map[string]int),
 	}
 
-	// 1. Erstelle das Budget-Blatt
-	err := g.CreateBudgetSheet()
+	// 1. Erstelle das Dashboard-Blatt
+	err := g.CreateDashboardSheet()
+	if err != nil {
+		log.Fatalf("fehler beim Erstellen des Dashboard-Blatts: %v", err)
+	}
+
+	// 2. Erstelle das Budget-Blatt
+	err = g.CreateBudgetSheet()
 	if err != nil {
 		log.Fatalf("fehler beim Erstellen des Budget-Blatts: %v", err)
 	}
