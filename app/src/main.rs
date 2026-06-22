@@ -50,7 +50,7 @@ struct B2fSettings {
     sheet_password: String,
     workbook_password: String,
     hide_columns: bool,
-    version: String,
+    name: String,
     select_locked: bool,
     select_unlocked: bool,
     format_cells: bool,
@@ -80,7 +80,7 @@ impl Default for B2fSettings {
             sheet_password: String::new(),
             workbook_password: String::new(),
             hide_columns: true,
-            version: String::new(),
+            name: "{pn}_{la}_{version}_FB.xlsx".to_string(),
             select_locked: true,
             select_unlocked: true,
             format_cells: true,
@@ -111,7 +111,7 @@ struct FbSettings {
     sheet_password: String,
     workbook_password: String,
     hide_columns: bool,
-    version: String,
+    name: String,
     select_locked: bool,
     select_unlocked: bool,
     format_cells: bool,
@@ -141,7 +141,7 @@ impl Default for FbSettings {
             sheet_password: String::new(),
             workbook_password: String::new(),
             hide_columns: true,
-            version: String::new(),
+            name: "Vorlage_{la}_{version}_FB.xlsx".to_string(),
             select_locked: true,
             select_unlocked: true,
             format_cells: true,
@@ -207,7 +207,7 @@ fn permissions_from_settings(
 fn load_b2f_settings(ui: &MainWindow) {
     let s: B2fSettings = confy::load(APP_NAME, "b2f").unwrap_or_default();
     let b2f = ui.global::<BudgetState>();
-    b2f.set_version(s.version.into());
+    b2f.set_name(s.name.into());
     b2f.set_protect_sheet(s.protect_sheet);
     b2f.set_protect_workbook(s.protect_workbook);
     b2f.set_sheet_password(s.sheet_password.into());
@@ -246,7 +246,7 @@ fn save_b2f_settings(ui: &MainWindow) {
     let s = B2fSettings {
         src_folder: b2f.get_src_folder().to_string(),
         out_folder: b2f.get_out_folder().to_string(),
-        version: b2f.get_version().to_string(),
+        name: b2f.get_name().to_string(),
         protect_sheet: b2f.get_protect_sheet(),
         protect_workbook: b2f.get_protect_workbook(),
         sheet_password: b2f.get_sheet_password().to_string(),
@@ -293,7 +293,7 @@ fn load_fb_settings(ui: &MainWindow) {
         cat7: s.categories[6],
         cat8: s.categories[7],
     });
-    fb.set_version(s.version.into());
+    fb.set_name(s.name.into());
     fb.set_protect_sheet(s.protect_sheet);
     fb.set_protect_workbook(s.protect_workbook);
     fb.set_sheet_password(s.sheet_password.into());
@@ -330,7 +330,7 @@ fn save_fb_settings(ui: &MainWindow) {
         categories: [
             cats.cat1, cats.cat2, cats.cat3, cats.cat4, cats.cat5, cats.cat6, cats.cat7, cats.cat8,
         ],
-        version: fb.get_version().to_string(),
+        name: fb.get_name().to_string(),
         protect_sheet: fb.get_protect_sheet(),
         protect_workbook: fb.get_protect_workbook(),
         sheet_password: fb.get_sheet_password().to_string(),
@@ -371,7 +371,7 @@ fn apply_fb_defaults(ui: &MainWindow) {
     });
     fb.set_all_langs(true);
 
-    fb.set_version("".into());
+    fb.set_name("Vorlage_{la}_{version}_FB.xlsx".into());
     fb.set_folder("".into());
 
     fb.set_categories(Categories {
@@ -422,7 +422,7 @@ fn apply_b2f_defaults(ui: &MainWindow) {
     b2f.set_status_type("idle".into());
     b2f.set_status_message("".into());
 
-    b2f.set_version("".into());
+    b2f.set_name("{pn}_{la}_{version}_FB.xlsx".into());
     b2f.set_protect_sheet(true);
     b2f.set_protect_workbook(true);
     b2f.set_sheet_password("".into());
@@ -804,10 +804,10 @@ fn main() -> Result<(), slint::PlatformError> {
                     return;
                 }
 
-                let version = fb.get_version().to_string();
-                if version.is_empty() {
+                let name = fb.get_name().to_string();
+                if name.is_empty() {
                     fb.set_status_type("error".into());
-                    fb.set_status_message("Bitte Version angeben.".into());
+                    fb.set_status_message("Bitte Dateinamens-Muster angeben.".into());
                     return;
                 }
 
@@ -850,7 +850,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     cats.cat8 as u16,
                 ];
 
-                let version = fb.get_version().to_string();
+                let name_clone = name.clone();
 
                 let sp = fb.get_sheet_permissions();
                 let options = ExportOptions {
@@ -940,7 +940,7 @@ fn main() -> Result<(), slint::PlatformError> {
                         templates.push(budget_scanner::BudgetData {
                             file_path: std::path::PathBuf::from(format!("Vorlage_{lang}.xlsx")),
                             sheet_name: "Budget".into(),
-                            version: version.clone(),
+                            version: String::new(),
                             project_title: "".into(),
                             project_number: "Vorlage".into(),
                             language: lang.to_string(),
@@ -996,14 +996,9 @@ fn main() -> Result<(), slint::PlatformError> {
                         .arg("-output")
                         .arg(&output_dir)
                         .arg("-options")
-                        .arg(&options_json);
-
-                    if !version.is_empty() {
-                        cmd.arg("-filename")
-                            .arg(format!("Vorlage_{{la}}_{version}_FB.xlsx"));
-                    } else {
-                        cmd.arg("-filename").arg("Vorlage_{la}_FB.xlsx");
-                    }
+                        .arg(&options_json)
+                        .arg("-filename")
+                        .arg(&name_clone);
 
                     cmd.stdout(std::process::Stdio::piped());
 
@@ -1156,7 +1151,8 @@ fn main() -> Result<(), slint::PlatformError> {
                 b2f.set_status_type("pending".into());
                 b2f.set_status_message("Scannt...".into());
 
-                let version = b2f.get_version().to_string();
+                let name = b2f.get_name().to_string();
+                let name_clone = name.clone();
 
                 let sp = b2f.get_sheet_permissions();
                 let options = ExportOptions {
@@ -1233,14 +1229,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     let out_base_path = std::path::PathBuf::from(&out_base);
 
                     // 1. Budget-Dateien scannen
-                    let mut result = budget_scanner::scan_directory(&src_path);
-
-                    // 2. Override version
-                    if !version.is_empty() {
-                        for data in &mut result.successes {
-                            data.version = version.clone();
-                        }
-                    }
+                    let result = budget_scanner::scan_directory(&src_path);
 
                     // 3. Output-Ordner bestimmen
                     let output_dir = budget_scanner::resolve_output_dir(&out_base_path);
@@ -1286,15 +1275,9 @@ fn main() -> Result<(), slint::PlatformError> {
                         .arg("-output")
                         .arg(&output_dir)
                         .arg("-options")
-                        .arg(&options_json);
-
-                    // Wenn version gesetzt ist, fügen wir es ins Namensmuster ein
-                    if !version.is_empty() {
-                        cmd.arg("-filename")
-                            .arg(format!("{{pn}}_{{la}}_{version}_FB.xlsx"));
-                    } else {
-                        cmd.arg("-filename").arg("{pn}_{la}_FB.xlsx");
-                    }
+                        .arg(&options_json)
+                        .arg("-filename")
+                        .arg(&name_clone);
 
                     cmd.stdout(std::process::Stdio::piped());
 
