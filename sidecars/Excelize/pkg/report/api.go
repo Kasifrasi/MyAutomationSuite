@@ -14,46 +14,60 @@ var templateCache sync.Map // map[string][]byte
 // func PreloadAllTemplates() error
 // Da wir hier einmalig HideColumns anwenden wollen, müssen wir die Options übergeben
 func PreloadAllTemplates(globalOpts ReportOptions) error {
+	var wg sync.WaitGroup
+	var preloadErr error
+	var errMu sync.Mutex
+
 	for _, filename := range LanguageToTemplate {
-		path := "templates/" + filename
-		data, err := templateFiles.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("fehler beim Preload von %s: %w", path, err)
-		}
+		wg.Add(1)
+		go func(fname string) {
+			defer wg.Done()
 
-		// Einmalig die globalen Layout-Einstellungen für diese Vorlage anwenden
-		f, err := excelize.OpenReader(bytes.NewReader(data))
-		if err == nil {
-			sheets := f.GetSheetList()
-			if len(sheets) > 0 {
-				mainSheet := sheets[0]
+			path := "templates/" + fname
+			data, err := templateFiles.ReadFile(path)
+			if err != nil {
+				errMu.Lock()
+				preloadErr = fmt.Errorf("fehler beim Preload von %s: %w", path, err)
+				errMu.Unlock()
+				return
+			}
 
-				// Spalten Q-V verstecken (Nur EINMAL pro Vorlage im RAM!)
-				if globalOpts.HideColumns {
-					for _, col := range []string{"Q", "R", "S", "T", "U", "V"} {
-						f.SetColVisible(mainSheet, col, false)
+			// Einmalig die globalen Layout-Einstellungen für diese Vorlage anwenden
+			f, err := excelize.OpenReader(bytes.NewReader(data))
+			if err == nil {
+				sheets := f.GetSheetList()
+				if len(sheets) > 0 {
+					mainSheet := sheets[0]
+
+					// Spalten Q-V verstecken (Nur EINMAL pro Vorlage im RAM!)
+					if globalOpts.HideColumns {
+						for _, col := range []string{"Q", "R", "S", "T", "U", "V"} {
+							f.SetColVisible(mainSheet, col, false)
+						}
+					}
+
+					// Wenn wir schon dabei sind: Wir können hier auch direkt Unprotect aufrufen,
+					// falls das Template geschützt war, aber der User keinen Schutz möchte.
+					if !globalOpts.ProtectSheet {
+						_ = f.UnprotectSheet(mainSheet)
+					}
+					if !globalOpts.ProtectWorkbook {
+						_ = f.UnprotectWorkbook()
 					}
 				}
 
-				// Wenn wir schon dabei sind: Wir können hier auch direkt Unprotect aufrufen,
-				// falls das Template geschützt war, aber der User keinen Schutz möchte.
-				if !globalOpts.ProtectSheet {
-					_ = f.UnprotectSheet(mainSheet)
-				}
-				if !globalOpts.ProtectWorkbook {
-					_ = f.UnprotectWorkbook()
+				var buf bytes.Buffer
+				if err := f.Write(&buf); err == nil {
+					data = buf.Bytes()
 				}
 			}
 
-			var buf bytes.Buffer
-			if err := f.Write(&buf); err == nil {
-				data = buf.Bytes()
-			}
-		}
-
-		templateCache.Store(path, data)
+			templateCache.Store(path, data)
+		}(filename)
 	}
-	return nil
+
+	wg.Wait()
+	return preloadErr
 }
 
 func getTemplateBytes(path string) ([]byte, error) {
