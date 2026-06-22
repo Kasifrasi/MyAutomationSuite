@@ -121,10 +121,12 @@ func (g *Generator) CreateBudgetSheet() error {
 	r := 2
 
 	// Title
-	g.mergeCells(ws, cellName(BG_COL_LABEL, r-1), cellName(BG_COL_EUR, r-1), "I. KERNDATEN BUDGET", StyleOptions{
-		Size: 14, Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, VAlign: "center", BorderTop: 2, BorderBottom: 2, BorderColor: BG_CLR_BORDER,
-	})
-	_ = f.SetRowHeight(ws, r-1, 24)
+	titleOpts := StyleOptions{Size: 14, Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, VAlign: "center", BorderTop: 2, BorderBottom: 2, BorderColor: BG_CLR_BORDER}
+	for c := BG_COL_LABEL; c <= BG_COL_EUR; c++ {
+		g.setStyle(ws, cellName(c, r), cellName(c, r), titleOpts)
+	}
+	g.setValue(ws, cellName(BG_COL_LABEL, r), "I. KERNDATEN BUDGET", titleOpts)
+	_ = f.SetRowHeight(ws, r, 24)
 	r += 2
 
 	g.bgDrawDrittmittelTable(ws)
@@ -133,22 +135,22 @@ func (g *Generator) CreateBudgetSheet() error {
 	g.bgSectionHeader(ws, r, "1. GEPLANTE EINNAHMEN / FINANZIERUNG")
 
 	// Budget-Kurs
-	g.setValue(ws, cellName(BG_COL_Y2, r-1), "€ Budget-Kurs:", StyleOptions{Size: 9, HAlign: "right", VAlign: "center"})
+	g.setValue(ws, cellName(BG_COL_Y2, r), "€ Budget-Kurs:", StyleOptions{Size: 9, HAlign: "right", VAlign: "center"})
 	rateCellOpts := StyleOptions{NumFormat: BG_FMT_RATE, Italic: true, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER}
-	g.setValue(ws, cellName(BG_COL_Y3, r-1), "", rateCellOpts)
+	g.setStyle(ws, cellName(BG_COL_Y3, r), cellName(BG_COL_Y3, r), rateCellOpts)
 	g.upsertNamedRange(BG_NAME_KURS, BG_COL_Y3, r)
 	r += 1
 
-	g.setValue(ws, cellName(BG_COL_LABEL, r-1), "Finanzierungsquelle", StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_LABEL, r), "Finanzierungsquelle", StyleOptions{})
 	g.bgValueHeaderCells(ws, r)
-	g.bgTableHeader(ws, r-1, BG_COL_LABEL, BG_COL_EUR)
+	g.bgTableHeader(ws, r, BG_COL_LABEL, BG_COL_EUR)
 	r += 1
 
 	// 1.1 Eigenmittel
 	g.bgSubHeader(ws, r, "1.1 Eigenmittel")
 	r += 1
 	eigenRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r-1), "Eigenmittel", StyleOptions{Size: 10})
+	g.setValue(ws, cellName(BG_COL_LABEL, r), "Eigenmittel", StyleOptions{Size: 10})
 	g.bgYearRow(ws, r)
 	g.upsertNamedRange(BG_NAME_EIGEN_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_EIGEN_EUR, BG_COL_EUR, r)
@@ -159,12 +161,12 @@ func (g *Generator) CreateBudgetSheet() error {
 	g.bgSubHeader(ws, r, "1.2 Drittmittel")
 	r += 1
 	drittSummeRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r-1), "Drittmittel (Summe):", StyleOptions{Size: 10})
-	g.setValue(ws, cellName(BG_COL_POS, r-1), "Aufstellung je Geber → Tabelle rechts", StyleOptions{Size: 8, Italic: true, FontColor: BG_CLR_RES_TXT})
+	g.setValue(ws, cellName(BG_COL_LABEL, r), "Drittmittel (Summe):", StyleOptions{Size: 10})
+	g.setValue(ws, cellName(BG_COL_POS, r), "Aufstellung je Geber → Tabelle rechts", StyleOptions{Size: 8, Italic: true, FontColor: BG_CLR_RES_TXT})
 	g.bgSummeCell(ws, r, BG_COL_LC, fmt.Sprintf(`=SUM(%s[Betrag (LC)])`, BG_TABLE_NAME), BG_FMT_LC)
 	g.bgSummeCell(ws, r, BG_COL_EUR, fmt.Sprintf(`=SUM(%s[Betrag (EUR)])`, BG_TABLE_NAME), BG_FMT_EUR)
 	for _, c := range []int{BG_COL_Y1, BG_COL_Y2, BG_COL_Y3} {
-		g.bgInput(ws, cellName(c, r-1), BG_FMT_LC)
+		g.bgInput(ws, cellName(c, r), BG_FMT_LC)
 	}
 	g.upsertNamedRange(BG_NAME_DRITT_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_DRITT_EUR, BG_COL_EUR, r)
@@ -175,7 +177,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	g.bgSubHeader(ws, r, "1.3 KMW-Mittel")
 	r += 1
 	kmwRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r-1), "KMW-Mittel", StyleOptions{Size: 10})
+	g.setValue(ws, cellName(BG_COL_LABEL, r), "KMW-Mittel", StyleOptions{Size: 10})
 	g.bgYearRow(ws, r)
 	g.upsertNamedRange(BG_NAME_KMW_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_KMW_EUR, BG_COL_EUR, r)
@@ -184,16 +186,16 @@ func (g *Generator) CreateBudgetSheet() error {
 
 	// GESAMTPROJEKTMITTEL
 	gesamtRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r-1), "GESAMTPROJEKTMITTEL", StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_LABEL, r), "GESAMTPROJEKTMITTEL", StyleOptions{})
 	sumOf := func(col int) string {
 		return fmt.Sprintf("=%s+%s+%s", cellName(col, eigenRow), cellName(col, drittSummeRow), cellName(col, kmwRow))
 	}
-	g.setFormula(ws, cellName(BG_COL_LC, r-1), sumOf(BG_COL_LC), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y1, r-1), sumOf(BG_COL_Y1), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y2, r-1), sumOf(BG_COL_Y2), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y3, r-1), sumOf(BG_COL_Y3), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_EUR, r-1), sumOf(BG_COL_EUR), StyleOptions{NumFormat: BG_FMT_EUR})
-	g.bgTotalRow(ws, r-1, BG_COL_LABEL, BG_COL_EUR)
+	g.setFormula(ws, cellName(BG_COL_LC, r), sumOf(BG_COL_LC), StyleOptions{NumFormat: BG_FMT_LC})
+	g.setFormula(ws, cellName(BG_COL_Y1, r), sumOf(BG_COL_Y1), StyleOptions{NumFormat: BG_FMT_LC})
+	g.setFormula(ws, cellName(BG_COL_Y2, r), sumOf(BG_COL_Y2), StyleOptions{NumFormat: BG_FMT_LC})
+	g.setFormula(ws, cellName(BG_COL_Y3, r), sumOf(BG_COL_Y3), StyleOptions{NumFormat: BG_FMT_LC})
+	g.setFormula(ws, cellName(BG_COL_EUR, r), sumOf(BG_COL_EUR), StyleOptions{NumFormat: BG_FMT_EUR})
+	g.bgTotalRow(ws, r, BG_COL_LABEL, BG_COL_EUR)
 
 	totalLoc := absName(BG_COL_LC, r)
 	totalEur := absName(BG_COL_EUR, r)
@@ -208,10 +210,11 @@ func (g *Generator) CreateBudgetSheet() error {
 	r += 1
 
 	ausgHdrRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r-1), "Kostenkategorie", StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_ID, r-1), "ID", StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_POS, r-1), "Kostenposition", StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_LABEL, r), "Kostenkategorie", StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_ID, r), "ID", StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_POS, r), "Kostenposition", StyleOptions{})
 	g.bgValueHeaderCells(ws, r)
+	r += 1
 
 	ausgDataRows := len(BG_CATEGORIES)
 	catArrayStr := `{"` + strings.Join(BG_CATEGORIES, `";"`) + `"}`
@@ -231,14 +234,15 @@ func (g *Generator) CreateBudgetSheet() error {
 	}
 
 	g.bgBoxBorders(ws, r, BG_COL_LABEL, r+ausgDataRows-1, BG_COL_EUR)
-	g.bgTableHeader(ws, r-1, BG_COL_LABEL, BG_COL_EUR)
+	g.bgTableHeader(ws, ausgHdrRow, BG_COL_LABEL, BG_COL_EUR)
 
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, r), cellName(BG_COL_LABEL, r+ausgDataRows-1))
 	dv.SetDropList(BG_CATEGORIES)
 	_ = f.AddDataValidation(ws, dv)
 
-	ausgTotalsRow := r + ausgDataRows
+	r += ausgDataRows
+	ausgTotalsRow := r
 	g.setValue(ws, cellName(BG_COL_LABEL, ausgTotalsRow), "Geplante Gesamtausgaben", StyleOptions{})
 	g.setFormula(ws, cellName(BG_COL_LC, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{NumFormat: BG_FMT_LC})
 	g.setFormula(ws, cellName(BG_COL_Y1, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[0]), StyleOptions{NumFormat: BG_FMT_LC})
@@ -249,7 +253,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	g.bgTotalRow(ws, ausgTotalsRow, BG_COL_LABEL, BG_COL_EUR)
 
 	_ = f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, ausgHdrRow-1), cellName(BG_COL_EUR, ausgTotalsRow-1)),
+		Range:          fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, ausgHdrRow), cellName(BG_COL_EUR, ausgTotalsRow)),
 		Name:           BG_TABLE_AUSG,
 		StyleName:      "TableStyleLight1",
 		ShowRowStripes: falsePtr(),
@@ -291,14 +295,15 @@ func (g *Generator) CreateBudgetSheet() error {
 
 	incYearsAddr := fmt.Sprintf("%s+%s+%s", absName(BG_COL_Y1, gesamtRow), absName(BG_COL_Y2, gesamtRow), absName(BG_COL_Y3, gesamtRow))
 	expYearsAddr := fmt.Sprintf("%s+%s+%s", absName(BG_COL_Y1, ausgLastRow), absName(BG_COL_Y2, ausgLastRow), absName(BG_COL_Y3, ausgLastRow))
-	g.bgDrawChecks(ws, ausgLastRow+2, totalLoc, totalEur, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr)
+	rateCellAddr := absName(BG_COL_Y3, 4)
+	g.bgDrawChecks(ws, ausgLastRow+2, totalLoc, totalEur, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr, rateCellAddr)
 
 	return nil
 }
 
 func (g *Generator) bgDrawDrittmittelTable(ws string) {
 	cName, cLc, cEur := BG_COL_STATUS, BG_COL_CHECK, BG_COL_BEGR_2
-	titleRow, headerRow, dataRows := 14, 15, 3
+	titleRow, headerRow, dataRows := 15, 16, 3
 
 	g.mergeCells(ws, cellName(cName, titleRow), cellName(cEur, titleRow), "Drittmittel – Aufstellung je Geber", StyleOptions{
 		Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center",
@@ -327,25 +332,33 @@ func (g *Generator) bgDrawDrittmittelTable(ws string) {
 }
 
 func (g *Generator) bgSectionHeader(ws string, r int, title string) {
-	g.mergeCells(ws, cellName(BG_COL_LABEL, r-1), cellName(BG_COL_EUR, r-1), title, StyleOptions{
+	opts := StyleOptions{
 		Bold: true, Size: 11, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "left", VAlign: "center", BorderTop: 2, BorderBottom: 1, BorderColor: BG_CLR_BORDER,
-	})
-	_ = g.file.SetRowHeight(ws, r-1, 24)
+	}
+	for c := BG_COL_LABEL; c <= BG_COL_EUR; c++ {
+		g.setStyle(ws, cellName(c, r), cellName(c, r), opts)
+	}
+	g.setValue(ws, cellName(BG_COL_LABEL, r), title, opts)
+	_ = g.file.SetRowHeight(ws, r, 24)
 }
 
 func (g *Generator) bgSubHeader(ws string, r int, title string) {
-	g.mergeCells(ws, cellName(BG_COL_LABEL, r-1), cellName(BG_COL_EUR, r-1), title, StyleOptions{
+	opts := StyleOptions{
 		Bold: true, Size: 10, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_SUBHEAD, HAlign: "left", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_BORDER,
-	})
-	_ = g.file.SetRowHeight(ws, r-1, 20)
+	}
+	for c := BG_COL_LABEL; c <= BG_COL_EUR; c++ {
+		g.setStyle(ws, cellName(c, r), cellName(c, r), opts)
+	}
+	g.setValue(ws, cellName(BG_COL_LABEL, r), title, opts)
+	_ = g.file.SetRowHeight(ws, r, 20)
 }
 
 func (g *Generator) bgValueHeaderCells(ws string, r int) {
-	g.setValue(ws, cellName(BG_COL_LC, r-1), "Betrag (LC)", StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_Y1, r-1), BG_YEARS[0], StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_Y2, r-1), BG_YEARS[1], StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_Y3, r-1), BG_YEARS[2], StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_EUR, r-1), "Betrag (EUR)", StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_LC, r), "Betrag (LC)", StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_Y1, r), BG_YEARS[0], StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_Y2, r), BG_YEARS[1], StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_Y3, r), BG_YEARS[2], StyleOptions{})
+	g.setValue(ws, cellName(BG_COL_EUR, r), "Betrag (EUR)", StyleOptions{})
 }
 
 func (g *Generator) bgTableHeader(ws string, r int, c1 int, c2 int) {
@@ -359,19 +372,19 @@ func (g *Generator) bgTableHeader(ws string, r int, c1 int, c2 int) {
 
 func (g *Generator) bgYearRow(ws string, r int) {
 	for _, c := range []int{BG_COL_LC, BG_COL_Y1, BG_COL_Y2, BG_COL_Y3} {
-		g.bgInput(ws, cellName(c, r-1), BG_FMT_LC)
+		g.bgInput(ws, cellName(c, r), BG_FMT_LC)
 	}
-	g.bgInput(ws, cellName(BG_COL_EUR, r-1), BG_FMT_EUR)
+	g.bgInput(ws, cellName(BG_COL_EUR, r), BG_FMT_EUR)
 }
 
 func (g *Generator) bgSummeCell(ws string, r int, c int, formula string, fmtStr string) {
-	g.setFormula(ws, cellName(c, r-1), formula, StyleOptions{
+	g.setFormula(ws, cellName(c, r), formula, StyleOptions{
 		Bold: true, HAlign: "right", VAlign: "center", NumFormat: fmtStr,
 	})
 }
 
 func (g *Generator) bgInput(ws string, cell string, numFmt string) {
-	g.setValue(ws, cell, "", StyleOptions{
+	g.setStyle(ws, cell, cell, StyleOptions{
 		FillColor: BG_CLR_INPUT, HAlign: "right", VAlign: "center", NumFormat: numFmt, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID,
 	})
 }
@@ -400,7 +413,7 @@ func (g *Generator) bgBuildLookupLists(ws string) {
 
 func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 	c, col := BG_COL_STATUS, BG_COL_STATUS
-	rHead, rAmount, rCapt, rCheck, rStatus := 1, 2, 3, 4, 5
+	rHead, rAmount, rCapt, rCheck, rStatus := 2, 3, 4, 5, 6
 
 	g.setValue(ws, cellName(col, rHead), "Reserve Freigabe", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center"})
 
@@ -431,7 +444,7 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 
 func (g *Generator) bgDrawBegruendung(ws string, reserveCheckAddr string) {
 	c1, c2 := BG_COL_BEGR_1, BG_COL_BEGR_2
-	hdrRow, areaTop, areaRows := 8, 9, 4
+	hdrRow, areaTop, areaRows := 9, 10, 4
 
 	g.mergeCells(ws, cellName(c1, hdrRow), cellName(c2, hdrRow), "Begruendung", StyleOptions{Bold: true, Size: 9, FontColor: "FFFFFF", HAlign: "center", VAlign: "center"})
 	g.mergeCells(ws, cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1), "", StyleOptions{HAlign: "left", VAlign: "top", WrapText: true})
@@ -444,7 +457,7 @@ func (g *Generator) bgDrawBegruendung(ws string, reserveCheckAddr string) {
 	g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1)), condFormula, styleBorder)
 }
 
-func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr string) {
+func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr, rateCellAddr string) {
 	cLbl, cVal := BG_COL_LABEL, BG_COL_LC
 
 	g.mergeCells(ws, cellName(cLbl, top), cellName(cVal, top), "Budgetpruefung", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center"})
@@ -452,7 +465,7 @@ func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, inc
 	checks := []struct{ lbl, fml string }{
 		{"Einnahmen = Ausgaben (LC)", fmt.Sprintf(`=IF(ROUND(%s-%s,2)=0,"OK","Abweichung")`, incLocAddr, expLocAddr)},
 		{"Einnahmen = Ausgaben (EUR)", fmt.Sprintf(`=IF(ROUND(%s-%s,2)=0,"OK","Abweichung")`, incEurAddr, expEurAddr)},
-		{"Gleicher Budget-Kurs", fmt.Sprintf(`=IF(ROUND(%s,4)=ROUND(IFERROR(%s/%s,0),4),"OK","Abweichung")`, BG_NAME_KURS, expLocAddr, expEurAddr)},
+		{"Gleicher Budget-Kurs", fmt.Sprintf(`=IF(ROUND(%s,4)=ROUND(IFERROR(%s/%s,0),4),"OK","Abweichung")`, rateCellAddr, expLocAddr, expEurAddr)},
 		{"Einnahmen: Jahre = Gesamt (LC)", fmt.Sprintf(`=IF(ROUND((%s)-%s,2)=0,"OK","Abweichung")`, incYearsAddr, incLocAddr)},
 		{"Ausgaben: Jahre = Gesamt (LC)", fmt.Sprintf(`=IF(ROUND((%s)-%s,2)=0,"OK","Abweichung")`, expYearsAddr, expLocAddr)},
 	}
