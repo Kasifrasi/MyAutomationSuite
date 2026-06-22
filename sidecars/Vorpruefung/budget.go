@@ -396,8 +396,6 @@ func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
 	_ = g.file.SetRowHeight(ws, r, 20)
 }
 
-
-
 func (g *Generator) bgBuildLookupLists(ws string) {
 	g.setFormula(ws, cellName(BG_COL_LIST_GEBER, 1), fmt.Sprintf(`=VSTACK({"Projektpartner";"Bank"},IFERROR(FILTER(%s[Name des Gebers],%s[Name des Gebers]<>""),""))`, BG_TABLE_NAME, BG_TABLE_NAME), StyleOptions{})
 	g.upsertNamedFormula(BG_NAME_GEBER_LIST, fmt.Sprintf("='%s'!%s#", ws, absName(BG_COL_LIST_GEBER, 2)))
@@ -422,6 +420,12 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 
 	g.setValue(ws, cellName(col, rCheck), false, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	checkAddr := absName(c, rCheck)
+
+	// Dropdown-Auswahl für TRUE/FALSE hinzufügen, um die Bedienung zu erleichtern
+	dv := excelize.NewDataValidation(true)
+	dv.Sqref = cellName(col, rCheck)
+	dv.SetDropList([]string{"TRUE", "FALSE"})
+	_ = g.file.AddDataValidation(ws, dv)
 
 	statusFormula := fmt.Sprintf(`=IF(%s=TRUE,"FREIGEGEBEN","NICHT FREIGEGEBEN")`, checkAddr)
 	statusStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
