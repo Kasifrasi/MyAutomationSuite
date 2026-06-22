@@ -3,6 +3,9 @@ publish = false
 
 allow-branch = ["*", "HEAD"]
 
+push = false
+push-options = ["origin", "refs/tags/v{{version}}"]
+
 # Tag-Format passend zum GitHub Workflow (erwartet "v*")
 tag-name = "v{{version}}"
 
