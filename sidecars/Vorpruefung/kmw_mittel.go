@@ -94,8 +94,7 @@ func (g *Generator) CreateKMWMittelSheet() error {
 	// Validierung 'Periode' aus der Hilfsliste
 	dvPeriode := excelize.NewDataValidation(true)
 	dvPeriode.Sqref = "B5:B22"
-	dvPeriode.Type = "list"
-	dvPeriode.Formula1 = fmt.Sprintf("'%s'!$%s$1:$%s$36", KMW_SHEET_NAME, colLetter(KMW_COL_VAL_LIST), colLetter(KMW_COL_VAL_LIST))
+	dvPeriode.SetSqrefDropList(fmt.Sprintf("'%s'!$%s$1:$%s$36", KMW_SHEET_NAME, colLetter(KMW_COL_VAL_LIST), colLetter(KMW_COL_VAL_LIST)))
 	err = f.AddDataValidation(ws, dvPeriode)
 	if err != nil {
 		return fmt.Errorf("fehler beim Hinzufügen der Periode-Validierung: %w", err)
