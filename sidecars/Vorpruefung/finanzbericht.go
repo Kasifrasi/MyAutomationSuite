@@ -264,7 +264,7 @@ func (g *Generator) drawReportTable(
 	err := f.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(cLabel, ausgHdrRow), cellName(cLabel+4, ausgTotalsRow-1)),
 		Name:           ausgName,
-		StyleName:      "TableStyleNone",
+		StyleName:      "",
 		ShowRowStripes: falsePtr(),
 	})
 	if err != nil {
@@ -542,7 +542,7 @@ func (g *Generator) createEinnahmenTabelle(
 	err := f.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(colStart, startRow), cellName(colStart+4, startRow+dataRows)),
 		Name:           tblName,
-		StyleName:      "TableStyleNone",
+		StyleName:      "",
 		ShowRowStripes: falsePtr(),
 	})
 	if err != nil {
