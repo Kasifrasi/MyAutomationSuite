@@ -508,6 +508,12 @@ func main() {
 		log.Fatalf("fehler beim Erstellen des Budget-Blatts: %v", err)
 	}
 
+	// 3. Erstelle das KMW-Mittel-Blatt
+	err = g.CreateKMWMittelSheet()
+	if err != nil {
+		log.Fatalf("fehler beim Erstellen des KMW-Mittel-Blatts: %v", err)
+	}
+
 	// Hier können in Zukunft weitere Blätter hinzugefügt werden:
 	// err = g.CreateMittelSheet()
 	// err = g.CreateFinanzberichtSheet()
