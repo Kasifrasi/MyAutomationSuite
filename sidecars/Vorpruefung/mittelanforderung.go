@@ -107,20 +107,22 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	_ = f.AddDataValidation(ws, dvPer)
 	r++
 
-	// ─── Zeile 2: Zeitraum-Eingabe ────────────────────────────────────────────
-	lblZeit := cellName(cLbl, r)
-	_ = f.SetCellValue(ws, lblZeit, "Zeitraum:")
-	_ = g.setStyle(ws, lblZeit, lblZeit, StyleOptions{Bold: true, HAlign: "left", VAlign: "center"})
+	// ─── Zeile 2/3: Zeitraum (Von / Bis) ──────────────────────────────────────
+	for _, zlbl := range []string{"Von:", "Bis:"} {
+		lblZeit := cellName(cLbl, r)
+		_ = f.SetCellValue(ws, lblZeit, zlbl)
+		_ = g.setStyle(ws, lblZeit, lblZeit, StyleOptions{Bold: true, HAlign: "left", VAlign: "center"})
 
-	rngZeitStart := cellName(cLC, r)
-	rngZeitEnd := cellName(cEUR, r)
-	_ = f.MergeCell(ws, rngZeitStart, rngZeitEnd)
-	_ = g.setStyle(ws, rngZeitStart, rngZeitEnd, StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFormat: "DD.MM.YYYY",
-	})
-	r++
+		rngZeitStart := cellName(cLC, r)
+		rngZeitEnd := cellName(cEUR, r)
+		_ = f.MergeCell(ws, rngZeitStart, rngZeitEnd)
+		_ = g.setStyle(ws, rngZeitStart, rngZeitEnd, StyleOptions{
+			HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFormat: "DD.MM.YYYY",
+		})
+		r++
+	}
 
-	// ─── Zeile 3: OANDA-Kurs-Eingabe (benannt MA_Kurs_<p>) ────────────────────
+	// ─── Zeile 4: OANDA-Kurs-Eingabe (benannt MA_Kurs_<p>) ────────────────────
 	rateAddr := absName(cLC, r)
 	maKursName := fmt.Sprintf("MA_Kurs_%d", periodNr)
 
@@ -135,9 +137,9 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 		HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFormat: "0.0000",
 	})
 	g.dbUpsertNamedRange(ws, maKursName, cLC, r)
-	r += 2 // Leerzeile überspringen
+	r++ // Tabellenkopf folgt direkt (Periode/Von/Bis/Kurs belegen Zeilen 5–8)
 
-	// ─── Zeile 5: Tabelle MA_<p> (Kostenkategorie | LC | EUR) ──────────────────
+	// ─── Zeile 9: Tabelle MA_<p> (Kostenkategorie | LC | EUR) ──────────────────
 	maName := fmt.Sprintf("MA_%d", periodNr)
 	maHdrRow := r
 

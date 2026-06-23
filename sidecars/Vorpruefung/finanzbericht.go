@@ -127,19 +127,20 @@ func (g *Generator) drawReportTable(
 	_ = g.setStyle(ws, cellName(cValLC, r), cellName(cValEUR, r), hdrRngOpts)
 	r++
 
-	// ─── ZEITRAUM ───
-	_ = g.drawMergedCell(ws, r, cLabel, cLabel, "Zeitraum:", true, "", false)
-	_ = g.drawMergedCell(ws, r, cValLC, cValEUR, "", false, COLOR_INPUT, false)
-
-	zeitRngOpts := StyleOptions{
-		HAlign:       "right",
-		VAlign:       "center",
-		BorderBottom: 1,
-		BorderColor:  "D3D3D3",
-		FillColor:    COLOR_INPUT,
+	// ─── ZEITRAUM (Von / Bis) ───
+	for _, zlbl := range []string{"Von:", "Bis:"} {
+		_ = g.drawMergedCell(ws, r, cLabel, cLabel, zlbl, true, "", false)
+		_ = g.drawMergedCell(ws, r, cValLC, cValEUR, "", false, COLOR_INPUT, false)
+		_ = g.setStyle(ws, cellName(cValLC, r), cellName(cValEUR, r), StyleOptions{
+			HAlign:       "center",
+			VAlign:       "center",
+			BorderBottom: 1,
+			BorderColor:  "D3D3D3",
+			FillColor:    COLOR_INPUT,
+			NumFormat:    "DD.MM.YYYY",
+		})
+		r++
 	}
-	_ = g.setStyle(ws, cellName(cValLC, r), cellName(cValEUR, r), zeitRngOpts)
-	r++
 
 	// ─── DURCHSCHNITTSKURS ───
 	_ = g.drawMergedCell(ws, r, cLabel, cLabel, "Durchschnittskurs:", true, "", false)
@@ -159,7 +160,7 @@ func (g *Generator) drawReportTable(
 
 	fbKursName := fmt.Sprintf("FB_Kurs_%d", periodenNr)
 	g.dbUpsertNamedRange(ws, fbKursName, cValLC, rateRow)
-	r += 2 // Zeile 8 ist leer als Abstandhalter
+	r++ // Periode/Von/Bis/Kurs belegen Zeilen 5–8; Einnahmen folgen ab Zeile 9
 
 	// ─── EINNAHMEN ───
 	_ = g.fbDrawSectionHeader(ws, r, cLabel, cKurs, "Einnahmen")
