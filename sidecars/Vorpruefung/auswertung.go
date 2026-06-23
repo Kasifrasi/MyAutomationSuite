@@ -528,7 +528,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 	g.evalSelLabel(ws, r, "Ausgewählte Anforderung (#)")
 	kCell := cellName(EV_PB_V1, r)
-	maxMAK := fmt.Sprintf(`IFERROR(MAXIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,1),0)`,
+	maxMAK := fmt.Sprintf(`IFERROR(_xlfn.MAXIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,1),0)`,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT),
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), pCell,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_PERIOD_COUNT))
@@ -615,7 +615,7 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 
 	g.evalSelLabel(ws, r, "Geprüfte Periode (N)")
 	numCell := cellName(EV_PB_V1, r)
-	maxFBPer := fmt.Sprintf(`IFERROR(MAXIFS('%s'!%s,'%s'!%s,1),0)`,
+	maxFBPer := fmt.Sprintf(`IFERROR(_xlfn.MAXIFS('%s'!%s,'%s'!%s,1),0)`,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_PER, 1, MA_PERIOD_COUNT),
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_FILL, 1, MA_PERIOD_COUNT))
 	numF := fmt.Sprintf(`=IF(%s="Neuester FB",%s,IF(LEFT(%s,8)="Periode ",IFERROR(VALUE(TRIM(MID(%s,9,5))),0),0))`,
