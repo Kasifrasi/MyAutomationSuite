@@ -28,29 +28,29 @@ func (g *Generator) CreateDatenSheet() error {
 	// Einnahmen 1 (Explizit) - Spalte C
 	_ = f.SetCellValue(ws, "C1", "Einnahmen_Explizit_Stack")
 	if len(g.rangesEinnahmen1) > 0 {
-		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (_xlfn.CHOOSECOLS(v,3)<>0)+(_xlfn.CHOOSECOLS(v,4)<>0), ""))`, strings.Join(g.rangesEinnahmen1, ","))
-		_ = f.SetCellFormula(ws, "C2", formula)
+		_ = f.SetCellFormula(ws, "AA2", fmt.Sprintf(`_xlfn.VSTACK(%s)`, strings.Join(g.rangesEinnahmen1, ",")))
+		_ = f.SetCellFormula(ws, "C2", `_xlfn.FILTER(AA2#, (_xlfn.CHOOSECOLS(AA2#,3)<>0)+(_xlfn.CHOOSECOLS(AA2#,4)<>0), "")`)
 	}
 
 	// Einnahmen 2 (Durchschnittskurs) - Spalte I
 	_ = f.SetCellValue(ws, "I1", "Einnahmen_Durchschnittskurs_Stack")
 	if len(g.rangesEinnahmen2) > 0 {
-		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (_xlfn.CHOOSECOLS(v,3)<>0)+(_xlfn.CHOOSECOLS(v,4)<>0), ""))`, strings.Join(g.rangesEinnahmen2, ","))
-		_ = f.SetCellFormula(ws, "I2", formula)
+		_ = f.SetCellFormula(ws, "AG2", fmt.Sprintf(`_xlfn.VSTACK(%s)`, strings.Join(g.rangesEinnahmen2, ",")))
+		_ = f.SetCellFormula(ws, "I2", `_xlfn.FILTER(AG2#, (_xlfn.CHOOSECOLS(AG2#,3)<>0)+(_xlfn.CHOOSECOLS(AG2#,4)<>0), "")`)
 	}
 
 	// Ausgaben (Finanzbericht) - Spalte O
 	_ = f.SetCellValue(ws, "O1", "Ausgaben_Finanzbericht_Stack")
 	if len(g.rangesAusgaben) > 0 {
-		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (_xlfn.CHOOSECOLS(v,2)<>0)+(_xlfn.CHOOSECOLS(v,3)<>0), ""))`, strings.Join(g.rangesAusgaben, ","))
-		_ = f.SetCellFormula(ws, "O2", formula)
+		_ = f.SetCellFormula(ws, "AM2", fmt.Sprintf(`_xlfn.VSTACK(%s)`, strings.Join(g.rangesAusgaben, ",")))
+		_ = f.SetCellFormula(ws, "O2", `_xlfn.FILTER(AM2#, (_xlfn.CHOOSECOLS(AM2#,2)<>0)+(_xlfn.CHOOSECOLS(AM2#,3)<>0), "")`)
 	}
 
 	// Mittelanforderung (MA) - Spalte U
 	_ = f.SetCellValue(ws, "U1", "Mittelanforderung_Stack")
 	if len(g.rangesMA) > 0 {
-		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (_xlfn.CHOOSECOLS(v,2)<>0)+(_xlfn.CHOOSECOLS(v,3)<>0), ""))`, strings.Join(g.rangesMA, ","))
-		_ = f.SetCellFormula(ws, "U2", formula)
+		_ = f.SetCellFormula(ws, "AS2", fmt.Sprintf(`_xlfn.VSTACK(%s)`, strings.Join(g.rangesMA, ",")))
+		_ = f.SetCellFormula(ws, "U2", `_xlfn.FILTER(AS2#, (_xlfn.CHOOSECOLS(AS2#,2)<>0)+(_xlfn.CHOOSECOLS(AS2#,3)<>0), "")`)
 	}
 
 	// Kopfzeilen formatieren
