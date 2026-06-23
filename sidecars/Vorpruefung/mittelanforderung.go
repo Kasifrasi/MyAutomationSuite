@@ -160,7 +160,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	err := f.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(cLbl, maHdrRow), cellName(cEUR, maTotalsRow-1)),
 		Name:           maName,
-		StyleName:      "TableStyleNone",
+		StyleName:      "",
 		ShowRowStripes: falsePtr(),
 	})
 	if err != nil {
