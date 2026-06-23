@@ -1,25 +1,25 @@
 {
   "kurs": 0.008,
-  "eigenmittel": { "lc": 1250000, "y1": 500000, "y2": 450000, "y3": 300000, "eur": 10000 },
+  "eigenmittel": { "lc": 1250000, "y1": 500000, "y2": 437500, "y3": 312500, "eur": 10000 },
   "drittmittel": {
-    "y1": 1000000, "y2": 800000, "y3": 700000,
+    "y1": 1500000, "y2": 1250000, "y3": 1000000,
     "geber": [
-      { "geber": "Projektpartner A", "lc": 1500000, "eur": 12000 },
-      { "geber": "Bank XY",          "lc": 1000000, "eur": 8000 }
+      { "geber": "Projektpartner A", "lc": 2500000, "eur": 20000 },
+      { "geber": "Bank XY",          "lc": 1250000, "eur": 10000 }
     ]
   },
-  "kmwMittel": { "lc": 6250000, "y1": 2500000, "y2": 2000000, "y3": 1750000, "eur": 50000 },
+  "kmwMittel": { "lc": 7500000, "y1": 3000000, "y2": 2500000, "y3": 2000000, "eur": 60000 },
   "ausgaben": [
-    { "kategorie": "Bauausgaben",         "id": "1.1", "position": "Rohbau",            "lc": 2000000, "y1": 1200000, "y2": 800000, "y3": 0,      "eur": 16000 },
-    { "kategorie": "Bauausgaben",         "id": "1.2", "position": "Innenausbau",       "lc": 1000000, "y1": 0,       "y2": 600000, "y3": 400000, "eur": 8000 },
-    { "kategorie": "Investitionen",       "id": "2.1", "position": "Fahrzeuge",         "lc": 800000,  "y1": 800000,  "y2": 0,      "y3": 0,      "eur": 6400 },
-    { "kategorie": "Personalkosten",      "id": "3.1", "position": "Projektleitung",    "lc": 1500000, "y1": 500000,  "y2": 500000, "y3": 500000, "eur": 12000 },
-    { "kategorie": "Personalkosten",      "id": "3.2", "position": "Fachkraefte",       "lc": 1200000, "y1": 400000,  "y2": 400000, "y3": 400000, "eur": 9600 },
-    { "kategorie": "Projektaktivitaeten", "id": "4.1", "position": "Schulungen",        "lc": 700000,  "y1": 300000,  "y2": 250000, "y3": 150000, "eur": 5600 },
-    { "kategorie": "Projektverwaltung",   "id": "5.1", "position": "Buero",             "lc": 400000,  "y1": 150000,  "y2": 150000, "y3": 100000, "eur": 3200 },
-    { "kategorie": "Evaluierung",         "id": "6.1", "position": "Zwischenbewertung", "lc": 200000,  "y1": 0,       "y2": 200000, "y3": 0,      "eur": 1600 },
-    { "kategorie": "Audit",               "id": "7.1", "position": "Jahresabschluss",   "lc": 150000,  "y1": 50000,   "y2": 50000,  "y3": 50000,  "eur": 1200 },
-    { "kategorie": "Reserve",             "id": "8.1", "position": "Reserve",           "lc": 300000,  "y1": 100000,  "y2": 100000, "y3": 100000, "eur": 2400 }
+    { "kategorie": "Bauausgaben",         "id": "1.1", "position": "Rohbau",            "lc": 2500000, "y1": 1500000, "y2": 1000000, "y3": 0,       "eur": 20000 },
+    { "kategorie": "Bauausgaben",         "id": "1.2", "position": "Innenausbau",       "lc": 1250000, "y1": 0,       "y2": 750000,  "y3": 500000,  "eur": 10000 },
+    { "kategorie": "Investitionen",       "id": "2.1", "position": "Fahrzeuge",         "lc": 1000000, "y1": 1000000, "y2": 0,       "y3": 0,       "eur": 8000 },
+    { "kategorie": "Personalkosten",      "id": "3.1", "position": "Projektleitung",    "lc": 1875000, "y1": 625000,  "y2": 625000,  "y3": 625000,  "eur": 15000 },
+    { "kategorie": "Personalkosten",      "id": "3.2", "position": "Fachkraefte",       "lc": 1500000, "y1": 500000,  "y2": 500000,  "y3": 500000,  "eur": 12000 },
+    { "kategorie": "Projektaktivitaeten", "id": "4.1", "position": "Schulungen",        "lc": 1250000, "y1": 500000,  "y2": 375000,  "y3": 375000,  "eur": 10000 },
+    { "kategorie": "Projektverwaltung",   "id": "5.1", "position": "Buero",             "lc": 625000,  "y1": 250000,  "y2": 250000,  "y3": 125000,  "eur": 5000 },
+    { "kategorie": "Evaluierung",         "id": "6.1", "position": "Zwischenbewertung", "lc": 250000,  "y1": 0,       "y2": 250000,  "y3": 0,       "eur": 2000 },
+    { "kategorie": "Audit",               "id": "7.1", "position": "Jahresabschluss",   "lc": 250000,  "y1": 125000,  "y2": 62500,   "y3": 62500,   "eur": 2000 },
+    { "kategorie": "Reserve",             "id": "8.1", "position": "Reserve",           "lc": 2000000, "y1": 625000,  "y2": 625000,  "y3": 750000,  "eur": 16000 }
   ],
   "reserveFreigabe": false
 }

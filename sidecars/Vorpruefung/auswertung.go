@@ -540,7 +540,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	_ = g.file.AddDataValidation(ws, dv)
 	r++
 
-	g.evalSelLabel(ws, r, "Geprüfte Periode (FB+1)")
+	g.evalSelLabel(ws, r, "Geprüfte Periode")
 	pCell := cellName(EV_PB_V1, r)
 	g.evalMergedValue(ws, pCell, cellName(EV_PB_C2, r), 0, num0) // Formel (=N+1) wird nachgelagert gesetzt
 	r++
@@ -636,7 +636,7 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 	_ = g.file.AddDataValidation(ws, dv)
 	r++
 
-	g.evalSelLabel(ws, r, "Geprüfte Periode (N)")
+	g.evalSelLabel(ws, r, "Geprüfte Periode")
 	numCell := cellName(EV_PB_V1, r)
 	// Höchste befüllte FB-Periode. SUMPRODUCT(MAX(...)) statt MAXIFS (siehe maxMAK).
 	maxFBPer := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=1)*'%s'!%s)),0)`,
