@@ -128,8 +128,10 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	// ─── FB-Auswahlliste (FILTER der befüllten Perioden) ──────────────────────
 	fbLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_LABEL), colLetter(EV_DTN_FB_META_LABEL), MA_PERIOD_COUNT)
 	fbFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_FILL), colLetter(EV_DTN_FB_META_FILL), MA_PERIOD_COUNT)
+	// Erste Option "Kein Finanzbericht (Projektbeginn)" ⇒ N=0 ⇒ es sind die
+	// Mittelanforderungen der Periode 1 wählbar (z. B. erste MA vor jedem FB).
 	_ = g.setDynArrayFormula(ws, dc(EV_DTN_FB_LISTE, 1),
-		fmt.Sprintf(`_xlfn._xlws.FILTER(%s,%s=1,"")`, fbLabelRng, fbFillRng), StyleOptions{})
+		fmt.Sprintf(`_xlfn.VSTACK("Kein Finanzbericht (Projektbeginn)",_xlfn._xlws.FILTER(%s,%s=1,""))`, fbLabelRng, fbFillRng), StyleOptions{})
 	g.upsertNamedFormula(EVAL_NAME_FB_LISTE,
 		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
 			ws, absName(EV_DTN_FB_LISTE, 1), ws, colLetter(EV_DTN_FB_LISTE), colLetter(EV_DTN_FB_LISTE)))
