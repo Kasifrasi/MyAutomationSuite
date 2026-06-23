@@ -120,28 +120,49 @@ func applyDynamicArrayMetadata(filePath string, cells []dynArrayCell) error {
 	return rewriteZip(filePath, order, parts)
 }
 
-// markDynamicArrayCells setzt für die angegebenen Anker-Zellen cm="1" am <c>-Element und
-// aca="1" ca="1" am zugehörigen <f t="array" ref="ANKER">-Element.
+// markDynamicArrayCells markiert die angegebenen Anker-Zellen exakt so, wie es Excel
+// (und rust_xlsxwriter) für echte dynamische Array-Formeln tut:
+//
+//	<c r="C2" s="3" cm="1"><f t="array" ref="C2">FORMEL</f><v>0</v></c>
+//
+// Entscheidend: NUR cm="1" (Verweis auf XLDAPR in metadata.xml) markiert die Formel als
+// dynamisch. Die Attribute aca/ca dürfen NICHT gesetzt werden - sie machen daraus eine
+// Legacy-CSE-Array-Formel, woraufhin Excel beim Öffnen den "@"-Operator wieder einfügt.
+// Der skalare Zelltyp t="str" wird entfernt und ein <v>-Cache ergänzt; per
+// fullCalcOnLoad rechnet Excel beim Öffnen ohnehin neu.
 func markDynamicArrayCells(sheetXML string, anchors []string) (string, error) {
 	for _, anchor := range anchors {
-		// cm="1" am Zellen-Element ergänzen (idempotent).
-		cTag := fmt.Sprintf(`<c r="%s"`, anchor)
-		idx := strings.Index(sheetXML, cTag)
-		if idx == -1 {
+		cStart := strings.Index(sheetXML, fmt.Sprintf(`<c r="%s"`, anchor))
+		if cStart == -1 {
 			return "", fmt.Errorf("zelle %s nicht gefunden", anchor)
 		}
-		if !strings.HasPrefix(sheetXML[idx+len(cTag):], ` cm=`) {
-			sheetXML = sheetXML[:idx+len(cTag)] + ` cm="1"` + sheetXML[idx+len(cTag):]
+		rel := strings.Index(sheetXML[cStart:], "</c>")
+		if rel == -1 {
+			return "", fmt.Errorf("schließendes </c> für %s nicht gefunden", anchor)
+		}
+		cEnd := cStart + rel + len("</c>")
+		cell := sheetXML[cStart:cEnd]
+
+		if !strings.Contains(cell, "<f t=\"array\"") {
+			return "", fmt.Errorf("zelle %s enthält keine Array-Formel", anchor)
 		}
 
-		// aca/ca am Array-Formel-Element ergänzen (ref entspricht der Anker-Zelle).
-		fRef := fmt.Sprintf(`ref="%s">`, anchor)
-		fIdx := strings.Index(sheetXML, fRef)
-		if fIdx == -1 {
-			return "", fmt.Errorf("array-formel mit ref=%s nicht gefunden", anchor)
+		// Legacy-CSE-Marker entfernen und skalaren Zelltyp löschen.
+		cell = strings.Replace(cell, ` aca="1"`, "", 1)
+		cell = strings.Replace(cell, ` ca="1"`, "", 1)
+		cell = strings.Replace(cell, ` t="str"`, "", 1)
+
+		// cm="1" am Zellen-Element ergänzen (Verweis auf cellMetadata-Block 1).
+		if !strings.Contains(cell, ` cm="1"`) {
+			cell = strings.Replace(cell, fmt.Sprintf(`<c r="%s"`, anchor), fmt.Sprintf(`<c r="%s" cm="1"`, anchor), 1)
 		}
-		insertAt := fIdx + len(fRef) - 1 // direkt vor dem '>'
-		sheetXML = sheetXML[:insertAt] + ` aca="1" ca="1"` + sheetXML[insertAt:]
+
+		// <v>-Cache ergänzen, falls excelize keinen geschrieben hat.
+		if !strings.Contains(cell, "<v>") {
+			cell = strings.Replace(cell, "</c>", "<v>0</v></c>", 1)
+		}
+
+		sheetXML = sheetXML[:cStart] + cell + sheetXML[cEnd:]
 	}
 	return sheetXML, nil
 }
