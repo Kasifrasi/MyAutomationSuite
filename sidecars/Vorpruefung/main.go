@@ -41,6 +41,11 @@ type Generator struct {
 	// Zellen mit dynamischen Array-Formeln (Spill); werden nach dem Speichern
 	// mit den Dynamic-Array-Metadaten versehen (siehe dynarray.go).
 	dynArrayCells []dynArrayCell
+
+	// Sheet-qualifizierte Absolutadresse der FB-Auswahl-Periodennummer auf dem
+	// Auswertungsblatt (z. B. "'V. AUSWERTUNG'!$N$120"). Wird von daten.go genutzt,
+	// um die Mittelanforderungs-Auswahlliste auf "Periode FB+1" zu filtern.
+	evalFBSelNumAddr string
 }
 
 type dynArrayCell struct {
