@@ -68,7 +68,11 @@ const (
 	EV_DTN_MAG_CAT       = 72 // BT  Grid: Kategorie
 	EV_DTN_MAG_LC        = 73 // BU  Grid: LC
 	EV_DTN_MAG_EUR       = 74 // BV  Grid: EUR
-	EV_DTN_MAG_ROWS      = MA_PERIOD_COUNT * 8
+	// Grid-Block je MA-Tabelle: 8 Kostenkategorien (len(MA_CATEGORIES)) + 3
+	// Finanzierungsarten (Eigenmittel/Drittmittel/KMW-Mittel) für die Prognose
+	// der Finanzierungsanteile. Muss zu gridEntries in daten.go passen.
+	EV_DTN_MAG_BLOCK = 8 + 3
+	EV_DTN_MAG_ROWS  = MA_PERIOD_COUNT * EV_DTN_MAG_BLOCK
 
 	EVAL_NAME_MA_LISTE = "MA_Auswahl_Liste"
 	EVAL_NAME_FB_LISTE = "FB_Auswahl_Liste"
@@ -528,10 +532,14 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 	g.evalSelLabel(ws, r, "Ausgewählte Anforderung (#)")
 	kCell := cellName(EV_PB_V1, r)
-	maxMAK := fmt.Sprintf(`IFERROR(_xlfn.MAXIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,1),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT),
+	// Höchster Rang der befüllten MAs in der Folgeperiode (=pCell). MAXIFS wäre
+	// als Future-Function (_xlfn., implizite Schnittmenge "@") hier unzuverlässig;
+	// das SUMPRODUCT(MAX(...))-Idiom nutzt nur Legacy-Funktionen und erzwingt die
+	// Array-Auswertung – identisch zum Vorgehen der Spiegel-Panels.
+	maxMAK := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=%s)*('%s'!%s=1)*'%s'!%s)),0)`,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), pCell,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_PERIOD_COUNT))
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_PERIOD_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT))
 	kFormula := fmt.Sprintf(
 		`=IF(%s="Neuste MA",%s,IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0))`,
 		labelCell, maxMAK, labelCell, labelCell, labelCell, labelCell)
@@ -615,9 +623,10 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 
 	g.evalSelLabel(ws, r, "Geprüfte Periode (N)")
 	numCell := cellName(EV_PB_V1, r)
-	maxFBPer := fmt.Sprintf(`IFERROR(_xlfn.MAXIFS('%s'!%s,'%s'!%s,1),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_PER, 1, MA_PERIOD_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_FILL, 1, MA_PERIOD_COUNT))
+	// Höchste befüllte FB-Periode. SUMPRODUCT(MAX(...)) statt MAXIFS (siehe maxMAK).
+	maxFBPer := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=1)*'%s'!%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_FILL, 1, MA_PERIOD_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_PER, 1, MA_PERIOD_COUNT))
 	numF := fmt.Sprintf(`=IF(%s="Neuester FB",%s,IF(LEFT(%s,8)="Periode ",IFERROR(VALUE(TRIM(MID(%s,9,5))),0),0))`,
 		labelCell, maxFBPer, labelCell, labelCell)
 	g.evalMergedFormula(ws, numCell, cellName(EV_PB_C2, r), numF, num0)
@@ -853,14 +862,9 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 
 		actLC := cellName(EV_COL_ACT_LC, row)
 		actEUR := cellName(EV_COL_ACT_EUR, row)
-		if isMA && isIncome {
-			g.evalCellInput(ws, actLC, EV_FMT_LC)
-			g.evalCellInput(ws, actEUR, EV_FMT_EUR)
-		} else {
-			lcF, eurF := g.evalActualFormulas(isIncome, isMA, name, i, sel)
-			g.evalCellFormula(ws, actLC, lcF, EV_FMT_LC, EV_CLR_CALC)
-			g.evalCellFormula(ws, actEUR, eurF, EV_FMT_EUR, EV_CLR_CALC)
-		}
+		lcF, eurF := g.evalActualFormulas(isIncome, isMA, name, i, sel)
+		g.evalCellFormula(ws, actLC, lcF, EV_FMT_LC, EV_CLR_CALC)
+		g.evalCellFormula(ws, actEUR, eurF, EV_FMT_EUR, EV_CLR_CALC)
 
 		budLCName, budEURName := g.evalBudgetNames(isIncome, name)
 		g.evalCellFormula(ws, cellName(EV_COL_BUD_LC, row), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", budLCName), EV_FMT_LC, EV_CLR_CALC)
@@ -903,6 +907,12 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 
 // evalActualFormulas: Ist-/Prognose-Formeln je Zeile.
 func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int, sel evalSelRefs) (string, string) {
+	if isIncome && isMA {
+		// Prognose der Finanzierungsanteile = Summe der ausgewählten Mittelanforderungen
+		// (#1..#k) der Periode P je Finanzierungsart (Eigenmittel/Drittmittel/KMW-Mittel)
+		// aus dem MA-Grid. "Zinsertraege" hat keine MA-Quelle ⇒ SUMIFS ergibt 0.
+		return evalMAExpenseActual(sel, name, EV_DTN_MAG_LC), evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
+	}
 	if isIncome {
 		// FB: kumulative Einnahmen je Typ bis zur gewählten Periode N (CHOOSE über die
 		// Kum-Spalten der Finanzberichte). Einnahmen-Typzeilen liegen bei 12..15.
@@ -980,13 +990,6 @@ func (g *Generator) evalDeviationConditional(ws string, col, dataStart, dataEnd 
 func (g *Generator) evalCellFormula(ws, cell, formula, numFmt, fill string) {
 	_ = g.setFormula(ws, cell, formula, StyleOptions{
 		HAlign: "right", VAlign: "center", NumFormat: numFmt, FillColor: fill,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-}
-
-func (g *Generator) evalCellInput(ws, cell, numFmt string) {
-	_ = g.setValue(ws, cell, 0, StyleOptions{
-		HAlign: "right", VAlign: "center", NumFormat: numFmt, FillColor: EV_CLR_INPUT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
 }

@@ -148,16 +148,35 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
 			ws, absName(EV_DTN_MA_LISTE, 1), ws, colLetter(EV_DTN_MA_LISTE), colLetter(EV_DTN_MA_LISTE)))
 
-	// ─── MA-Grid (je MA-Tabelle × Kategorie) ──────────────────────────────────
+	// ─── MA-Grid (je MA-Tabelle × Kategorie/Finanzierungsart) ─────────────────
+	// Pro MA-Tabelle ein Block aus 8 Kostenkategorien (MA-Zeilen 10..17) PLUS den
+	// 3 Finanzierungsarten der Prognose (Eigenmittel, Drittmittel, KMW-Mittel auf
+	// den MA-Zeilen 21/22/25). Die CAT-Beschriftung der Finanzierungsarten ist
+	// identisch zu den FB-Einnahmentypen (TYPE_NAMES), sodass die Prognose der
+	// Finanzierungsanteile dieselbe Grid-SUMIFS nutzt wie die Ausgabenprognose.
+	// "Zinsertraege" hat keine MA-Quelle ⇒ keine Grid-Zeile ⇒ SUMIFS ergibt 0.
+	type maGridEntry struct {
+		cat   string
+		maRow int
+	}
+	gridEntries := make([]maGridEntry, 0, EV_DTN_MAG_BLOCK)
+	for c, cat := range MA_CATEGORIES {
+		gridEntries = append(gridEntries, maGridEntry{cat, 10 + c})
+	}
+	gridEntries = append(gridEntries,
+		maGridEntry{"Eigenmittel", 21},
+		maGridEntry{"Drittmittel", 22},
+		maGridEntry{"KMW-Mittel", 25},
+	)
 	for j := 1; j <= MA_PERIOD_COUNT; j++ {
 		colS := 2 + (j-1)*4
-		for c := 0; c < len(MA_CATEGORIES); c++ {
-			row := (j-1)*len(MA_CATEGORIES) + c + 1
+		for idx, e := range gridEntries {
+			row := (j-1)*EV_DTN_MAG_BLOCK + idx + 1
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_PER, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_PER), j))
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_RANK, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_RANK), j))
-			_ = f.SetCellValue(ws, dc(EV_DTN_MAG_CAT, row), MA_CATEGORIES[c])
-			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+1, 10+c)))
-			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_EUR, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+2, 10+c)))
+			_ = f.SetCellValue(ws, dc(EV_DTN_MAG_CAT, row), e.cat)
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+1, e.maRow)))
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_EUR, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+2, e.maRow)))
 		}
 	}
 
