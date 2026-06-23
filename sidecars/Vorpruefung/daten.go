@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-
-	"github.com/xuri/excelize/v2"
 )
 
 // CreateDatenSheet erstellt ein verstecktes Blatt "Daten" für Dropdowns und VSTACK-Zusammenfassungen.
@@ -25,41 +23,34 @@ func (g *Generator) CreateDatenSheet() error {
 		_ = f.SetCellValue(ws, fmt.Sprintf("A%d", i), fmt.Sprintf("Periode %d", i))
 	}
 
-	// Helper to write array formula
-	setArray := func(cell string, formula string) {
-		t := "array"
-		ref := cell
-		_ = f.SetCellFormula(ws, cell, formula, excelize.FormulaOpts{Type: &t, Ref: &ref})
-	}
-
 	// 2. VSTACKs der Tabellen
 
 	// Einnahmen 1 (Explizit) - Spalte C
 	_ = f.SetCellValue(ws, "C1", "Einnahmen_Explizit_Stack")
 	if len(g.rangesEinnahmen1) > 0 {
-		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (INDEX(v,0,3)<>0)+(INDEX(v,0,4)<>0), ""))`, strings.Join(g.rangesEinnahmen1, ","))
-		setArray("C2", formula)
+		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (_xlfn.CHOOSECOLS(v,3)<>0)+(_xlfn.CHOOSECOLS(v,4)<>0), ""))`, strings.Join(g.rangesEinnahmen1, ","))
+		_ = f.SetCellFormula(ws, "C2", formula)
 	}
 
 	// Einnahmen 2 (Durchschnittskurs) - Spalte I
 	_ = f.SetCellValue(ws, "I1", "Einnahmen_Durchschnittskurs_Stack")
 	if len(g.rangesEinnahmen2) > 0 {
-		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (INDEX(v,0,3)<>0)+(INDEX(v,0,4)<>0), ""))`, strings.Join(g.rangesEinnahmen2, ","))
-		setArray("I2", formula)
+		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (_xlfn.CHOOSECOLS(v,3)<>0)+(_xlfn.CHOOSECOLS(v,4)<>0), ""))`, strings.Join(g.rangesEinnahmen2, ","))
+		_ = f.SetCellFormula(ws, "I2", formula)
 	}
 
 	// Ausgaben (Finanzbericht) - Spalte O
 	_ = f.SetCellValue(ws, "O1", "Ausgaben_Finanzbericht_Stack")
 	if len(g.rangesAusgaben) > 0 {
-		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (INDEX(v,0,2)<>0)+(INDEX(v,0,3)<>0), ""))`, strings.Join(g.rangesAusgaben, ","))
-		setArray("O2", formula)
+		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (_xlfn.CHOOSECOLS(v,2)<>0)+(_xlfn.CHOOSECOLS(v,3)<>0), ""))`, strings.Join(g.rangesAusgaben, ","))
+		_ = f.SetCellFormula(ws, "O2", formula)
 	}
 
 	// Mittelanforderung (MA) - Spalte U
 	_ = f.SetCellValue(ws, "U1", "Mittelanforderung_Stack")
 	if len(g.rangesMA) > 0 {
-		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (INDEX(v,0,2)<>0)+(INDEX(v,0,3)<>0), ""))`, strings.Join(g.rangesMA, ","))
-		setArray("U2", formula)
+		formula := fmt.Sprintf(`_xlfn.LET(v, _xlfn.VSTACK(%s), _xlfn.FILTER(v, (_xlfn.CHOOSECOLS(v,2)<>0)+(_xlfn.CHOOSECOLS(v,3)<>0), ""))`, strings.Join(g.rangesMA, ","))
+		_ = f.SetCellFormula(ws, "U2", formula)
 	}
 
 	// Kopfzeilen formatieren
