@@ -251,8 +251,9 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	saldoLCCell := cellName(cLC, r)
 
 	if fbExists {
+		safeSaldoVortrag := fmt.Sprintf(`IF(%s="",0,%s)`, DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW)
 		_ = f.SetCellFormula(ws, saldoLblCell, fmt.Sprintf(`=IF(%s<=1,"abzueglich Saldo Vorprojekt:","abzueglich Saldo Vorperiode (FB):")`, pNum))
-		_ = f.SetCellFormula(ws, saldoLCCell, fmt.Sprintf(`=ROUND(IF(%s<=1,%s,IFERROR(INDIRECT("FB_SaldoLC_"&(%s-1)),0)),2)`, pNum, DB_NAME_SALDOVORTRAG_LW, pNum))
+		_ = f.SetCellFormula(ws, saldoLCCell, fmt.Sprintf(`=ROUND(IF(%s<=1,%s,IFERROR(INDIRECT("FB_SaldoLC_"&(%s-1)),0)),2)`, pNum, safeSaldoVortrag, pNum))
 		_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{Italic: true, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
 	} else {
 		if periodNr == 1 {
