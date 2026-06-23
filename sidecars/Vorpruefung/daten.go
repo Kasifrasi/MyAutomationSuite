@@ -63,5 +63,103 @@ func (g *Generator) CreateDatenSheet() error {
 	_ = g.setStyle(ws, "O1", "O1", headerOpts)
 	_ = g.setStyle(ws, "U1", "U1", headerOpts)
 
+	// Helfer-Strukturen für die Auswertung (Auswahllisten, MA-Grid)
+	g.evalBuildDatenHelfer(ws)
+
 	return nil
+}
+
+// evalBuildDatenHelfer baut die für das Auswertungsblatt benötigten, versteckten
+// Hilfsstrukturen:
+//   - MA-Meta (je MA-Tabelle: Periode, befüllt?, Rang, Label, Summen, Eigen/Dritt)
+//   - FB-Meta (je Periode: befüllt?, Label)
+//   - FILTER-Auswahllisten (MA_Auswahl_Liste, FB_Auswahl_Liste)
+//   - MA-Grid (je MA-Tabelle × Kategorie: Periode, Rang, Kategorie, LC, EUR)
+func (g *Generator) evalBuildDatenHelfer(ws string) {
+	f := g.file
+	maSheet := MA_SHEET_NAME
+	fbSheet := SHEET_NAME
+
+	dc := func(col, row int) string { return cellName(col, row) }
+
+	// ─── MA-Meta (Zeilen 1..18) ───────────────────────────────────────────────
+	for j := 1; j <= MA_PERIOD_COUNT; j++ {
+		colS := 2 + (j-1)*4
+		maName := fmt.Sprintf("MA_%d", j)
+		perCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 5))
+
+		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_J, j), j)
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_PER, j),
+			fmt.Sprintf(`=IFERROR(VALUE(TRIM(MID(%s,9,5))),0)`, perCell))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_FILL, j),
+			fmt.Sprintf(`=IF(IFERROR(SUBTOTAL(109,%s[Angefordert (LC)]),0)<>0,1,0)`, maName))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_RANK, j),
+			fmt.Sprintf(`=IF(%s=1,SUMPRODUCT(($%s$1:$%s%d=%s)*($%s$1:$%s%d=1)),0)`,
+				dc(EV_DTN_MA_META_FILL, j),
+				colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), j, dc(EV_DTN_MA_META_PER, j),
+				colLetter(EV_DTN_MA_META_FILL), colLetter(EV_DTN_MA_META_FILL), j))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j),
+			fmt.Sprintf(`=IF(AND(%s=1,%s>0),"Periode "&%s&" (#"&%s&")","")`,
+				dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_RANK, j)))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j),
+			fmt.Sprintf(`=IFERROR(ROUND(SUBTOTAL(109,%s[Angefordert (LC)]),2),0)`, maName))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j),
+			fmt.Sprintf(`=IFERROR(ROUND(SUBTOTAL(109,%s[Angefordert (EUR)]),2),0)`, maName))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_EIGDR, j),
+			fmt.Sprintf(`=IFERROR(ROUND('%s'!%s+'%s'!%s,2),0)`,
+				maSheet, cellName(colS+2, 21), maSheet, cellName(colS+2, 22)))
+	}
+
+	// ─── FB-Meta (Zeilen 1..18) ───────────────────────────────────────────────
+	// "Befüllt" = es kam bei den Ausgaben ODER den laufenden Einnahmen (Typzeilen
+	// 12..15, ohne Vorperiodensaldo) zu Eingaben. So werden auch Perioden erkannt,
+	// in denen nur Mittel zuflossen, aber keine Ausgaben getätigt wurden.
+	for p := 1; p <= MA_PERIOD_COUNT; p++ {
+		ausgName := fmt.Sprintf("Ausgaben_%d", p)
+		incCol := colLetter(3 + (p-1)*7) // laufende Einnahmen (LC) je FB-Periode
+		_ = f.SetCellValue(ws, dc(EV_DTN_FB_META_PER, p), p)
+		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_FILL, p),
+			fmt.Sprintf(`=IF((IFERROR(SUBTOTAL(109,%s[Ausgaben (LC)]),0)<>0)+(IFERROR(SUM('%s'!%s12:%s15),0)<>0)>0,1,0)`,
+				ausgName, fbSheet, incCol, incCol))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_LABEL, p),
+			fmt.Sprintf(`=IF(%s=1,"Periode "&%s,"")`, dc(EV_DTN_FB_META_FILL, p), dc(EV_DTN_FB_META_PER, p)))
+	}
+
+	// ─── FB-Auswahlliste (FILTER der befüllten Perioden) ──────────────────────
+	fbLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_LABEL), colLetter(EV_DTN_FB_META_LABEL), MA_PERIOD_COUNT)
+	fbFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_FILL), colLetter(EV_DTN_FB_META_FILL), MA_PERIOD_COUNT)
+	_ = g.setDynArrayFormula(ws, dc(EV_DTN_FB_LISTE, 1),
+		fmt.Sprintf(`_xlfn._xlws.FILTER(%s,%s=1,"")`, fbLabelRng, fbFillRng), StyleOptions{})
+	g.upsertNamedFormula(EVAL_NAME_FB_LISTE,
+		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
+			ws, absName(EV_DTN_FB_LISTE, 1), ws, colLetter(EV_DTN_FB_LISTE), colLetter(EV_DTN_FB_LISTE)))
+
+	// ─── MA-Auswahlliste (FILTER auf Periode == FB-Auswahl+1 & befüllt) ───────
+	maLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_LABEL), colLetter(EV_DTN_MA_META_LABEL), MA_PERIOD_COUNT)
+	maPerRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), MA_PERIOD_COUNT)
+	maFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_FILL), colLetter(EV_DTN_MA_META_FILL), MA_PERIOD_COUNT)
+	maCond := fmt.Sprintf(`(%s=%s+1)*(%s=1)`, maPerRng, g.evalFBSelNumAddr, maFillRng)
+	_ = g.setDynArrayFormula(ws, dc(EV_DTN_MA_LISTE, 1),
+		fmt.Sprintf(`_xlfn._xlws.FILTER(%s,%s,"")`, maLabelRng, maCond), StyleOptions{})
+	g.upsertNamedFormula(EVAL_NAME_MA_LISTE,
+		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
+			ws, absName(EV_DTN_MA_LISTE, 1), ws, colLetter(EV_DTN_MA_LISTE), colLetter(EV_DTN_MA_LISTE)))
+
+	// ─── MA-Grid (je MA-Tabelle × Kategorie) ──────────────────────────────────
+	for j := 1; j <= MA_PERIOD_COUNT; j++ {
+		colS := 2 + (j-1)*4
+		for c := 0; c < len(MA_CATEGORIES); c++ {
+			row := (j-1)*len(MA_CATEGORIES) + c + 1
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_PER, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_PER), j))
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_RANK, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_RANK), j))
+			_ = f.SetCellValue(ws, dc(EV_DTN_MAG_CAT, row), MA_CATEGORIES[c])
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+1, 10+c)))
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_EUR, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+2, 10+c)))
+		}
+	}
+
+	// Hilfsspalten ausblenden
+	for col := EV_DTN_MA_META_J; col <= EV_DTN_MAG_EUR; col++ {
+		_ = f.SetColVisible(ws, colLetter(col), false)
+	}
 }
