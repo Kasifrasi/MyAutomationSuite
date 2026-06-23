@@ -38,11 +38,13 @@ const (
 	EV_COL_DIF_EUR = 9
 	EV_COL_ABW_EUR = 10
 
-	// Auswahl-Panel rechts (L … O)
-	EV_PCOL_L1 = 12 // L
-	EV_PCOL_L2 = 13 // M
-	EV_PCOL_V1 = 14 // N
-	EV_PCOL_V2 = 15 // O
+	// Auswahl-Panel (zentriert, oben in der Sektion; Spalten C … I)
+	EV_PB_C1   = 3 // Box-/Label-Start (C)
+	EV_PB_L2   = 5 // Label-Ende (E)
+	EV_PB_V1   = 6 // Wert-/Slot-LC-Start (F)
+	EV_PB_SLC2 = 7 // Slot-LC-Ende (G)
+	EV_PB_SEU1 = 8 // Slot-EUR-Start (H)
+	EV_PB_C2   = 9 // Box-/Wert-Ende (I)
 
 	EV_TABLE_GAP = 2
 	EV_MA_SLOTS  = 6 // max. gleichzeitig anzeigbare Anforderungen je Periode
@@ -135,11 +137,6 @@ func (g *Generator) CreateAuswertungSheet() error {
 	for c := EV_COL_ACT_LC; c <= EV_COL_ABW_EUR; c++ {
 		g.setColWidth(ws, c, 16.0)
 	}
-	g.setColWidth(ws, 11, 3.0)
-	g.setColWidth(ws, EV_PCOL_L1, 20.0)
-	g.setColWidth(ws, EV_PCOL_L2, 10.0)
-	g.setColWidth(ws, EV_PCOL_V1, 16.0)
-	g.setColWidth(ws, EV_PCOL_V2, 16.0)
 
 	r := 2
 	g.evalBanner(ws, r, "V. AUSWERTUNG", "Automatische Prüfung von Mittelanforderung und Finanzberichten")
@@ -151,9 +148,9 @@ func (g *Generator) CreateAuswertungSheet() error {
 	g.evalMainHeader(ws, r, "MITTELANFORDERUNGSPRÜFUNG", "Basis: ausgewählte Mittelanforderung (Folgeperiode des Finanzberichts)")
 	r += 3
 
-	// Auswahl-Panel (rechts) zuerst – liefert maSelP-/maSelK-Steuerzellen.
-	maPanelTop := r
-	maSelLabelCell, maSelPCell, maSelKCell := g.evalDrawMAPanel(ws, maPanelTop)
+	// Auswahl-Panel (zentriert, oben) zuerst – liefert maSelP-/maSelK-Steuerzellen.
+	maSelPCell, maSelKCell, r := g.evalDrawMAPanel(ws, r)
+	r += EV_TABLE_GAP
 	sel := evalSelRefs{maSelP: maSelPCell, maSelK: maSelKCell}
 
 	maKMW := g.evalDrawKMWSektion(ws, r, true, sel)
@@ -173,8 +170,9 @@ func (g *Generator) CreateAuswertungSheet() error {
 	g.evalMainHeader(ws, r, "FINANZBERICHTSPRÜFUNG", "Basis: ausgewählter Finanzbericht (kumulativ bis zur Periode)")
 	r += 3
 
-	// FB-Auswahl-Panel (rechts) – liefert die Periodennummer N.
-	fbSelNumCell := g.evalDrawFBPanel(ws, r)
+	// FB-Auswahl-Panel (zentriert, oben) – liefert die Periodennummer N.
+	fbSelNumCell, fbNext := g.evalDrawFBPanel(ws, r)
+	r = fbNext + EV_TABLE_GAP
 	sel.fbSelNum = fbSelNumCell
 	g.evalFBSelNumAddr = fmt.Sprintf("'%s'!%s", ws, fbSelNumCell)
 
@@ -218,9 +216,6 @@ func (g *Generator) CreateAuswertungSheet() error {
 			`=ROUND(MAX(0,MAX(0,%s+%s-%s)-%s),2)`, realAct, maEig, realBud, fbKMW.mehrCell)
 		g.evalDeduct(ws, maKMW.prognCell, prognFormula)
 	}
-
-	// MA-Auswahl-Readout-Slots befüllen (rechts oben), nutzt maSelP/maSelK.
-	g.evalFillMASlots(ws, maPanelTop, maSelLabelCell, maSelPCell, maSelKCell)
 
 	return nil
 }
@@ -361,22 +356,23 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	r += 2
 
 	if isMA {
-		// Paar 1: Abzüglich aktuelle Anforderung → Verbleibende KMW-Mittel
+		// Rechte Paar-Beschriftungen spannen F..H (Wert I) – bündig mit der
+		// Abzugsoptionen-Box (tog..valR = F..I).
 		p1Top := r
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Abzüglich aktuelle Anforderung", false)
 		g.evalKmwInput(ws, cellName(valL, r))
 		addrReqL := absName(valL, r)
-		g.evalKmwLabel(ws, r, lblR1, lblR2, "Abzüglich aktuelle Anforderung", false)
+		g.evalKmwLabel(ws, r, tog, lblR2, "Abzüglich aktuelle Anforderung", false)
 		g.evalKmwInput(ws, cellName(valR, r))
 		addrReqR := absName(valR, r)
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
 		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrVerf, addrReqL), true)
-		g.evalKmwLabel(ws, r, lblR1, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
+		g.evalKmwLabel(ws, r, tog, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
 		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrBereinigt, addrReqR), true)
 		p1Bottom := r
 		g.styleOuterBorder(ws, p1Top, lblL1, p1Bottom, valL, 2, EV_CLR_BORDER)
-		g.styleOuterBorder(ws, p1Top, lblR1, p1Bottom, valR, 2, EV_CLR_BORDER)
+		g.styleOuterBorder(ws, p1Top, tog, p1Bottom, valR, 2, EV_CLR_BORDER)
 		r += 2
 
 		// Paar 2: Abzüglich manueller Betrag → Verbleibende KMW-Mittel
@@ -384,17 +380,17 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Abzüglich manueller Betrag", false)
 		g.evalKmwInput(ws, cellName(valL, r))
 		addrManL := absName(valL, r)
-		g.evalKmwLabel(ws, r, lblR1, lblR2, "Abzüglich manueller Betrag", false)
+		g.evalKmwLabel(ws, r, tog, lblR2, "Abzüglich manueller Betrag", false)
 		g.evalKmwInput(ws, cellName(valR, r))
 		addrManR := absName(valR, r)
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
 		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s)-MAX(0,%s),2)", addrVerf, addrReqL, addrManL), true)
-		g.evalKmwLabel(ws, r, lblR1, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
+		g.evalKmwLabel(ws, r, tog, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
 		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s)-MAX(0,%s),2)", addrBereinigt, addrReqR, addrManR), true)
 		p2Bottom := r
 		g.styleOuterBorder(ws, p2Top, lblL1, p2Bottom, valL, 2, EV_CLR_BORDER)
-		g.styleOuterBorder(ws, p2Top, lblR1, p2Bottom, valR, 2, EV_CLR_BORDER)
+		g.styleOuterBorder(ws, p2Top, tog, p2Bottom, valR, 2, EV_CLR_BORDER)
 		r++
 	}
 
@@ -448,155 +444,163 @@ func (g *Generator) evalDeductPlaceholder(ws, cell string) {
 }
 
 // ==================================================================================
-// AUSWAHL-PANELS (rechts)
+// AUSWAHL-PANELS (zentriert, oben in der jeweiligen Sektion)
 // ==================================================================================
 
-// evalDrawMAPanel zeichnet das Mittelanforderungs-Auswahlpanel und liefert die
-// Adressen (LabelZelle, P-Zelle, k-Zelle). Die Slots werden später befüllt.
-func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, string) {
-	_ = g.mergeCells(ws, cellName(EV_PCOL_L1, top), cellName(EV_PCOL_V2, top), "Mittelanforderung auswählen", StyleOptions{
-		Bold: true, Size: 10.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
+// evalSelTitle zeichnet die zentrierte Titelzeile einer Auswahlbox (Spalten C..I).
+func (g *Generator) evalSelTitle(ws string, row int, text string) {
+	_ = g.mergeCells(ws, cellName(EV_PB_C1, row), cellName(EV_PB_C2, row), text, StyleOptions{
+		Bold: true, Size: 11.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
 	})
+	_ = g.file.SetRowHeight(ws, row, 22.0)
+}
 
-	selRow := top + 1
-	labelCell := cellName(EV_PCOL_L1, selRow)
-	_ = g.mergeCells(ws, labelCell, cellName(EV_PCOL_V2, selRow), "", StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
+// evalSelLabel zeichnet die Beschriftungsspalte (C..E) einer Auswahlzeile.
+func (g *Generator) evalSelLabel(ws string, row int, text string) {
+	_ = g.mergeCells(ws, cellName(EV_PB_C1, row), cellName(EV_PB_L2, row), text, StyleOptions{
+		Size: 10.0, HAlign: "left", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
+}
+
+// evalMergedFormula/evalMergedValue: zusammengeführte Zelle, die über den GESAMTEN
+// Bereich formatiert wird (verhindert fehlende Rahmenkanten an Folgezellen).
+func (g *Generator) evalMergedFormula(ws, c1, c2, formula string, st StyleOptions) {
+	_ = g.file.MergeCell(ws, c1, c2)
+	_ = g.setStyle(ws, c1, c2, st)
+	_ = g.file.SetCellFormula(ws, c1, formula)
+}
+
+func (g *Generator) evalMergedValue(ws, c1, c2 string, val interface{}, st StyleOptions) {
+	_ = g.file.MergeCell(ws, c1, c2)
+	_ = g.setStyle(ws, c1, c2, st)
+	_ = g.file.SetCellValue(ws, c1, val)
+}
+
+// evalDrawMAPanel zeichnet die zentrierte Mittelanforderungs-Auswahlbox und liefert
+// die P-/k-Steuerzellen sowie die letzte belegte Zeile.
+func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
+	num0 := StyleOptions{Bold: true, HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_CALC,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+	inputCtr := StyleOptions{HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+
+	r := top
+	g.evalSelTitle(ws, r, "Mittelanforderung auswählen")
+	r++
+
+	g.evalSelLabel(ws, r, "Auswahl:")
+	labelCell := cellName(EV_PB_V1, r)
+	g.evalMergedValue(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
 	dv.Type = "list"
 	dv.Formula1 = "=" + EVAL_NAME_MA_LISTE
 	_ = g.file.AddDataValidation(ws, dv)
+	r++
 
-	// P (= N+1, Formel wird nachgelagert gesetzt) und k (aus dem Label geparst).
-	// Wichtig: erst MERGEN, dann Formel setzen – mergeCells() würde die Zelle sonst
-	// mit einem Leerwert überschreiben.
-	pnumStyle := StyleOptions{HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+	g.evalSelLabel(ws, r, "Geprüfte Periode (FB+1)")
+	pCell := cellName(EV_PB_V1, r)
+	g.evalMergedValue(ws, pCell, cellName(EV_PB_C2, r), 0, num0) // Formel (=N+1) wird nachgelagert gesetzt
+	r++
 
-	pRow := top + 2
-	g.evalPanelLabel(ws, pRow, "Periode (FB+1)")
-	pCell := cellName(EV_PCOL_V1, pRow)
-	_ = g.file.MergeCell(ws, pCell, cellName(EV_PCOL_V2, pRow))
-	_ = g.setValue(ws, pCell, 0, pnumStyle)
-	_ = g.setStyle(ws, pCell, cellName(EV_PCOL_V2, pRow), pnumStyle)
-
-	kRow := top + 3
-	g.evalPanelLabel(ws, kRow, "Ausgewählt (#)")
-	kCell := cellName(EV_PCOL_V1, kRow)
+	g.evalSelLabel(ws, r, "Ausgewählte Anforderung (#)")
+	kCell := cellName(EV_PB_V1, r)
 	kFormula := fmt.Sprintf(
 		`=IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0)`,
 		labelCell, labelCell, labelCell, labelCell)
-	_ = g.file.MergeCell(ws, kCell, cellName(EV_PCOL_V2, kRow))
-	_ = g.setStyle(ws, kCell, cellName(EV_PCOL_V2, kRow), pnumStyle)
-	_ = g.setFormula(ws, kCell, kFormula, pnumStyle)
+	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
+	r++
 
-	// Subheader für die Slots
-	subRow := top + 4
-	_ = g.mergeCells(ws, cellName(EV_PCOL_L1, subRow), cellName(EV_PCOL_V2, subRow), "Einbezogene Anforderungen", StyleOptions{
+	_ = g.mergeCells(ws, cellName(EV_PB_C1, r), cellName(EV_PB_C2, r), "Einbezogene Anforderungen", StyleOptions{
 		Bold: true, Size: 9.0, FontColor: EV_CLR_BLACK, FillColor: EV_CLR_HEADER, HAlign: "left", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
+	r++
 
-	g.styleOuterBorder(ws, top, EV_PCOL_L1, subRow+EV_MA_SLOTS, EV_PCOL_V2, 2, EV_CLR_BORDER)
-	return labelCell, pCell, kCell
-}
-
-func (g *Generator) evalPanelLabel(ws string, row int, text string) {
-	_ = g.mergeCells(ws, cellName(EV_PCOL_L1, row), cellName(EV_PCOL_L2, row), text, StyleOptions{
-		Size: 9.0, HAlign: "left", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-}
-
-// evalFillMASlots schreibt die (bedingt sichtbaren) Anforderungs-Slots.
-func (g *Generator) evalFillMASlots(ws string, top int, labelCell, pCell, kCell string) {
-	firstSlot := top + 5
+	// Slots: bei Bedarf (s ≤ k) eingeblendet, sonst leer (Struktur im Hintergrund).
 	metaPer := evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT)
 	metaRank := evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT)
-	metaSum := evalAbsCol(EV_DTN_MA_META_SUMLC, 1, MA_PERIOD_COUNT)
-
+	metaSumLC := evalAbsCol(EV_DTN_MA_META_SUMLC, 1, MA_PERIOD_COUNT)
+	metaSumEU := evalAbsCol(EV_DTN_MA_META_SUMEU, 1, MA_PERIOD_COUNT)
+	firstSlot := r
+	lblSt := StyleOptions{Size: 9.0, HAlign: "left", VAlign: "center",
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+	lcSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_LC,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+	euSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
 	for s := 1; s <= EV_MA_SLOTS; s++ {
 		row := firstSlot + s - 1
-
-		// Label "Periode P (#s)" – nur wenn s ≤ k
 		lbl := fmt.Sprintf(`=IF(%d<=%s,"Periode "&%s&" (#%d)","")`, s, kCell, pCell, s)
-		_ = g.setFormula(ws, cellName(EV_PCOL_L1, row), lbl, StyleOptions{
-			Size: 9.0, HAlign: "left", VAlign: "center",
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-		})
-		_ = g.file.MergeCell(ws, cellName(EV_PCOL_L1, row), cellName(EV_PCOL_L2, row))
+		g.evalMergedFormula(ws, cellName(EV_PB_C1, row), cellName(EV_PB_L2, row), lbl, lblSt)
+		lcF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,%d),0),"")`,
+			s, kCell, EVAL_DATEN_SHEET, metaSumLC, EVAL_DATEN_SHEET, metaPer, pCell, EVAL_DATEN_SHEET, metaRank, s)
+		g.evalMergedFormula(ws, cellName(EV_PB_V1, row), cellName(EV_PB_SLC2, row), lcF, lcSt)
+		euF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,%d),0),"")`,
+			s, kCell, EVAL_DATEN_SHEET, metaSumEU, EVAL_DATEN_SHEET, metaPer, pCell, EVAL_DATEN_SHEET, metaRank, s)
+		g.evalMergedFormula(ws, cellName(EV_PB_SEU1, row), cellName(EV_PB_C2, row), euF, euSt)
 
-		// Betrag (LC) der Anforderung s der Periode P
-		val := fmt.Sprintf(
-			`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,%d),0),"")`,
-			s, kCell, EVAL_DATEN_SHEET, metaSum, EVAL_DATEN_SHEET, metaPer, pCell, EVAL_DATEN_SHEET, metaRank, s)
-		_ = g.setFormula(ws, cellName(EV_PCOL_V1, row), val, StyleOptions{
-			HAlign: "right", VAlign: "center", NumFormat: EV_FMT_LC,
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-		})
-		_ = g.file.MergeCell(ws, cellName(EV_PCOL_V1, row), cellName(EV_PCOL_V2, row))
-
-		// Aktive Slots optisch hervorheben (bedingte Formatierung)
-		labelAddr := absName(EV_PCOL_L1, row)
-		revealRange := fmt.Sprintf("%s:%s", cellName(EV_PCOL_L1, row), cellName(EV_PCOL_V2, row))
-		g.addConditionalFormat(ws, revealRange, fmt.Sprintf(`%s<>""`, labelAddr), StyleOptions{
-			FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-		})
+		labelAddr := absName(EV_PB_C1, row)
+		g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(EV_PB_C1, row), cellName(EV_PB_C2, row)),
+			fmt.Sprintf(`%s<>""`, labelAddr), StyleOptions{
+				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+			})
 	}
+	bottom := firstSlot + EV_MA_SLOTS - 1
+	g.styleOuterBorder(ws, top, EV_PB_C1, bottom, EV_PB_C2, 2, EV_CLR_BORDER)
+	return pCell, kCell, bottom
 }
 
-// evalDrawFBPanel zeichnet das Finanzbericht-Auswahlpanel und liefert die Zelle
-// mit der Periodennummer N.
-func (g *Generator) evalDrawFBPanel(ws string, top int) string {
-	_ = g.mergeCells(ws, cellName(EV_PCOL_L1, top), cellName(EV_PCOL_V2, top), "Finanzbericht auswählen", StyleOptions{
-		Bold: true, Size: 10.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-	})
+// evalDrawFBPanel zeichnet die zentrierte Finanzbericht-Auswahlbox und liefert die
+// Periodennummer-Zelle (N) sowie die letzte belegte Zeile.
+func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
+	num0 := StyleOptions{Bold: true, HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_CALC,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+	inputCtr := StyleOptions{HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+	lcSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_LC, FillColor: EV_CLR_CALC,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+	euSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_CALC,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
 
-	selRow := top + 1
-	labelCell := cellName(EV_PCOL_L1, selRow)
-	_ = g.setValue(ws, labelCell, "Periode 1", StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-	_ = g.file.MergeCell(ws, labelCell, cellName(EV_PCOL_V2, selRow))
+	r := top
+	g.evalSelTitle(ws, r, "Finanzbericht auswählen")
+	r++
+
+	g.evalSelLabel(ws, r, "Auswahl:")
+	labelCell := cellName(EV_PB_V1, r)
+	// Leerer Standard ⇒ N = 0 ⇒ keine Vorperiode (Projektbeginn): es sind die
+	// Mittelanforderungen der Periode 1 wählbar.
+	g.evalMergedValue(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
 	dv.Type = "list"
 	dv.Formula1 = "=" + EVAL_NAME_FB_LISTE
 	_ = g.file.AddDataValidation(ws, dv)
+	r++
 
-	nRow := top + 2
-	g.evalPanelLabel(ws, nRow, "Periode (N)")
-	numCell := cellName(EV_PCOL_V1, nRow)
-	_ = g.setFormula(ws, numCell, fmt.Sprintf(`=IFERROR(VALUE(TRIM(MID(%s,9,5))),0)`, labelCell), StyleOptions{
-		Bold: true, HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-	_ = g.file.MergeCell(ws, numCell, cellName(EV_PCOL_V2, nRow))
+	g.evalSelLabel(ws, r, "Geprüfte Periode (N)")
+	numCell := cellName(EV_PB_V1, r)
+	// Nur echte "Periode X"-Einträge ergeben eine Nummer; alles andere (inkl.
+	// "Kein Finanzbericht (Projektbeginn)") ⇒ 0.
+	numF := fmt.Sprintf(`=IF(LEFT(%s,8)="Periode ",IFERROR(VALUE(TRIM(MID(%s,9,5))),0),0)`, labelCell, labelCell)
+	g.evalMergedFormula(ws, numCell, cellName(EV_PB_C2, r), numF, num0)
+	r++
 
-	sRow := top + 3
-	g.evalPanelLabel(ws, sRow, "Saldo (LC)")
-	_ = g.setFormula(ws, cellName(EV_PCOL_V1, sRow), fmt.Sprintf(`=IFERROR(ROUND(INDIRECT("FB_SaldoLC_"&%s),2),0)`, numCell), StyleOptions{
-		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_LC, FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-	_ = g.file.MergeCell(ws, cellName(EV_PCOL_V1, sRow), cellName(EV_PCOL_V2, sRow))
+	g.evalSelLabel(ws, r, "Saldo (LC)")
+	g.evalMergedFormula(ws, cellName(EV_PB_V1, r), cellName(EV_PB_C2, r),
+		fmt.Sprintf(`=IFERROR(ROUND(INDIRECT("FB_SaldoLC_"&%s),2),0)`, numCell), lcSt)
+	r++
 
-	eRow := top + 4
-	g.evalPanelLabel(ws, eRow, "Saldo (EUR)")
-	_ = g.setFormula(ws, cellName(EV_PCOL_V1, eRow), fmt.Sprintf(`=IFERROR(ROUND(INDIRECT("FB_SaldoEUR_"&%s),2),0)`, numCell), StyleOptions{
-		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-	_ = g.file.MergeCell(ws, cellName(EV_PCOL_V1, eRow), cellName(EV_PCOL_V2, eRow))
+	g.evalSelLabel(ws, r, "Saldo (EUR)")
+	g.evalMergedFormula(ws, cellName(EV_PB_V1, r), cellName(EV_PB_C2, r),
+		fmt.Sprintf(`=IFERROR(ROUND(INDIRECT("FB_SaldoEUR_"&%s),2),0)`, numCell), euSt)
+	bottom := r
 
-	g.styleOuterBorder(ws, top, EV_PCOL_L1, eRow, EV_PCOL_V2, 2, EV_CLR_BORDER)
-	return numCell
+	g.styleOuterBorder(ws, top, EV_PB_C1, bottom, EV_PB_C2, 2, EV_CLR_BORDER)
+	return numCell, bottom
 }
 
 // ==================================================================================
