@@ -37,6 +37,15 @@ type Generator struct {
 	rangesEinnahmen1 []string
 	rangesEinnahmen2 []string
 	rangesMA         []string
+
+	// Zellen mit dynamischen Array-Formeln (Spill); werden nach dem Speichern
+	// mit den Dynamic-Array-Metadaten versehen (siehe dynarray.go).
+	dynArrayCells []dynArrayCell
+}
+
+type dynArrayCell struct {
+	sheet string
+	cell  string
 }
 
 func colLetter(col int) string {
@@ -243,6 +252,14 @@ func (g *Generator) setFormula(sheet, cell, formula string, opts StyleOptions) e
 	if err != nil {
 		return err
 	}
+	return g.setStyle(sheet, cell, cell, opts)
+}
+
+// setDynArrayFormula schreibt eine dynamische Array-Formel (Spill) und merkt sich die
+// Zelle für das nachträgliche Setzen der Dynamic-Array-Metadaten (siehe dynarray.go).
+func (g *Generator) setDynArrayFormula(sheet, cell, formula string, opts StyleOptions) error {
+	setDynArrayFormula(g.file, sheet, cell, formula)
+	g.dynArrayCells = append(g.dynArrayCells, dynArrayCell{sheet: sheet, cell: cell})
 	return g.setStyle(sheet, cell, cell, opts)
 }
 
@@ -549,6 +566,12 @@ func main() {
 	err = f.SaveAs(outputPath)
 	if err != nil {
 		log.Fatalf("fehler beim Speichern des Dokuments: %v", err)
+	}
+
+	// 4. Dynamische Array-Formeln (VSTACK/FILTER) nachträglich als echte Spill-Formeln
+	//    markieren, damit Excel beim Öffnen keinen "@"-Operator einfügt.
+	if err := applyDynamicArrayMetadata(outputPath, g.dynArrayCells); err != nil {
+		log.Fatalf("fehler beim Setzen der Dynamic-Array-Metadaten: %v", err)
 	}
 
 	fmt.Printf("Vorpruefung erfolgreich generiert: %s\n", outputPath)
