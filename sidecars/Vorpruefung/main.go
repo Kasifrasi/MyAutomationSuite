@@ -31,6 +31,12 @@ type Generator struct {
 	file           *excelize.File
 	styleCache     map[string]int
 	condStyleCache map[string]int
+
+	// Ranges for VSTACK in "Daten"
+	rangesAusgaben   []string
+	rangesEinnahmen1 []string
+	rangesEinnahmen2 []string
+	rangesMA         []string
 }
 
 func colLetter(col int) string {
@@ -524,6 +530,12 @@ func main() {
 	err = g.CreateMittelanforderungSheet()
 	if err != nil {
 		log.Fatalf("fehler beim Erstellen des Mittelanforderung-Blatts: %v", err)
+	}
+
+	// 6. Erstelle das Daten-Blatt für Listen und VSTACKS
+	err = g.CreateDatenSheet()
+	if err != nil {
+		log.Fatalf("fehler beim Erstellen des Daten-Blatts: %v", err)
 	}
 
 	// Hier können in Zukunft weitere Blätter hinzugefügt werden:

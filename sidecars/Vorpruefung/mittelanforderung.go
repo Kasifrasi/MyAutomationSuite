@@ -67,12 +67,11 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 	return nil
 }
 
+// maEnsurePeriodList is now handled by daten.go
+// but we keep a dummy or just remove it.
 func (g *Generator) maEnsurePeriodList(ws string) {
-	f := g.file
-	for i := 1; i <= MA_PERIOD_COUNT; i++ {
-		_ = f.SetCellValue(ws, fmt.Sprintf("A%d", i), fmt.Sprintf("Periode %d", i))
-	}
-	_ = f.SetColVisible(ws, "A", false)
+	// Das Dropdown verweist nun auf das Daten-Blatt.
+	// Die Erstellung der Liste passiert in CreateDatenSheet()
 }
 
 func (g *Generator) maSetupColumnWidths(ws string, colS int) {
@@ -104,7 +103,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 
 	dvPer := excelize.NewDataValidation(true)
 	dvPer.Sqref = rngPerStart
-	dvPer.SetSqrefDropList(fmt.Sprintf("'%s'!$A$1:$A$%d", MA_SHEET_NAME, MA_PERIOD_COUNT))
+	dvPer.SetSqrefDropList(fmt.Sprintf("'Daten'!$A$1:$A$%d", MA_PERIOD_COUNT))
 	_ = f.AddDataValidation(ws, dvPer)
 	r++
 
@@ -153,6 +152,10 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 
 	maDataRows := len(MA_CATEGORIES)
 	maTotalsRow := maHdrRow + maDataRows + 1
+
+	// Add data body range to MA list for VSTACK
+	dataRangeMA := fmt.Sprintf("'%s'!%s:%s", ws, absName(cLbl, maHdrRow+1), absName(cEUR, maHdrRow+maDataRows))
+	g.rangesMA = append(g.rangesMA, dataRangeMA)
 
 	err := f.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(cLbl, maHdrRow), cellName(cEUR, maTotalsRow)),

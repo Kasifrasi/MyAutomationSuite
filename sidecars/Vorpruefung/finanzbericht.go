@@ -256,6 +256,10 @@ func (g *Generator) drawReportTable(
 	ausgDataRows := len(EXPENSE_CATEGORIES)
 	ausgTotalsRow := ausgHdrRow + ausgDataRows + 1
 
+	// Add data body range to Ausgaben list for VSTACK
+	dataRangeAusg := fmt.Sprintf("'%s'!%s:%s", ws, absName(cLabel, ausgHdrRow+1), absName(cLabel+4, ausgHdrRow+ausgDataRows))
+	g.rangesAusgaben = append(g.rangesAusgaben, dataRangeAusg)
+
 	// Tabelle erstellen
 	err := f.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(cLabel, ausgHdrRow), cellName(cLabel+4, ausgTotalsRow)),
@@ -524,6 +528,14 @@ func (g *Generator) createEinnahmenTabelle(
 	}
 	for i := 0; i < 5; i++ {
 		_ = g.setStyle(ws, cellName(colStart+i, startRow), cellName(colStart+i, startRow), headerOpts)
+	}
+
+	// Add data body range to VSTACK lists
+	dataRangeEinn := fmt.Sprintf("'%s'!%s:%s", ws, absName(colStart, startRow+1), absName(colStart+4, startRow+dataRows))
+	if isWK {
+		g.rangesEinnahmen2 = append(g.rangesEinnahmen2, dataRangeEinn)
+	} else {
+		g.rangesEinnahmen1 = append(g.rangesEinnahmen1, dataRangeEinn)
 	}
 
 	// Tabelle anlegen
