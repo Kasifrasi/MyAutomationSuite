@@ -46,6 +46,10 @@ type Generator struct {
 	// Auswertungsblatt (z. B. "'V. AUSWERTUNG'!$N$120"). Wird von daten.go genutzt,
 	// um die Mittelanforderungs-Auswahlliste auf "Periode FB+1" zu filtern.
 	evalFBSelNumAddr string
+
+	// budget hält optional die per -budget übergebenen Budgetwerte. nil ⇒ leeres
+	// Eingabe-Template (Standardverhalten).
+	budget *BudgetConfig
 }
 
 type dynArrayCell struct {
@@ -544,8 +548,15 @@ func (g *Generator) addConditionalFormat(sheet, cell, formula string, opts Style
 
 func main() {
 	var outputPath string
+	var budgetPath string
 	flag.StringVar(&outputPath, "o", "vorpruefung_output.xlsx", "output file path")
+	flag.StringVar(&budgetPath, "budget", "", "optionale Budget-JSON, deren Werte in 'I. Budget' eingetragen werden")
 	flag.Parse()
+
+	budgetCfg, err := loadBudgetConfig(budgetPath)
+	if err != nil {
+		log.Fatalf("fehler beim Laden der Budget-Datei: %v", err)
+	}
 
 	f := excelize.NewFile()
 
@@ -553,10 +564,11 @@ func main() {
 		file:           f,
 		styleCache:     make(map[string]int),
 		condStyleCache: make(map[string]int),
+		budget:         budgetCfg,
 	}
 
 	// 1. Erstelle das Dashboard-Blatt
-	err := g.CreateDashboardSheet()
+	err = g.CreateDashboardSheet()
 	if err != nil {
 		log.Fatalf("fehler beim Erstellen des Dashboard-Blatts: %v", err)
 	}

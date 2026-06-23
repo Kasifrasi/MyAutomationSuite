@@ -383,12 +383,18 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	if isMA {
 		// Rechte Paar-Beschriftungen spannen F..H (Wert I) – bündig mit der
 		// Abzugsoptionen-Box (tog..valR = F..I).
+		// "Abzüglich aktuelle Anforderung" = KMW-Mittel-Anforderung der EINEN aktuell
+		// gewählten Mittelanforderung (Periode P, Rang exakt = k). Bewusst NICHT
+		// zusammengesetzt (#1..#k): frühere Anforderungen einer Periode sind bereits
+		// über die bereitgestellten KMW-Mittel (KMW-Tabelle) erfasst. Beide Seiten
+		// (Basis / bereinigt) ziehen denselben berechneten Wert ab (grauer Hintergrund).
 		p1Top := r
+		reqFormula := evalMACurrentKMWRequest(sel)
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Abzüglich aktuelle Anforderung", false)
-		g.evalKmwInput(ws, cellName(valL, r))
+		g.evalKmwCalc(ws, cellName(valL, r), reqFormula, false)
 		addrReqL := absName(valL, r)
 		g.evalKmwLabel(ws, r, tog, lblR2, "Abzüglich aktuelle Anforderung", false)
-		g.evalKmwInput(ws, cellName(valR, r))
+		g.evalKmwCalc(ws, cellName(valR, r), reqFormula, false)
 		addrReqR := absName(valR, r)
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
@@ -403,10 +409,10 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		// Paar 2: Abzüglich manueller Betrag → Verbleibende KMW-Mittel
 		p2Top := r
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Abzüglich manueller Betrag", false)
-		g.evalKmwInput(ws, cellName(valL, r))
+		g.evalKmwInputEmpty(ws, cellName(valL, r))
 		addrManL := absName(valL, r)
 		g.evalKmwLabel(ws, r, tog, lblR2, "Abzüglich manueller Betrag", false)
-		g.evalKmwInput(ws, cellName(valR, r))
+		g.evalKmwInputEmpty(ws, cellName(valR, r))
 		addrManR := absName(valR, r)
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
@@ -438,6 +444,15 @@ func (g *Generator) evalKmwCalc(ws, cell, formula string, bold bool) {
 
 func (g *Generator) evalKmwInput(ws, cell string) {
 	_ = g.setValue(ws, cell, 0, StyleOptions{
+		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_INPUT,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+	})
+}
+
+// evalKmwInputEmpty entspricht evalKmwInput (gelbe Eingabezelle, EUR-Format),
+// lässt die Zelle aber leer statt mit einer 0 vorzubelegen.
+func (g *Generator) evalKmwInputEmpty(ws, cell string) {
+	_ = g.setStyle(ws, cell, cell, StyleOptions{
 		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_INPUT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
@@ -923,8 +938,11 @@ func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int
 		// der Periode P, je Kategorie (MA-Grid auf dem Daten-Blatt).
 		return evalMAExpenseActual(sel, name, EV_DTN_MAG_LC), evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
 	}
-	// FB: kumulative Ausgaben je Kategorie bis Periode N. Ausgaben-Zeilen bei 19..26.
-	return evalFBChooseRef(sel.fbSelNum, 19+idx, 3), evalFBChooseRef(sel.fbSelNum, 19+idx, 4)
+	// FB: kumulative Ausgaben je Kategorie bis Periode N. Die FB-Ausgabentabellen
+	// sind positionsbasiert (eine Zeile je Kostenposition); für die kategorienweise
+	// Auswertung werden alle zur Kategorie gehörenden Positionszeilen aufsummiert.
+	rows := g.fbExpenseRowsForCategory(name)
+	return evalFBChooseRefRows(sel.fbSelNum, rows, 3), evalFBChooseRefRows(sel.fbSelNum, rows, 4)
 }
 
 func (g *Generator) evalBudgetNames(isIncome bool, name string) (string, string) {
@@ -1009,6 +1027,26 @@ func evalFBChooseRef(selNum string, baseRow, colOffset int) string {
 	return fmt.Sprintf(`=IFERROR(ROUND(CHOOSE(%s,%s),2),0)`, selNum, strings.Join(parts, ","))
 }
 
+// evalFBChooseRefRows summiert je Finanzbericht-Periode die übergebenen Zeilen
+// (eine je Kostenposition einer Kategorie) der Kum-Spalte (colOffset 3=LC, 4=EUR)
+// und wählt die geprüfte Periode N per CHOOSE. So bleibt die Auswertung
+// kategorienbasiert, obwohl die FB-Tabellen positionsbasiert sind.
+func evalFBChooseRefRows(selNum string, rows []int, colOffset int) string {
+	if len(rows) == 0 {
+		return "=0"
+	}
+	parts := make([]string, 0, 18)
+	for p := 1; p <= 18; p++ {
+		colBase := 2 + (p-1)*7 + colOffset
+		cellRefs := make([]string, 0, len(rows))
+		for _, br := range rows {
+			cellRefs = append(cellRefs, fmt.Sprintf("'%s'!%s", EVAL_FB_SHEET, absName(colBase, br)))
+		}
+		parts = append(parts, strings.Join(cellRefs, "+"))
+	}
+	return fmt.Sprintf(`=IFERROR(ROUND(CHOOSE(%s,%s),2),0)`, selNum, strings.Join(parts, ","))
+}
+
 // evalMAExpenseActual summiert die ausgewählten Mittelanforderungen (#1..#k) der
 // Periode P je Kategorie über das MA-Grid auf dem Daten-Blatt.
 func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
@@ -1019,6 +1057,19 @@ func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS))
+}
+
+// evalMACurrentKMWRequest summiert die KMW-Mittel-Anforderung der EINEN aktuell
+// gewählten Mittelanforderung (Periode P, Rang exakt = k) aus dem MA-Grid. Anders
+// als die Prognose (#1..#k) bewusst nicht zusammengesetzt – frühere Anforderungen
+// einer Periode sind bereits über die bereitgestellten KMW-Mittel erfasst.
+func evalMACurrentKMWRequest(sel evalSelRefs) string {
+	return fmt.Sprintf(
+		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%s),2),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, EV_DTN_MAG_ROWS),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK)
 }
 
 // evalAbsCol liefert einen absoluten Spaltenbereich, z. B. "$BU$1:$BU$144".

@@ -22,6 +22,13 @@ const (
 	START_COL = 2 // Spalte B
 	START_ROW = 5 // Zeile 5
 
+	// FB_AUSG_FIRST_ROW ist die erste Datenzeile der Ausgaben-Tabelle einer Periode.
+	// Das Zeilen-Layout ist für alle 18 Perioden identisch (nur die Spalte variiert):
+	// Periode(4) Von(5) Bis(6) Zeitraum(7) Kurs(8) | Einnahmen-Kopf(9) Spaltenköpfe(10)
+	// Saldo(11) Typen(12–15) Gesamteinnahmen(16) | Ausgaben-Kopf(17) Tab-Kopf(18) Daten ab(19).
+	FB_AUSG_FIRST_ROW   = 19
+	FB_INCOME_FIRST_ROW = 12 // erste Einnahmen-Typzeile (Eigenmittel)
+
 	// ─── Farb-Konstanten ──────────────────────────────────────────────────────────
 	COLOR_HEADER = "D3D3D3" // Titel/Kopf/Sektionen
 	COLOR_TOTAL  = "F0F0F0" // Summenzeilen
@@ -273,7 +280,7 @@ func (g *Generator) drawReportTable(
 		_ = g.setStyle(ws, cellName(cLabel+i, ausgHdrRow), cellName(cLabel+i, ausgHdrRow), ausgHdrOpts)
 	}
 
-	ausgDataRows := len(EXPENSE_CATEGORIES)
+	ausgDataRows := g.budgetExpenseCount()
 	ausgTotalsRow := ausgHdrRow + ausgDataRows + 1
 
 	// Add data body range to Ausgaben list for VSTACK
@@ -295,8 +302,13 @@ func (g *Generator) drawReportTable(
 	for i := 0; i < ausgDataRows; i++ {
 		row := ausgHdrRow + 1 + i
 
-		// ID Formula
-		_ = f.SetCellFormula(ws, cellName(cLabel, row), fmt.Sprintf(`=IFERROR(INDEX(%s, ROW() - %d), "")`, FB_NAME_ID_LIST, ausgHdrRow))
+		// ID: bei Config fester Wert (sortierbar, klare Zuteilung), sonst per INDEX
+		// aus der Budget-ID-Liste.
+		if g.budget != nil {
+			_ = f.SetCellValue(ws, cellName(cLabel, row), g.budget.Ausgaben[i].ID)
+		} else {
+			_ = f.SetCellFormula(ws, cellName(cLabel, row), fmt.Sprintf(`=IFERROR(INDEX(%s, ROW() - %d), "")`, FB_NAME_ID_LIST, ausgHdrRow))
+		}
 
 		// EUR Formula
 		_ = f.SetCellFormula(ws, cellName(cLabel+2, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(cLabel+1, row), fbKursName))
