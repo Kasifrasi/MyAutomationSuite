@@ -50,10 +50,16 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 
 	r := top
 
-	_ = g.mergeCells(ws, cellName(pLbl, r), cellName(pEUR, r), "Aktuelle Mittelanforderung", StyleOptions{
+	// Titel folgt der Auswahl: "… – Periode X (#k)" bzw. Hinweis ohne Auswahl.
+	titleFormula := fmt.Sprintf(
+		`=IF(%s=0,"Aktuelle Mittelanforderung (keine gewählt)","Aktuelle Mittelanforderung – Periode "&%s&" (#"&%s&")")`,
+		sel.maSelK, sel.maSelP, sel.maSelK)
+	_ = g.file.MergeCell(ws, cellName(pLbl, r), cellName(pEUR, r))
+	_ = g.setStyle(ws, cellName(pLbl, r), cellName(pEUR, r), StyleOptions{
 		Bold: true, Size: 11.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
 	})
+	_ = g.file.SetCellFormula(ws, cellName(pLbl, r), titleFormula)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -73,9 +79,11 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	}
 	infoRow("Periode:", mirror(1, 5), "")
 	r++
-	infoRow("Zeitraum:", mirror(1, 6), "DD.MM.YYYY")
+	infoRow("Von:", mirror(1, 6), "DD.MM.YYYY")
 	r++
-	infoRow("OANDA-Kurs:", mirror(1, 7), "0.0000")
+	infoRow("Bis:", mirror(1, 7), "DD.MM.YYYY")
+	r++
+	infoRow("OANDA-Kurs:", mirror(1, 8), "0.0000")
 	r += 2 // Leerzeile
 
 	// Tabellenkopf
@@ -170,10 +178,16 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 
 	r := top
 
-	_ = g.mergeCells(ws, cellName(cLbl, r), cellName(cKumEUR, r), "Aktueller Finanzbericht", StyleOptions{
+	// Titel folgt der Auswahl: "… – Periode N" bzw. Hinweis ohne Auswahl.
+	titleFormula := fmt.Sprintf(
+		`=IF(%s=0,"Aktueller Finanzbericht (keiner gewählt)","Aktueller Finanzbericht – Periode "&%s)`,
+		nAddr, nAddr)
+	_ = g.file.MergeCell(ws, cellName(cLbl, r), cellName(cKumEUR, r))
+	_ = g.setStyle(ws, cellName(cLbl, r), cellName(cKumEUR, r), StyleOptions{
 		Bold: true, Size: 11.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
 	})
+	_ = g.file.SetCellFormula(ws, cellName(cLbl, r), titleFormula)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -192,9 +206,11 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	}
 	infoRow("Periode:", mirror(1, 5), "")
 	r++
-	infoRow("Zeitraum:", mirror(1, 6), "")
+	infoRow("Von:", mirror(1, 6), "DD.MM.YYYY")
 	r++
-	infoRow("Durchschnittskurs:", mirror(1, 7), "0.000000")
+	infoRow("Bis:", mirror(1, 7), "DD.MM.YYYY")
+	r++
+	infoRow("Durchschnittskurs:", mirror(1, 8), "0.000000")
 	r += 2 // Leerzeile
 
 	section := func(title string) {

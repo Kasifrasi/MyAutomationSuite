@@ -740,13 +740,13 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	r++
 
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Status", true)
-	g.evalLimitStatus(ws, vLC, r, anfLCAddr, limitLCAddr, false)
-	g.evalLimitStatus(ws, vEUR, r, anfEURAddr, limitEURAddr, true)
+	g.evalLimitStatus(ws, vLC, r, anfLCAddr, limitLCAddr)
+	g.evalLimitStatus(ws, vEUR, r, anfEURAddr, limitEURAddr)
 	r++
 
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Überschreitung", false)
-	g.evalLimitUeber(ws, vLC, r, anfLCAddr, limitLCAddr, EV_FMT_LC, false)
-	g.evalLimitUeber(ws, vEUR, r, anfEURAddr, limitEURAddr, EV_FMT_EUR, true)
+	g.evalLimitUeber(ws, vLC, r, anfLCAddr, limitLCAddr, EV_FMT_LC)
+	g.evalLimitUeber(ws, vEUR, r, anfEURAddr, limitEURAddr, EV_FMT_EUR)
 	r++
 
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Auslastung %", false)
@@ -759,41 +759,32 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 }
 
 // evalLimitStatus zeichnet eine Status-Zelle (OK/ÜBERSCHRITTEN) mit bedingter
-// Formatierung. Sitzt die Zelle am rechten Box-Rand (rightEdge), übernimmt auch die
-// bedingte Formatierung die kräftige Außenkante, damit der Rahmen nicht aufbricht.
-func (g *Generator) evalLimitStatus(ws string, col, row int, anfAddr, limitAddr string, rightEdge bool) {
+// Formatierung. Die bedingte Formatierung setzt bewusst KEINE eigenen Rahmen –
+// dadurch bleibt die korrekte Zellkante erhalten (innen dünn, am Box-Rand kräftig
+// durch styleOuterBorder) und passt sich der Umgebung an.
+func (g *Generator) evalLimitStatus(ws string, col, row int, anfAddr, limitAddr string) {
 	cell := cellName(col, row)
 	self := absName(col, row)
 	_ = g.setFormula(ws, cell, fmt.Sprintf(`=IF(%s<=%s,"OK","ÜBERSCHRITTEN")`, anfAddr, limitAddr), StyleOptions{
 		Bold: true, HAlign: "center", VAlign: "center", FillColor: EV_CLR_CALC,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
-	rightW, borderClr := 1, EV_CLR_GRID
-	if rightEdge {
-		rightW, borderClr = 2, EV_CLR_BORDER
-	}
 	g.addConditionalFormat(ws, cell, fmt.Sprintf(`%s="OK"`, self), StyleOptions{
 		Bold: true, FontColor: EV_CLR_GOOD_TXT, FillColor: EV_CLR_GOOD, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: rightW, BorderColor: borderClr,
 	})
 	g.addConditionalFormat(ws, cell, fmt.Sprintf(`%s<>"OK"`, self), StyleOptions{
 		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: rightW, BorderColor: borderClr,
 	})
 }
 
-// evalLimitUeber zeichnet eine Überschreitungs-Zelle (rot ab >0); rightEdge wie oben.
-func (g *Generator) evalLimitUeber(ws string, col, row int, anfAddr, limitAddr, numFmt string, rightEdge bool) {
+// evalLimitUeber zeichnet eine Überschreitungs-Zelle (rot ab >0). Wie evalLimitStatus
+// ohne eigene Rahmen in der bedingten Formatierung.
+func (g *Generator) evalLimitUeber(ws string, col, row int, anfAddr, limitAddr, numFmt string) {
 	cell := cellName(col, row)
 	self := absName(col, row)
 	g.evalLimitCalc(ws, cell, fmt.Sprintf("=ROUND(MAX(0,%s-%s),2)", anfAddr, limitAddr), numFmt, false)
-	rightW, borderClr := 1, EV_CLR_GRID
-	if rightEdge {
-		rightW, borderClr = 2, EV_CLR_BORDER
-	}
 	g.addConditionalFormat(ws, cell, fmt.Sprintf(`%s>0`, self), StyleOptions{
-		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "right", VAlign: "center",
-		NumFormat: numFmt, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: rightW, BorderColor: borderClr,
+		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "right", VAlign: "center", NumFormat: numFmt,
 	})
 }
 
