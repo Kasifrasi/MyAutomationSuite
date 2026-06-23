@@ -472,6 +472,37 @@ func (g *Generator) styleOuterBorder(sheet string, r1, c1, r2, c2 int, weight in
 	return nil
 }
 
+// reapplyRightBorder hebt die rechte Kante einer einzelnen Zelle auf das angegebene
+// Gewicht/Farbe an, ohne die übrigen Stil-Eigenschaften (Füllung, Format, Formel) zu
+// verlieren. Nötig, wenn eine Zelle nach styleOuterBorder erneut formatiert wurde
+// (z. B. nachgelagerte Abzugsformeln) und dadurch die kräftige Box-Kante einbüßt.
+func (g *Generator) reapplyRightBorder(sheet, cell string, weight int, color string) {
+	styleID, err := g.file.GetCellStyle(sheet, cell)
+	if err != nil {
+		return
+	}
+	style, err := g.file.GetStyle(styleID)
+	if err != nil || style == nil {
+		return
+	}
+	color = strings.TrimPrefix(color, "#")
+	found := false
+	for i, b := range style.Border {
+		if b.Type == "right" {
+			style.Border[i].Style = weight
+			style.Border[i].Color = color
+			found = true
+			break
+		}
+	}
+	if !found {
+		style.Border = append(style.Border, excelize.Border{Type: "right", Color: color, Style: weight})
+	}
+	if newID, err := g.file.NewStyle(style); err == nil {
+		_ = g.file.SetCellStyle(sheet, cell, cell, newID)
+	}
+}
+
 func (g *Generator) styleTotalRow(sheet string, row int) error {
 	opts := StyleOptions{
 		Bold:         true,

@@ -118,6 +118,7 @@ type evalKMWResult struct {
 	nextRow   int
 	mehrCell  string // Wertzelle "Mehreinnahmen" (Formel wird nachgelagert gesetzt)
 	prognCell string // Wertzelle "Prognostizierte Mehreinnahmen" (nur MA)
+	saldoCell string // Wertzelle "Saldovortrag"
 }
 
 // CreateAuswertungSheet baut das Blatt "V. AUSWERTUNG".
@@ -145,6 +146,7 @@ func (g *Generator) CreateAuswertungSheet() error {
 	// ========================================================================
 	// A. MITTELANFORDERUNGSPRÜFUNG
 	// ========================================================================
+	maSectionTop := r
 	g.evalMainHeader(ws, r, "MITTELANFORDERUNGSPRÜFUNG", "Basis: ausgewählte Mittelanforderung (Folgeperiode des Finanzberichts)")
 	r += 3
 
@@ -167,6 +169,8 @@ func (g *Generator) CreateAuswertungSheet() error {
 	// ========================================================================
 	// B. FINANZBERICHTSPRÜFUNG
 	// ========================================================================
+	r += 4 // etwas mehr Abstand zur Mittelanforderungsprüfung
+	fbSectionTop := r
 	g.evalMainHeader(ws, r, "FINANZBERICHTSPRÜFUNG", "Basis: ausgewählter Finanzbericht (kumulativ bis zur Periode)")
 	r += 3
 
@@ -216,6 +220,22 @@ func (g *Generator) CreateAuswertungSheet() error {
 			`=ROUND(MAX(0,MAX(0,%s+%s-%s)-%s),2)`, realAct, maEig, realBud, fbKMW.mehrCell)
 		g.evalDeduct(ws, maKMW.prognCell, prognFormula)
 	}
+
+	// Die nachgelagerten evalDeduct-/evalDeductPlaceholder-Aufrufe überschreiben die
+	// kräftige Box-Außenkante (styleOuterBorder) der rechten Abzugsspalte. Rechte Kante
+	// daher gezielt wiederherstellen (gilt auch für Saldovortrag, der am Box-Rand sitzt).
+	for _, cell := range []string{
+		maKMW.saldoCell, maKMW.mehrCell, maKMW.prognCell,
+		fbKMW.saldoCell, fbKMW.mehrCell,
+	} {
+		if cell != "" {
+			g.reapplyRightBorder(ws, cell, 2, EV_CLR_BORDER)
+		}
+	}
+
+	// Schreibgeschützte Spiegel-Panels (rechts neben der jeweiligen Prüfung).
+	g.evalDrawMAMirrorPanel(ws, maSectionTop, sel)
+	g.evalDrawFBMirrorPanel(ws, fbSectionTop, sel)
 
 	return nil
 }
@@ -308,6 +328,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	g.evalToggle(ws, cellName(tog, rr))
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Saldovortrag", false)
 	g.evalDeduct(ws, cellName(valR, rr), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", DB_NAME_SALDOVORTRAG_EUR))
+	saldoCell := cellName(valR, rr)
 	deds = append(deds, dedRow{absName(tog, rr), absName(valR, rr)})
 	rr++
 
@@ -394,7 +415,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		r++
 	}
 
-	return evalKMWResult{nextRow: r, mehrCell: mehrCell, prognCell: prognCell}
+	return evalKMWResult{nextRow: r, mehrCell: mehrCell, prognCell: prognCell, saldoCell: saldoCell}
 }
 
 func (g *Generator) evalKmwLabel(ws string, row, c1, c2 int, text string, bold bool) {
@@ -608,124 +629,177 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 // ==================================================================================
 
 func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
-	g.evalSectionTitle(ws, r, "Monatslimit-Prüfung (Lokalwährung)")
+	g.evalSectionTitle(ws, r, "Monatslimit-Prüfung")
 	r += 2
 
-	const lbl1, lbl2, val = EV_COL_LABEL, EV_COL_LABEL + 1, EV_COL_LABEL + 2
+	const lbl1, lbl2, vLC, vEUR = EV_COL_LABEL, EV_COL_LABEL + 1, EV_COL_LABEL + 2, EV_COL_LABEL + 3
 	top := r
+
+	// Wechselkurs (LC→EUR) der geprüften Periode aus der zugehörigen Mittelanforderung.
+	rate := fmt.Sprintf(`IFERROR(INDIRECT("MA_Kurs_"&%s),0)`, sel.maSelP)
+
+	// ─── Währungs-Unterüberschrift (dezent): links Lokalwährung, rechts Euro ──
+	g.evalKmwLabel(ws, r, lbl1, lbl2, "", false)
+	subHdr := StyleOptions{
+		Italic: true, Size: 9.0, FontColor: "595959", FillColor: EV_CLR_HEADER,
+		HAlign: "center", VAlign: "center",
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+	}
+	_ = g.setValue(ws, cellName(vLC, r), "Lokalwährung", subHdr)
+	_ = g.setValue(ws, cellName(vEUR, r), "Euro", subHdr)
+	r++
+
+	// Über beide Währungsspalten (D:E) zusammengeführte Eingabe-/Berechnungszeile
+	// für Werte, die für beide Währungen identisch gelten (Periode, Jahr, Monate).
+	sharedInput := func(row int, val interface{}, numFmt string) string {
+		c1, c2 := cellName(vLC, row), cellName(vEUR, row)
+		_ = g.file.MergeCell(ws, c1, c2)
+		_ = g.setStyle(ws, c1, c2, StyleOptions{
+			HAlign: "center", VAlign: "center", NumFormat: numFmt, FillColor: EV_CLR_INPUT,
+			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+		})
+		_ = g.file.SetCellValue(ws, c1, val)
+		return absName(vLC, row)
+	}
+	sharedCalc := func(row int, formula, numFmt string) string {
+		c1, c2 := cellName(vLC, row), cellName(vEUR, row)
+		_ = g.file.MergeCell(ws, c1, c2)
+		_ = g.setStyle(ws, c1, c2, StyleOptions{
+			HAlign: "center", VAlign: "center", NumFormat: numFmt, FillColor: EV_CLR_CALC,
+			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+		})
+		_ = g.file.SetCellFormula(ws, c1, formula)
+		return absName(vLC, row)
+	}
+
+	// Anforderungssumme (#1..#k der geprüften Periode) – LC bzw. EUR aus der MA-Meta.
+	anfSum := func(sumCol int) string {
+		return fmt.Sprintf(
+			`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1"),2),0)`,
+			EVAL_DATEN_SHEET, evalAbsCol(sumCol, 1, MA_PERIOD_COUNT),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), sel.maSelP,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT), sel.maSelK,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT))
+	}
 
 	// Geprüfte Periode = Periode der gewählten Mittelanforderung (= FB-Auswahl + 1).
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Geprüfte Periode (aus MA-Auswahl)", false)
-	g.evalLimitCalc(ws, cellName(val, r), fmt.Sprintf("=%s", sel.maSelP), "0", false)
+	sharedCalc(r, fmt.Sprintf("=%s", sel.maSelP), "0")
 	r++
 
-	// Anforderungshöhe (LC) = Summe der ausgewählten Mittelanforderungen (#1..#k)
-	// der geprüften Periode (identisch zur GESAMT-Zeile der Prognoseprüfung).
-	rAnforderung := r
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Anforderungshöhe (LC)", false)
-	anfFormula := fmt.Sprintf(
-		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1"),2),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_SUMLC, 1, MA_PERIOD_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT), sel.maSelK,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT))
-	g.evalLimitCalc(ws, cellName(val, r), anfFormula, EV_FMT_LC, false)
-	anfAddr := absName(val, rAnforderung)
+	// Anforderungshöhe = Summe der ausgewählten Mittelanforderungen (#1..#k) der
+	// geprüften Periode (identisch zur GESAMT-Zeile der Prognoseprüfung).
+	rAnf := r
+	g.evalKmwLabel(ws, r, lbl1, lbl2, "Anforderungshöhe", false)
+	g.evalLimitCalc(ws, cellName(vLC, r), anfSum(EV_DTN_MA_META_SUMLC), EV_FMT_LC, false)
+	g.evalLimitCalc(ws, cellName(vEUR, r), anfSum(EV_DTN_MA_META_SUMEU), EV_FMT_EUR, false)
+	anfLCAddr := absName(vLC, rAnf)
+	anfEURAddr := absName(vEUR, rAnf)
 	r++
 
 	rJahr := r
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Jahr", false)
-	jahrCell := cellName(val, r)
-	_ = g.setValue(ws, jahrCell, BG_YEARS[0], StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	jahrAddr := sharedInput(r, BG_YEARS[0], "")
 	dvJahr := excelize.NewDataValidation(true)
-	dvJahr.Sqref = jahrCell
+	dvJahr.Sqref = cellName(vLC, rJahr)
 	dvJahr.SetDropList(BG_YEARS)
 	_ = g.file.AddDataValidation(ws, dvJahr)
-	jahrAddr := absName(val, rJahr)
 	r++
 
-	rJahresbudget := r
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Jahresbudget (LC)", false)
+	rJB := r
+	g.evalKmwLabel(ws, r, lbl1, lbl2, "Jahresbudget", false)
 	jbFormula := fmt.Sprintf(
 		`=IFERROR(ROUND(CHOOSE(MATCH(%s,{"%s";"%s";"%s"},0),SUBTOTAL(109,%s[%s]),SUBTOTAL(109,%s[%s]),SUBTOTAL(109,%s[%s])),2),0)`,
 		jahrAddr, BG_YEARS[0], BG_YEARS[1], BG_YEARS[2],
 		BG_TABLE_AUSG, BG_YEARS[0], BG_TABLE_AUSG, BG_YEARS[1], BG_TABLE_AUSG, BG_YEARS[2])
-	g.evalLimitCalc(ws, cellName(val, r), jbFormula, EV_FMT_LC, false)
-	jbAddr := absName(val, rJahresbudget)
+	g.evalLimitCalc(ws, cellName(vLC, r), jbFormula, EV_FMT_LC, false)
+	jbLCAddr := absName(vLC, rJB)
+	// Budget kennt keine Jahres-EUR-Werte ⇒ aus LC mit dem MA-Kurs umrechnen.
+	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", jbLCAddr, rate), EV_FMT_EUR, false)
+	jbEURAddr := absName(vEUR, rJB)
 	r++
 
-	rLimitMon := r
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Limit-Monate", false)
-	g.evalLimitInput(ws, cellName(val, r), 8, "0")
-	limitMonAddr := absName(val, rLimitMon)
+	limitMonAddr := sharedInput(r, 8, "0")
 	r++
 
-	rBezug := r
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Bezugszeitraum (Monate)", false)
-	g.evalLimitInput(ws, cellName(val, r), 12, "0")
-	bezugAddr := absName(val, rBezug)
+	bezugAddr := sharedInput(r, 12, "0")
 	r++
 
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Anforderung deckt (Monate)", false)
-	g.evalLimitInput(ws, cellName(val, r), 6, "0")
+	sharedInput(r, 6, "0")
 	r++
 
 	rLimit := r
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "8-Monats-Limit (LC)", true)
-	g.evalLimitCalc(ws, cellName(val, r), fmt.Sprintf("=IFERROR(ROUND(%s*%s/%s,2),0)", jbAddr, limitMonAddr, bezugAddr), EV_FMT_LC, true)
-	limitAddr := absName(val, rLimit)
+	g.evalKmwLabel(ws, r, lbl1, lbl2, "8-Monats-Limit", true)
+	g.evalLimitCalc(ws, cellName(vLC, r), fmt.Sprintf("=IFERROR(ROUND(%s*%s/%s,2),0)", jbLCAddr, limitMonAddr, bezugAddr), EV_FMT_LC, true)
+	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s*%s/%s,2),0)", jbEURAddr, limitMonAddr, bezugAddr), EV_FMT_EUR, true)
+	limitLCAddr := absName(vLC, rLimit)
+	limitEURAddr := absName(vEUR, rLimit)
 	r++
 
-	rStatus := r
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Status", true)
-	statusCell := cellName(val, r)
-	_ = g.setFormula(ws, statusCell, fmt.Sprintf(`=IF(%s<=%s,"OK","ÜBERSCHRITTEN")`, anfAddr, limitAddr), StyleOptions{
-		Bold: true, HAlign: "center", VAlign: "center", FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-	statusAddr := absName(val, rStatus)
-	g.addConditionalFormat(ws, statusCell, fmt.Sprintf(`%s="OK"`, statusAddr), StyleOptions{
-		Bold: true, FontColor: EV_CLR_GOOD_TXT, FillColor: EV_CLR_GOOD, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-	g.addConditionalFormat(ws, statusCell, fmt.Sprintf(`%s<>"OK"`, statusAddr), StyleOptions{
-		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	g.evalLimitStatus(ws, vLC, r, anfLCAddr, limitLCAddr, false)
+	g.evalLimitStatus(ws, vEUR, r, anfEURAddr, limitEURAddr, true)
 	r++
 
-	rUeber := r
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Überschreitung (LC)", false)
-	ueberCell := cellName(val, r)
-	g.evalLimitCalc(ws, ueberCell, fmt.Sprintf("=ROUND(MAX(0,%s-%s),2)", anfAddr, limitAddr), EV_FMT_LC, false)
-	ueberAddr := absName(val, rUeber)
-	g.addConditionalFormat(ws, ueberCell, fmt.Sprintf(`%s>0`, ueberAddr), StyleOptions{
-		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "right", VAlign: "center",
-		NumFormat: EV_FMT_LC, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	g.evalKmwLabel(ws, r, lbl1, lbl2, "Überschreitung", false)
+	g.evalLimitUeber(ws, vLC, r, anfLCAddr, limitLCAddr, EV_FMT_LC, false)
+	g.evalLimitUeber(ws, vEUR, r, anfEURAddr, limitEURAddr, EV_FMT_EUR, true)
 	r++
 
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "Auslastung %", false)
-	g.evalLimitCalc(ws, cellName(val, r), fmt.Sprintf("=IFERROR(%s/%s,0)", anfAddr, limitAddr), EV_FMT_PCT, false)
+	g.evalLimitCalc(ws, cellName(vLC, r), fmt.Sprintf("=IFERROR(%s/%s,0)", anfLCAddr, limitLCAddr), EV_FMT_PCT, false)
+	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(%s/%s,0)", anfEURAddr, limitEURAddr), EV_FMT_PCT, false)
 	bottom := r
 
-	g.styleOuterBorder(ws, top, lbl1, bottom, val, 2, EV_CLR_BORDER)
-	return r
+	g.styleOuterBorder(ws, top, lbl1, bottom, vEUR, 2, EV_CLR_BORDER)
+	return bottom
+}
+
+// evalLimitStatus zeichnet eine Status-Zelle (OK/ÜBERSCHRITTEN) mit bedingter
+// Formatierung. Sitzt die Zelle am rechten Box-Rand (rightEdge), übernimmt auch die
+// bedingte Formatierung die kräftige Außenkante, damit der Rahmen nicht aufbricht.
+func (g *Generator) evalLimitStatus(ws string, col, row int, anfAddr, limitAddr string, rightEdge bool) {
+	cell := cellName(col, row)
+	self := absName(col, row)
+	_ = g.setFormula(ws, cell, fmt.Sprintf(`=IF(%s<=%s,"OK","ÜBERSCHRITTEN")`, anfAddr, limitAddr), StyleOptions{
+		Bold: true, HAlign: "center", VAlign: "center", FillColor: EV_CLR_CALC,
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+	})
+	rightW, borderClr := 1, EV_CLR_GRID
+	if rightEdge {
+		rightW, borderClr = 2, EV_CLR_BORDER
+	}
+	g.addConditionalFormat(ws, cell, fmt.Sprintf(`%s="OK"`, self), StyleOptions{
+		Bold: true, FontColor: EV_CLR_GOOD_TXT, FillColor: EV_CLR_GOOD, HAlign: "center", VAlign: "center",
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: rightW, BorderColor: borderClr,
+	})
+	g.addConditionalFormat(ws, cell, fmt.Sprintf(`%s<>"OK"`, self), StyleOptions{
+		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "center", VAlign: "center",
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: rightW, BorderColor: borderClr,
+	})
+}
+
+// evalLimitUeber zeichnet eine Überschreitungs-Zelle (rot ab >0); rightEdge wie oben.
+func (g *Generator) evalLimitUeber(ws string, col, row int, anfAddr, limitAddr, numFmt string, rightEdge bool) {
+	cell := cellName(col, row)
+	self := absName(col, row)
+	g.evalLimitCalc(ws, cell, fmt.Sprintf("=ROUND(MAX(0,%s-%s),2)", anfAddr, limitAddr), numFmt, false)
+	rightW, borderClr := 1, EV_CLR_GRID
+	if rightEdge {
+		rightW, borderClr = 2, EV_CLR_BORDER
+	}
+	g.addConditionalFormat(ws, cell, fmt.Sprintf(`%s>0`, self), StyleOptions{
+		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "right", VAlign: "center",
+		NumFormat: numFmt, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: rightW, BorderColor: borderClr,
+	})
 }
 
 func (g *Generator) evalLimitCalc(ws, cell, formula, numFmt string, bold bool) {
 	_ = g.setFormula(ws, cell, formula, StyleOptions{
 		Bold: bold, HAlign: "right", VAlign: "center", NumFormat: numFmt, FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
-}
-
-func (g *Generator) evalLimitInput(ws, cell string, val interface{}, numFmt string) {
-	_ = g.setValue(ws, cell, val, StyleOptions{
-		HAlign: "right", VAlign: "center", NumFormat: numFmt, FillColor: EV_CLR_INPUT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
 }
