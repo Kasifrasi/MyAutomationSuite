@@ -29,28 +29,28 @@ func (g *Generator) CreateDatenSheet() error {
 	_ = f.SetCellValue(ws, "C1", "Einnahmen_Explizit_Stack")
 	if len(g.rangesEinnahmen1) > 0 {
 		_ = f.SetCellFormula(ws, "AA2", fmt.Sprintf(`_xlfn.VSTACK(%s)`, strings.Join(g.rangesEinnahmen1, ",")))
-		_ = f.SetCellFormula(ws, "C2", `_xlfn._xlws.FILTER(AA2#, (_xlfn.CHOOSECOLS(AA2#,3)<>0)+(_xlfn.CHOOSECOLS(AA2#,4)<>0), "")`)
+		_ = f.SetCellFormula(ws, "C2", `_xlfn._xlws.FILTER(_xlfn.ANCHORARRAY(AA2), (_xlfn.CHOOSECOLS(_xlfn.ANCHORARRAY(AA2),3)<>0)+(_xlfn.CHOOSECOLS(_xlfn.ANCHORARRAY(AA2),4)<>0), "")`)
 	}
 
 	// Einnahmen 2 (Durchschnittskurs) - Spalte I
 	_ = f.SetCellValue(ws, "I1", "Einnahmen_Durchschnittskurs_Stack")
 	if len(g.rangesEinnahmen2) > 0 {
 		_ = f.SetCellFormula(ws, "AG2", fmt.Sprintf(`_xlfn.VSTACK(%s)`, strings.Join(g.rangesEinnahmen2, ",")))
-		_ = f.SetCellFormula(ws, "I2", `_xlfn._xlws.FILTER(AG2#, (_xlfn.CHOOSECOLS(AG2#,3)<>0)+(_xlfn.CHOOSECOLS(AG2#,4)<>0), "")`)
+		_ = f.SetCellFormula(ws, "I2", `_xlfn._xlws.FILTER(_xlfn.ANCHORARRAY(AG2), (_xlfn.CHOOSECOLS(_xlfn.ANCHORARRAY(AG2),3)<>0)+(_xlfn.CHOOSECOLS(_xlfn.ANCHORARRAY(AG2),4)<>0), "")`)
 	}
 
 	// Ausgaben (Finanzbericht) - Spalte O
 	_ = f.SetCellValue(ws, "O1", "Ausgaben_Finanzbericht_Stack")
 	if len(g.rangesAusgaben) > 0 {
 		_ = f.SetCellFormula(ws, "AM2", fmt.Sprintf(`_xlfn.VSTACK(%s)`, strings.Join(g.rangesAusgaben, ",")))
-		_ = f.SetCellFormula(ws, "O2", `_xlfn._xlws.FILTER(AM2#, (_xlfn.CHOOSECOLS(AM2#,2)<>0)+(_xlfn.CHOOSECOLS(AM2#,3)<>0), "")`)
+		_ = f.SetCellFormula(ws, "O2", `_xlfn._xlws.FILTER(_xlfn.ANCHORARRAY(AM2), (_xlfn.CHOOSECOLS(_xlfn.ANCHORARRAY(AM2),2)<>0)+(_xlfn.CHOOSECOLS(_xlfn.ANCHORARRAY(AM2),3)<>0), "")`)
 	}
 
 	// Mittelanforderung (MA) - Spalte U
 	_ = f.SetCellValue(ws, "U1", "Mittelanforderung_Stack")
 	if len(g.rangesMA) > 0 {
 		_ = f.SetCellFormula(ws, "AS2", fmt.Sprintf(`_xlfn.VSTACK(%s)`, strings.Join(g.rangesMA, ",")))
-		_ = f.SetCellFormula(ws, "U2", `_xlfn._xlws.FILTER(AS2#, (_xlfn.CHOOSECOLS(AS2#,2)<>0)+(_xlfn.CHOOSECOLS(AS2#,3)<>0), "")`)
+		_ = f.SetCellFormula(ws, "U2", `_xlfn._xlws.FILTER(_xlfn.ANCHORARRAY(AS2), (_xlfn.CHOOSECOLS(_xlfn.ANCHORARRAY(AS2),2)<>0)+(_xlfn.CHOOSECOLS(_xlfn.ANCHORARRAY(AS2),3)<>0), "")`)
 	}
 
 	// Kopfzeilen formatieren
