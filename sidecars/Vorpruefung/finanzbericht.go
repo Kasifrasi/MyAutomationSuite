@@ -133,7 +133,8 @@ func (g *Generator) drawReportTable(
 	vonRow := r
 	for _, zlbl := range []string{"Von:", "Bis:"} {
 		_ = g.drawMergedCell(ws, r, cLabel, cLabel, zlbl, true, "", false)
-		_ = g.drawMergedCell(ws, r, cValLC, cValEUR, "", false, COLOR_INPUT, false)
+		_ = f.MergeCell(ws, cellName(cValLC, r), cellName(cValEUR, r))
+		_ = f.SetCellStr(ws, cellName(cValLC, r), "")
 		_ = g.setStyle(ws, cellName(cValLC, r), cellName(cValEUR, r), StyleOptions{
 			HAlign:       "center",
 			VAlign:       "center",
@@ -303,15 +304,11 @@ func (g *Generator) drawReportTable(
 
 		// Kum LC and EUR formulas
 		if periodenNr > 1 {
-			prevIdRange := fmt.Sprintf("%s:%s", absName(prevStartCol, ausgHdrRow+1), absName(prevStartCol, ausgHdrRow+ausgDataRows))
-			prevKumLcRange := fmt.Sprintf("%s:%s", absName(prevStartCol+3, ausgHdrRow+1), absName(prevStartCol+3, ausgHdrRow+ausgDataRows))
-			prevKumEurRange := fmt.Sprintf("%s:%s", absName(prevStartCol+4, ausgHdrRow+1), absName(prevStartCol+4, ausgHdrRow+ausgDataRows))
-
-			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=IFERROR(%s + SUMIFS(%s, %s, %s), %s)`, cellName(cLabel+1, row), prevKumLcRange, prevIdRange, cellName(cLabel, row), cellName(cLabel+1, row)))
-			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=IFERROR(%s + SUMIFS(%s, %s, %s), %s)`, cellName(cLabel+2, row), prevKumEurRange, prevIdRange, cellName(cLabel, row), cellName(cLabel+2, row)))
+			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=ROUND(%s+%s,2)`, cellName(cLabel+1, row), cellName(prevStartCol+3, row)))
+			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=ROUND(%s+%s,2)`, cellName(cLabel+2, row), cellName(prevStartCol+4, row)))
 		} else {
-			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=IFERROR(%s, 0)`, cellName(cLabel+1, row)))
-			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=IFERROR(%s, 0)`, cellName(cLabel+2, row)))
+			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=ROUND(%s,2)`, cellName(cLabel+1, row)))
+			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=ROUND(%s,2)`, cellName(cLabel+2, row)))
 		}
 	}
 
