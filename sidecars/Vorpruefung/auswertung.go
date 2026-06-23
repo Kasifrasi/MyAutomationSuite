@@ -134,9 +134,9 @@ func (g *Generator) CreateAuswertungSheet() error {
 	_ = f.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
 
 	g.setColWidth(ws, 1, 3.0)
-	g.setColWidth(ws, EV_COL_LABEL, 34.0)
+	g.setColWidth(ws, EV_COL_LABEL, 42.0)
 	for c := EV_COL_ACT_LC; c <= EV_COL_ABW_EUR; c++ {
-		g.setColWidth(ws, c, 16.0)
+		g.setColWidth(ws, c, 20.0)
 	}
 
 	r := 2
@@ -513,7 +513,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 	g.evalSelLabel(ws, r, "Auswahl:")
 	labelCell := cellName(EV_PB_V1, r)
-	g.evalMergedValue(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
+	g.evalMergedValue(ws, labelCell, cellName(EV_PB_C2, r), "Neuste MA", inputCtr)
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
 	dv.Type = "list"
@@ -528,9 +528,13 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 	g.evalSelLabel(ws, r, "Ausgewählte Anforderung (#)")
 	kCell := cellName(EV_PB_V1, r)
+	maxMAK := fmt.Sprintf(`IFERROR(MAXIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,1),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), pCell,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_PERIOD_COUNT))
 	kFormula := fmt.Sprintf(
-		`=IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0)`,
-		labelCell, labelCell, labelCell, labelCell)
+		`=IF(%s="Neuste MA",%s,IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0))`,
+		labelCell, maxMAK, labelCell, labelCell, labelCell, labelCell)
 	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
 	r++
 
@@ -564,9 +568,18 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 		g.evalMergedFormula(ws, cellName(EV_PB_SEU1, row), cellName(EV_PB_C2, row), euF, euSt)
 
 		labelAddr := absName(EV_PB_C1, row)
-		g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(EV_PB_C1, row), cellName(EV_PB_C2, row)),
-			fmt.Sprintf(`%s<>""`, labelAddr), StyleOptions{
+		cond := fmt.Sprintf(`%s<>""`, labelAddr)
+		g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(EV_PB_C1, row), cellName(EV_PB_L2, row)),
+			cond, StyleOptions{
+				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 2, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+			})
+		g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(EV_PB_V1, row), cellName(EV_PB_SLC2, row)),
+			cond, StyleOptions{
 				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+			})
+		g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(EV_PB_SEU1, row), cellName(EV_PB_C2, row)),
+			cond, StyleOptions{
+				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 2, BorderColor: EV_CLR_BORDER,
 			})
 	}
 	bottom := firstSlot + EV_MA_SLOTS - 1
@@ -592,9 +605,7 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 
 	g.evalSelLabel(ws, r, "Auswahl:")
 	labelCell := cellName(EV_PB_V1, r)
-	// Leerer Standard ⇒ N = 0 ⇒ keine Vorperiode (Projektbeginn): es sind die
-	// Mittelanforderungen der Periode 1 wählbar.
-	g.evalMergedValue(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
+	g.evalMergedValue(ws, labelCell, cellName(EV_PB_C2, r), "Neuester FB", inputCtr)
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
 	dv.Type = "list"
@@ -604,9 +615,11 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 
 	g.evalSelLabel(ws, r, "Geprüfte Periode (N)")
 	numCell := cellName(EV_PB_V1, r)
-	// Nur echte "Periode X"-Einträge ergeben eine Nummer; alles andere (inkl.
-	// "Kein Finanzbericht (Projektbeginn)") ⇒ 0.
-	numF := fmt.Sprintf(`=IF(LEFT(%s,8)="Periode ",IFERROR(VALUE(TRIM(MID(%s,9,5))),0),0)`, labelCell, labelCell)
+	maxFBPer := fmt.Sprintf(`IFERROR(MAXIFS('%s'!%s,'%s'!%s,1),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_PER, 1, MA_PERIOD_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_FILL, 1, MA_PERIOD_COUNT))
+	numF := fmt.Sprintf(`=IF(%s="Neuester FB",%s,IF(LEFT(%s,8)="Periode ",IFERROR(VALUE(TRIM(MID(%s,9,5))),0),0))`,
+		labelCell, maxFBPer, labelCell, labelCell)
 	g.evalMergedFormula(ws, numCell, cellName(EV_PB_C2, r), numF, num0)
 	r++
 
