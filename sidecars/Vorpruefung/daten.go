@@ -28,25 +28,25 @@ func (g *Generator) CreateDatenSheet() error {
 	// Einnahmen 1 (Explizit) - Spalte C
 	_ = f.SetCellValue(ws, "C1", "Einnahmen_Explizit_Stack")
 	if len(g.rangesEinnahmen1) > 0 {
-		_ = f.SetCellFormula(ws, "C2", fmt.Sprintf(`=VSTACK(%s)`, strings.Join(g.rangesEinnahmen1, ",")))
+		_ = f.SetCellFormula(ws, "C2", fmt.Sprintf(`=_xlfn.VSTACK(%s)`, strings.Join(g.rangesEinnahmen1, ",")))
 	}
 
 	// Einnahmen 2 (Durchschnittskurs) - Spalte I
 	_ = f.SetCellValue(ws, "I1", "Einnahmen_Durchschnittskurs_Stack")
 	if len(g.rangesEinnahmen2) > 0 {
-		_ = f.SetCellFormula(ws, "I2", fmt.Sprintf(`=VSTACK(%s)`, strings.Join(g.rangesEinnahmen2, ",")))
+		_ = f.SetCellFormula(ws, "I2", fmt.Sprintf(`=_xlfn.VSTACK(%s)`, strings.Join(g.rangesEinnahmen2, ",")))
 	}
 
 	// Ausgaben (Finanzbericht) - Spalte O
 	_ = f.SetCellValue(ws, "O1", "Ausgaben_Finanzbericht_Stack")
 	if len(g.rangesAusgaben) > 0 {
-		_ = f.SetCellFormula(ws, "O2", fmt.Sprintf(`=VSTACK(%s)`, strings.Join(g.rangesAusgaben, ",")))
+		_ = f.SetCellFormula(ws, "O2", fmt.Sprintf(`=_xlfn.VSTACK(%s)`, strings.Join(g.rangesAusgaben, ",")))
 	}
 
 	// Mittelanforderung (MA) - Spalte U
 	_ = f.SetCellValue(ws, "U1", "Mittelanforderung_Stack")
 	if len(g.rangesMA) > 0 {
-		_ = f.SetCellFormula(ws, "U2", fmt.Sprintf(`=VSTACK(%s)`, strings.Join(g.rangesMA, ",")))
+		_ = f.SetCellFormula(ws, "U2", fmt.Sprintf(`=_xlfn.VSTACK(%s)`, strings.Join(g.rangesMA, ",")))
 	}
 
 	// Kopfzeilen formatieren

@@ -567,8 +567,7 @@ func (g *Generator) dbDropdownJaNein(sheet string, row, col int, defaultValue st
 func (g *Generator) dbCurrencyValidation(sheet string, row, col int) error {
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = cellName(col, row)
-	dv.Type = "list"
-	dv.Formula1 = fmt.Sprintf("'%s'!$%s$1:$%s$%d", DB_SHEET_NAME, colLetter(DB_CCY_COL), colLetter(DB_CCY_COL), len(DB_WAEHRUNGEN))
+	dv.SetSqrefDropList(fmt.Sprintf("'%s'!$%s$1:$%s$%d", DB_SHEET_NAME, colLetter(DB_CCY_COL), colLetter(DB_CCY_COL), len(DB_WAEHRUNGEN)))
 	return g.file.AddDataValidation(sheet, dv)
 }
 

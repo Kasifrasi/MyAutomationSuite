@@ -231,7 +231,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	r += 1
 
 	ausgDataRows := len(BG_CATEGORIES)
-	catArrayStr := `{"` + strings.Join(BG_CATEGORIES, `";"`) + `"}`
+	catArrayStr := `{"` + strings.Join(BG_CATEGORIES, `","`) + `"}`
 	for i := 0; i < ausgDataRows; i++ {
 		row := r + i
 		g.setValue(ws, cellName(BG_COL_LABEL, row), BG_CATEGORIES[i], StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
@@ -266,7 +266,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	g.bgTotalRow(ws, ausgTotalsRow, BG_COL_LABEL, BG_COL_EUR)
 
 	_ = f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, ausgHdrRow), cellName(BG_COL_EUR, ausgTotalsRow)),
+		Range:          fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, ausgHdrRow), cellName(BG_COL_EUR, ausgTotalsRow-1)),
 		Name:           BG_TABLE_AUSG,
 		StyleName:      "TableStyleNone",
 		ShowRowStripes: falsePtr(),
@@ -414,11 +414,11 @@ func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
 }
 
 func (g *Generator) bgBuildLookupLists(ws string) {
-	g.setFormula(ws, cellName(BG_COL_LIST_GEBER, 1), fmt.Sprintf(`=VSTACK({"Projektpartner";"Bank"},IFERROR(FILTER(%s[Name des Gebers],%s[Name des Gebers]<>""),""))`, BG_TABLE_NAME, BG_TABLE_NAME), StyleOptions{})
-	g.upsertNamedFormula(BG_NAME_GEBER_LIST, fmt.Sprintf("='%s'!%s#", ws, absName(BG_COL_LIST_GEBER, 2)))
+	g.setFormula(ws, cellName(BG_COL_LIST_GEBER, 1), fmt.Sprintf(`=_xlfn.VSTACK({"Projektpartner";"Bank"},IFERROR(_xlfn.FILTER(%s[Name des Gebers],%s[Name des Gebers]<>""),""))`, BG_TABLE_NAME, BG_TABLE_NAME), StyleOptions{})
+	g.upsertNamedFormula(BG_NAME_GEBER_LIST, fmt.Sprintf("'%s'!%s#", ws, absName(BG_COL_LIST_GEBER, 1)))
 
-	g.setFormula(ws, cellName(BG_COL_LIST_ID, 1), fmt.Sprintf(`=IFERROR(FILTER(%s[ID],%s[ID]<>""),"")`, BG_TABLE_AUSG, BG_TABLE_AUSG), StyleOptions{})
-	g.upsertNamedFormula(BG_NAME_ID_LIST, fmt.Sprintf("='%s'!%s#", ws, absName(BG_COL_LIST_ID, 2)))
+	g.setFormula(ws, cellName(BG_COL_LIST_ID, 1), fmt.Sprintf(`=IFERROR(_xlfn.FILTER(%s[ID],%s[ID]<>""),"")`, BG_TABLE_AUSG, BG_TABLE_AUSG), StyleOptions{})
+	g.upsertNamedFormula(BG_NAME_ID_LIST, fmt.Sprintf("'%s'!%s#", ws, absName(BG_COL_LIST_ID, 1)))
 }
 
 func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
