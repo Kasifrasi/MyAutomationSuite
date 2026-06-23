@@ -166,6 +166,9 @@ func (g *Generator) CreateBudgetSheet() error {
 	eigenRow := r
 	g.setValue(ws, cellName(BG_COL_LABEL, r), "Eigenmittel", StyleOptions{Size: 10})
 	g.bgYearRow(ws, r)
+	if g.budget != nil {
+		g.bgFillIncomeRow(ws, r, g.budget.Eigenmittel)
+	}
 	g.upsertNamedRange(BG_NAME_EIGEN_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_EIGEN_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -182,6 +185,11 @@ func (g *Generator) CreateBudgetSheet() error {
 	for _, c := range []int{BG_COL_Y1, BG_COL_Y2, BG_COL_Y3} {
 		g.bgInput(ws, cellName(c, r), BG_FMT_LC)
 	}
+	if g.budget != nil {
+		g.bgFillInput(ws, cellName(BG_COL_Y1, r), g.budget.Drittmittel.Y1)
+		g.bgFillInput(ws, cellName(BG_COL_Y2, r), g.budget.Drittmittel.Y2)
+		g.bgFillInput(ws, cellName(BG_COL_Y3, r), g.budget.Drittmittel.Y3)
+	}
 	g.upsertNamedRange(BG_NAME_DRITT_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_DRITT_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -193,6 +201,9 @@ func (g *Generator) CreateBudgetSheet() error {
 	kmwRow := r
 	g.setValue(ws, cellName(BG_COL_LABEL, r), "KMW-Mittel", StyleOptions{Size: 10})
 	g.bgYearRow(ws, r)
+	if g.budget != nil {
+		g.bgFillIncomeRow(ws, r, g.budget.KMWMittel)
+	}
 	g.upsertNamedRange(BG_NAME_KMW_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_KMW_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -231,15 +242,43 @@ func (g *Generator) CreateBudgetSheet() error {
 	r += 1
 
 	ausgDataRows := len(BG_CATEGORIES)
+	if g.budget != nil {
+		ausgDataRows = len(g.budget.Ausgaben)
+	}
+	catCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+	idCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", NumFormat: "@", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+	posCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
 	catArrayStr := `{"` + strings.Join(BG_CATEGORIES, `","`) + `"}`
 	for i := 0; i < ausgDataRows; i++ {
 		row := r + i
-		g.setValue(ws, cellName(BG_COL_LABEL, row), BG_CATEGORIES[i], StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+
+		if g.budget != nil {
+			// Datengetrieben: feste Kategorie, feste ID (kein MATCH/COUNTIF), Position
+			// und Werte werden direkt eingetragen (Zellen bleiben Eingabefelder).
+			pos := g.budget.Ausgaben[i]
+			g.setValue(ws, cellName(BG_COL_LABEL, row), pos.Kategorie, catCellOpts)
+			g.setValue(ws, cellName(BG_COL_ID, row), pos.ID, idCellOpts)
+			g.setValue(ws, cellName(BG_COL_POS, row), pos.Position, posCellOpts)
+			g.bgInput(ws, cellName(BG_COL_LC, row), BG_FMT_LC)
+			g.bgInput(ws, cellName(BG_COL_Y1, row), BG_FMT_LC)
+			g.bgInput(ws, cellName(BG_COL_Y2, row), BG_FMT_LC)
+			g.bgInput(ws, cellName(BG_COL_Y3, row), BG_FMT_LC)
+			g.bgInput(ws, cellName(BG_COL_EUR, row), BG_FMT_EUR)
+			g.bgFillInput(ws, cellName(BG_COL_LC, row), pos.LC)
+			g.bgFillInput(ws, cellName(BG_COL_Y1, row), pos.Y1)
+			g.bgFillInput(ws, cellName(BG_COL_Y2, row), pos.Y2)
+			g.bgFillInput(ws, cellName(BG_COL_Y3, row), pos.Y3)
+			g.bgFillInput(ws, cellName(BG_COL_EUR, row), pos.EUR)
+			continue
+		}
+
+		// Leeres Template: Kategorie vorbelegt, ID per Formel, Werte leer.
+		g.setValue(ws, cellName(BG_COL_LABEL, row), BG_CATEGORIES[i], catCellOpts)
 
 		formulaID := fmt.Sprintf(`=IF(B%d="","",MATCH(B%d,%s,0)&"."&COUNTIF(B$%d:B%d,B%d))`, row, row, catArrayStr, r, row, row)
-		g.setFormula(ws, cellName(BG_COL_ID, row), formulaID, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+		g.setFormula(ws, cellName(BG_COL_ID, row), formulaID, idCellOpts)
 
-		g.setValue(ws, cellName(BG_COL_POS, row), "", StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+		g.setValue(ws, cellName(BG_COL_POS, row), "", posCellOpts)
 		g.bgInput(ws, cellName(BG_COL_LC, row), BG_FMT_LC)
 		g.bgInput(ws, cellName(BG_COL_Y1, row), BG_FMT_LC)
 		g.bgInput(ws, cellName(BG_COL_Y2, row), BG_FMT_LC)
@@ -320,6 +359,12 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	titleRow := ausgHdrRow - 1
 	headerRow := ausgHdrRow
 	dataRows := 3
+	if g.budget != nil {
+		dataRows = len(g.budget.Drittmittel.Geber)
+		if dataRows < 1 {
+			dataRows = 1 // Excel-Tabelle braucht mindestens eine Datenzeile
+		}
+	}
 
 	g.mergeCells(ws, cellName(cName, titleRow), cellName(cEur, titleRow), "Drittmittel – Aufstellung je Geber", StyleOptions{
 		Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center",
@@ -328,11 +373,18 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	g.setValue(ws, cellName(cLc, headerRow), "Betrag (LC)", StyleOptions{})
 	g.setValue(ws, cellName(cEur, headerRow), "Betrag (EUR)", StyleOptions{})
 
+	nameOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
 	for i := 0; i < dataRows; i++ {
 		row := headerRow + 1 + i
-		g.setValue(ws, cellName(cName, row), "", StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+		g.setValue(ws, cellName(cName, row), "", nameOpts)
 		g.bgInput(ws, cellName(cLc, row), BG_FMT_LC)
 		g.bgInput(ws, cellName(cEur, row), BG_FMT_EUR)
+		if g.budget != nil && i < len(g.budget.Drittmittel.Geber) {
+			geb := g.budget.Drittmittel.Geber[i]
+			g.setValue(ws, cellName(cName, row), geb.Geber, nameOpts)
+			g.bgFillInput(ws, cellName(cLc, row), geb.LC)
+			g.bgFillInput(ws, cellName(cEur, row), geb.EUR)
+		}
 	}
 
 	g.bgTableHeader(ws, headerRow, cName, cEur)
@@ -391,6 +443,15 @@ func (g *Generator) bgYearRow(ws string, r int) {
 	g.bgInput(ws, cellName(BG_COL_EUR, r), BG_FMT_EUR)
 }
 
+// bgFillIncomeRow trägt LC / Jahr 1–3 / EUR einer Finanzierungszeile aus der Config ein.
+func (g *Generator) bgFillIncomeRow(ws string, r int, inc IncomeRow) {
+	g.bgFillInput(ws, cellName(BG_COL_LC, r), inc.LC)
+	g.bgFillInput(ws, cellName(BG_COL_Y1, r), inc.Y1)
+	g.bgFillInput(ws, cellName(BG_COL_Y2, r), inc.Y2)
+	g.bgFillInput(ws, cellName(BG_COL_Y3, r), inc.Y3)
+	g.bgFillInput(ws, cellName(BG_COL_EUR, r), inc.EUR)
+}
+
 func (g *Generator) bgSummeCell(ws string, r int, c int, formula string, fmtStr string) {
 	g.setFormula(ws, cellName(c, r), formula, StyleOptions{
 		Bold: true, HAlign: "right", VAlign: "center", NumFormat: fmtStr,
@@ -401,6 +462,14 @@ func (g *Generator) bgInput(ws string, cell string, numFmt string) {
 	g.setStyle(ws, cell, cell, StyleOptions{
 		FillColor: BG_CLR_INPUT, HAlign: "right", VAlign: "center", NumFormat: numFmt, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID,
 	})
+}
+
+// bgFillInput trägt einen optionalen Wert in eine (bereits formatierte) Eingabezelle
+// ein. nil ⇒ Zelle bleibt leer.
+func (g *Generator) bgFillInput(ws, cell string, v *float64) {
+	if v != nil {
+		_ = g.file.SetCellValue(ws, cell, *v)
+	}
 }
 
 func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
@@ -435,7 +504,11 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 
 	g.setValue(ws, cellName(col, rCapt), "Reserve freigeben:", StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, Italic: true, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
-	g.setValue(ws, cellName(col, rCheck), "Nein", StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+	reserveChoice := "Nein"
+	if g.budget != nil && g.budget.ReserveFreigabe {
+		reserveChoice = "Ja"
+	}
+	g.setValue(ws, cellName(col, rCheck), reserveChoice, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	checkAddr := absName(c, rCheck)
 
 	// Dropdown-Auswahl Ja/Nein hinzufügen

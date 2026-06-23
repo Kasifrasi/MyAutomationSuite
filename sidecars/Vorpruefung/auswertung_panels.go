@@ -263,12 +263,15 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	dataRow("Gesamteinnahmen", false, 16, COLOR_TOTAL, true)
 
 	// ─── AUSGABEN ───
+	// Positionsbasiert: eine Zeile je Kostenposition (Anzahl folgt dem Budget).
 	section("Ausgaben")
 	colHeaders("ID", []string{"Ausgaben (LC)", "Ausgaben (EUR)", "Kum. Ausgaben (LC)", "Kum. Ausgaben (EUR)"})
-	for i := range EXPENSE_CATEGORIES {
-		dataRow(mirror(0, 19+i), true, 19+i, COLOR_WHITE, false) // ID gespiegelt
+	nPos := g.budgetExpenseCount()
+	for i := 0; i < nPos; i++ {
+		dataRow(mirror(0, FB_AUSG_FIRST_ROW+i), true, FB_AUSG_FIRST_ROW+i, COLOR_WHITE, false) // ID gespiegelt
 	}
-	dataRow("Gesamtausgaben", false, 27, COLOR_TOTAL, true)
+	gesamtAusgRow := FB_AUSG_FIRST_ROW + nPos // = ausgTotalsRow auf dem FB-Blatt
+	dataRow("Gesamtausgaben", false, gesamtAusgRow, COLOR_TOTAL, true)
 	r++ // Leerzeile
 
 	// ─── SALDO DES FINANZBERICHTS ───
@@ -276,8 +279,9 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 		Bold: true, HAlign: "left", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 	})
+	saldoSrcRow := gesamtAusgRow + 2 // FB-Saldo liegt zwei Zeilen unter Gesamtausgaben
 	for i := 0; i < 4; i++ {
-		_ = g.setFormula(ws, cellName(cLC+i, r), mirror(i+1, 29), StyleOptions{
+		_ = g.setFormula(ws, cellName(cLC+i, r), mirror(i+1, saldoSrcRow), StyleOptions{
 			Bold: true, HAlign: "right", VAlign: "center", NumFormat: fmts[i],
 			BorderTop: 6, BorderBottom: 6, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 		})
