@@ -520,6 +520,12 @@ func main() {
 		log.Fatalf("fehler beim Erstellen des Finanzberichte-Blatts: %v", err)
 	}
 
+	// 5. Erstelle das Mittelanforderung-Blatt
+	err = g.CreateMittelanforderungSheet()
+	if err != nil {
+		log.Fatalf("fehler beim Erstellen des Mittelanforderung-Blatts: %v", err)
+	}
+
 	// Hier können in Zukunft weitere Blätter hinzugefügt werden:
 	// err = g.CreateMittelSheet()
 	// err = g.CreateFinanzberichtSheet()
