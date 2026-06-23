@@ -272,19 +272,19 @@ func (g *Generator) drawReportTable(
 		row := ausgHdrRow + 1 + i
 
 		// ID Formula
-		_ = f.SetCellFormula(ws, cellName(cLabel, row), fmt.Sprintf(`=IFERROR(INDEX(%s, ROW() - ROW(%s[#Headers])), "")`, FB_NAME_ID_LIST, ausgName))
+		_ = f.SetCellFormula(ws, cellName(cLabel, row), fmt.Sprintf(`=IFERROR(INDEX(%s, ROW() - %d), "")`, FB_NAME_ID_LIST, ausgHdrRow))
 
 		// EUR Formula
-		_ = f.SetCellFormula(ws, cellName(cLabel+2, row), fmt.Sprintf(`=IFERROR(ROUND([@[Ausgaben (LC)]]/%s,2),0)`, fbKursName))
+		_ = f.SetCellFormula(ws, cellName(cLabel+2, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(cLabel+1, row), fbKursName))
 
 		// Kum LC and EUR formulas
 		if periodenNr > 1 {
 			prevAusgName := fmt.Sprintf("Ausgaben_%d", periodenNr-1)
-			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=IFERROR([@[Ausgaben (LC)]] + SUMIFS(%s[Kum. Ausgaben (LC)], %s[ID], [@ID]), [@[Ausgaben (LC)]])`, prevAusgName, prevAusgName))
-			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=IFERROR([@[Ausgaben (EUR)]] + SUMIFS(%s[Kum. Ausgaben (EUR)], %s[ID], [@ID]), [@[Ausgaben (EUR)]])`, prevAusgName, prevAusgName))
+			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=IFERROR(%s + SUMIFS(%s[Kum. Ausgaben (LC)], %s[ID], %s), %s)`, cellName(cLabel+1, row), prevAusgName, prevAusgName, cellName(cLabel, row), cellName(cLabel+1, row)))
+			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=IFERROR(%s + SUMIFS(%s[Kum. Ausgaben (EUR)], %s[ID], %s), %s)`, cellName(cLabel+2, row), prevAusgName, prevAusgName, cellName(cLabel, row), cellName(cLabel+2, row)))
 		} else {
-			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), `=IFERROR([@[Ausgaben (LC)]], 0)`)
-			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), `=IFERROR([@[Ausgaben (EUR)]], 0)`)
+			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=IFERROR(%s, 0)`, cellName(cLabel+1, row)))
+			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=IFERROR(%s, 0)`, cellName(cLabel+2, row)))
 		}
 	}
 
@@ -437,8 +437,8 @@ func (g *Generator) drawReportTable(
 	}
 	r = totalsRow2 + 2
 
-	// Set Durchschnittskurs-Formel in rateRow
-	_ = f.SetCellFormula(ws, cellName(cValLC, rateRow), fmt.Sprintf(`=ROUND(IFERROR(%s[[#Totals],[Kurs]],0),6)`, tblName))
+	// Set Durchschnittskurs-Formel in rateRow (Ohne strukturelle Referenz auf [#Totals])
+	_ = f.SetCellFormula(ws, cellName(cValLC, rateRow), fmt.Sprintf(`=ROUND(IFERROR(%s,0),6)`, cellName(colStart+4, totalsRow1)))
 
 	// Formeln für Einnahmen-Typen (LC/EUR)
 	for i, tStr := range TYPE_NAMES {
@@ -537,13 +537,15 @@ func (g *Generator) createEinnahmenTabelle(
 			{Typ: "", Geber: "", LC: "", EUR: ""},
 		}
 	} else {
+		// For EUR formulas in WK table, we reference the LC column directly to avoid [@...] syntax
+		// The EUR formula string will be formatted in the loop below where we have the specific row index
 		rows = []RowData{
-			{Typ: "Eigenmittel", Geber: "Projektpartner", LC: "", EUR: fmt.Sprintf("=IFERROR(ROUND([@[Einnahmen (LC)]]/%s,2),0)", avgRateAddr)},
-			{Typ: "Drittmittel", Geber: "", LC: "", EUR: fmt.Sprintf("=IFERROR(ROUND([@[Einnahmen (LC)]]/%s,2),0)", avgRateAddr)},
-			{Typ: "Zinsertraege", Geber: "Bank", LC: "", EUR: fmt.Sprintf("=IFERROR(ROUND([@[Einnahmen (LC)]]/%s,2),0)", avgRateAddr)},
-			{Typ: "", Geber: "", LC: "", EUR: fmt.Sprintf("=IFERROR(ROUND([@[Einnahmen (LC)]]/%s,2),0)", avgRateAddr)},
-			{Typ: "", Geber: "", LC: "", EUR: fmt.Sprintf("=IFERROR(ROUND([@[Einnahmen (LC)]]/%s,2),0)", avgRateAddr)},
-			{Typ: "", Geber: "", LC: "", EUR: fmt.Sprintf("=IFERROR(ROUND([@[Einnahmen (LC)]]/%s,2),0)", avgRateAddr)},
+			{Typ: "Eigenmittel", Geber: "Projektpartner", LC: "", EUR: ""},
+			{Typ: "Drittmittel", Geber: "", LC: "", EUR: ""},
+			{Typ: "Zinsertraege", Geber: "Bank", LC: "", EUR: ""},
+			{Typ: "", Geber: "", LC: "", EUR: ""},
+			{Typ: "", Geber: "", LC: "", EUR: ""},
+			{Typ: "", Geber: "", LC: "", EUR: ""},
 		}
 	}
 
@@ -559,7 +561,11 @@ func (g *Generator) createEinnahmenTabelle(
 				_ = f.SetCellValue(ws, cellName(colStart+2, row), rdata.LC)
 			}
 		}
-		if rdata.EUR != "" {
+
+		if isWK {
+			// EUR = ROUND(LC / AvgRate, 2)
+			_ = f.SetCellFormula(ws, cellName(colStart+3, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(colStart+2, row), avgRateAddr))
+		} else if rdata.EUR != "" {
 			if strings.HasPrefix(rdata.EUR, "=") {
 				_ = f.SetCellFormula(ws, cellName(colStart+3, row), rdata.EUR)
 			} else {
@@ -568,7 +574,7 @@ func (g *Generator) createEinnahmenTabelle(
 		}
 
 		// Kurs Formula
-		_ = f.SetCellFormula(ws, cellName(colStart+4, row), "=ROUND(IFERROR([@[Einnahmen (LC)]]/[@[Einnahmen (EUR)]],0),6)")
+		_ = f.SetCellFormula(ws, cellName(colStart+4, row), fmt.Sprintf(`=ROUND(IFERROR(%s/%s,0),6)`, cellName(colStart+2, row), cellName(colStart+3, row)))
 	}
 
 	// Formatierung für Datenbereich
