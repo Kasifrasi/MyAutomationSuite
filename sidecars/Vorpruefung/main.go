@@ -549,7 +549,13 @@ func main() {
 		log.Fatalf("fehler beim Erstellen des Mittelanforderung-Blatts: %v", err)
 	}
 
-	// 6. Erstelle das Daten-Blatt für Listen und VSTACKS
+	// 6. Erstelle das Auswertungs-Blatt (Vergleich Budget vs. MA/Finanzberichte)
+	err = g.CreateAuswertungSheet()
+	if err != nil {
+		log.Fatalf("fehler beim Erstellen des Auswertungs-Blatts: %v", err)
+	}
+
+	// 7. Erstelle das Daten-Blatt für Listen und VSTACKS
 	err = g.CreateDatenSheet()
 	if err != nil {
 		log.Fatalf("fehler beim Erstellen des Daten-Blatts: %v", err)
