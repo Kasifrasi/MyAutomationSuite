@@ -562,6 +562,13 @@ func main() {
 	// 2. Lösche das standardmäßig erstellte "Sheet1", damit nur unsere Blätter übrig bleiben
 	_ = f.DeleteSheet("Sheet1")
 
+	// Excel beim Öffnen vollständig neu rechnen lassen, damit die dynamischen
+	// Array-Formeln (VSTACK/FILTER) sofort korrekt spillen.
+	fullCalc := true
+	if err := f.SetCalcProps(&excelize.CalcPropsOptions{FullCalcOnLoad: &fullCalc}); err != nil {
+		log.Fatalf("fehler beim Setzen der Berechnungsoptionen: %v", err)
+	}
+
 	// 3. Speichere das gesamte Dokument
 	err = f.SaveAs(outputPath)
 	if err != nil {
