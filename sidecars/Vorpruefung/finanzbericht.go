@@ -134,7 +134,6 @@ func (g *Generator) drawReportTable(
 	for _, zlbl := range []string{"Von:", "Bis:"} {
 		_ = g.drawMergedCell(ws, r, cLabel, cLabel, zlbl, true, "", false)
 		_ = f.MergeCell(ws, cellName(cValLC, r), cellName(cValEUR, r))
-		_ = f.SetCellStr(ws, cellName(cValLC, r), "")
 		_ = g.setStyle(ws, cellName(cValLC, r), cellName(cValEUR, r), StyleOptions{
 			HAlign:       "center",
 			VAlign:       "center",
