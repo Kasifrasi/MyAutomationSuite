@@ -110,7 +110,7 @@ func (g *Generator) drawReportTable(
 
 	// ➤ Pfeil zeichnen (nur für Nachfolgeperioden)
 	if colStart > START_COL {
-		_ = g.drawSeparatorArrow(ws, r, colStart-1)
+		_ = g.drawSeparatorArrow(ws, r-2, colStart-1)
 	}
 
 	// ─── KOPFZEILE ─── (Eingabefeld nur über LC..EUR – reduziert)
@@ -158,7 +158,7 @@ func (g *Generator) drawReportTable(
 	rateAddr := absName(cValLC, r) // e.g. "$C$7" for Period 1
 
 	fbKursName := fmt.Sprintf("FB_Kurs_%d", periodenNr)
-	g.upsertNamedRange(fbKursName, cValLC, rateRow)
+	g.dbUpsertNamedRange(ws, fbKursName, cValLC, rateRow)
 	r += 2 // Zeile 8 ist leer als Abstandhalter
 
 	// ─── EINNAHMEN ───
@@ -186,13 +186,13 @@ func (g *Generator) drawReportTable(
 	if isFollowUp {
 		_ = f.SetCellFormula(ws, cellName(cValLC, r), fmt.Sprintf("=ROUND(FB_SaldoLC_%d,2)", periodenNr-1))
 		_ = f.SetCellFormula(ws, cellName(cValEUR, r), fmt.Sprintf("=ROUND(FB_SaldoEUR_%d,2)", periodenNr-1))
-		_ = f.SetCellFormula(ws, cellName(cValLC+1, r), fmt.Sprintf("=ROUND(FB_SaldoLC_%d,2)", periodenNr-1))
-		_ = f.SetCellFormula(ws, cellName(cValEUR+1, r), fmt.Sprintf("=ROUND(FB_SaldoEUR_%d,2)", periodenNr-1))
+		_ = f.SetCellFormula(ws, cellName(cValLC+2, r), fmt.Sprintf("=ROUND(FB_SaldoLC_%d,2)", periodenNr-1))
+		_ = f.SetCellFormula(ws, cellName(cValEUR+2, r), fmt.Sprintf("=ROUND(FB_SaldoEUR_%d,2)", periodenNr-1))
 	} else {
 		_ = f.SetCellFormula(ws, cellName(cValLC, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW))
 		_ = f.SetCellFormula(ws, cellName(cValEUR, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_EUR, DB_NAME_SALDOVORTRAG_EUR))
-		_ = f.SetCellFormula(ws, cellName(cValLC+1, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW))
-		_ = f.SetCellFormula(ws, cellName(cValEUR+1, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_EUR, DB_NAME_SALDOVORTRAG_EUR))
+		_ = f.SetCellFormula(ws, cellName(cValLC+2, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW))
+		_ = f.SetCellFormula(ws, cellName(cValEUR+2, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_EUR, DB_NAME_SALDOVORTRAG_EUR))
 	}
 	r++
 
@@ -207,8 +207,8 @@ func (g *Generator) drawReportTable(
 	// Gesamteinnahmen (inkl. Vorperiodensaldo)
 	rngSumLC := fmt.Sprintf("%s:%s", cellName(cValLC, rowSumStart), cellName(cValLC, r-1))
 	rngSumEUR := fmt.Sprintf("%s:%s", cellName(cValEUR, rowSumStart), cellName(cValEUR, r-1))
-	rngSumKumLC := fmt.Sprintf("%s:%s", cellName(cValLC+1, rowSumStart), cellName(cValLC+1, r-1))
-	rngSumKumEUR := fmt.Sprintf("%s:%s", cellName(cValEUR+1, rowSumStart), cellName(cValEUR+1, r-1))
+	rngSumKumLC := fmt.Sprintf("%s:%s", cellName(cValLC+2, rowSumStart), cellName(cValLC+2, r-1))
+	rngSumKumEUR := fmt.Sprintf("%s:%s", cellName(cValEUR+2, rowSumStart), cellName(cValEUR+2, r-1))
 
 	_ = g.fbDrawTotalRow(ws, r, cLabel, "Gesamteinnahmen", []string{
 		rngSumLC,
@@ -218,8 +218,8 @@ func (g *Generator) drawReportTable(
 	})
 	cellSumEinnahmenLC := cellName(cValLC, r)
 	cellSumEinnahmenEUR := cellName(cValEUR, r)
-	cellSumEinnahmenKumLC := cellName(cValLC+1, r)
-	cellSumEinnahmenKumEUR := cellName(cValEUR+1, r)
+	cellSumEinnahmenKumLC := cellName(cValLC+2, r)
+	cellSumEinnahmenKumEUR := cellName(cValEUR+2, r)
 	r++
 
 	// ─── AUSGABEN ───
@@ -361,18 +361,18 @@ func (g *Generator) drawReportTable(
 	// Formeln für Saldo Range
 	_ = f.SetCellFormula(ws, cellName(cValLC, r), fmt.Sprintf(`=ROUND(IFERROR(%s-%s,""),2)`, cellSumEinnahmenLC, ausgTotLCAddr))
 	_ = f.SetCellFormula(ws, cellName(cValEUR, r), fmt.Sprintf(`=ROUND(IFERROR(%s-%s,""),2)`, cellSumEinnahmenEUR, ausgTotEURAddr))
-	_ = f.SetCellFormula(ws, cellName(cValLC+1, r), fmt.Sprintf(`=ROUND(IFERROR(%s-%s,""),2)`, cellSumEinnahmenKumLC, cellName(cValLC+2, ausgTotalsRow)))
-	_ = f.SetCellFormula(ws, cellName(cValEUR+1, r), fmt.Sprintf(`=ROUND(IFERROR(%s-%s,""),2)`, cellSumEinnahmenKumEUR, cellName(cValEUR+2, ausgTotalsRow)))
+	_ = f.SetCellFormula(ws, cellName(cValLC+2, r), fmt.Sprintf(`=ROUND(IFERROR(%s-%s,""),2)`, cellSumEinnahmenKumLC, cellName(cValLC+2, ausgTotalsRow)))
+	_ = f.SetCellFormula(ws, cellName(cValEUR+2, r), fmt.Sprintf(`=ROUND(IFERROR(%s-%s,""),2)`, cellSumEinnahmenKumEUR, cellName(cValEUR+2, ausgTotalsRow)))
 
 	// Saldo-Zellen formatieren (Doppel-Unterstreichung)
 	_ = g.setStyle(ws, cellName(cValLC, r), cellName(cValLC, r), StyleOptions{Bold: true, NumFormat: "#,##0.00", BorderTop: 6, BorderBottom: 6})
 	_ = g.setStyle(ws, cellName(cValEUR, r), cellName(cValEUR, r), StyleOptions{Bold: true, NumFormat: `#,##0.00" €"`, BorderTop: 6, BorderBottom: 6})
-	_ = g.setStyle(ws, cellName(cValLC+1, r), cellName(cValLC+1, r), StyleOptions{Bold: true, NumFormat: "#,##0.00", BorderTop: 6, BorderBottom: 6})
-	_ = g.setStyle(ws, cellName(cValEUR+1, r), cellName(cValEUR+1, r), StyleOptions{Bold: true, NumFormat: `#,##0.00" €"`, BorderTop: 6, BorderBottom: 6})
+	_ = g.setStyle(ws, cellName(cValLC+2, r), cellName(cValLC+2, r), StyleOptions{Bold: true, NumFormat: "#,##0.00", BorderTop: 6, BorderBottom: 6})
+	_ = g.setStyle(ws, cellName(cValEUR+2, r), cellName(cValEUR+2, r), StyleOptions{Bold: true, NumFormat: `#,##0.00" €"`, BorderTop: 6, BorderBottom: 6})
 
 	// „Saldo des Finanzberichts" (LC/EUR) benennen
-	g.upsertNamedRange(fmt.Sprintf("FB_SaldoLC_%d", periodenNr), cValLC, r)
-	g.upsertNamedRange(fmt.Sprintf("FB_SaldoEUR_%d", periodenNr), cValEUR, r)
+	g.dbUpsertNamedRange(ws, fmt.Sprintf("FB_SaldoLC_%d", periodenNr), cValLC, r)
+	g.dbUpsertNamedRange(ws, fmt.Sprintf("FB_SaldoEUR_%d", periodenNr), cValEUR, r)
 	r += 2
 
 	// ─── AUFSCHLÜSSELUNG ───
@@ -451,11 +451,11 @@ func (g *Generator) drawReportTable(
 		if isFollowUp {
 			prevKumLcCell := cellName(prevStartCol+3, typeRows[i])
 			prevKumEurCell := cellName(prevStartCol+4, typeRows[i])
-			_ = f.SetCellFormula(ws, cellName(cValLC+1, typeRows[i]), fmt.Sprintf(`=IFERROR(ROUND(%s + %s, 2), %s)`, prevKumLcCell, cellName(cValLC, typeRows[i]), cellName(cValLC, typeRows[i])))
-			_ = f.SetCellFormula(ws, cellName(cValEUR+1, typeRows[i]), fmt.Sprintf(`=IFERROR(ROUND(%s + %s, 2), %s)`, prevKumEurCell, cellName(cValEUR, typeRows[i]), cellName(cValEUR, typeRows[i])))
+			_ = f.SetCellFormula(ws, cellName(cValLC+2, typeRows[i]), fmt.Sprintf(`=IFERROR(ROUND(%s + %s, 2), %s)`, prevKumLcCell, cellName(cValLC, typeRows[i]), cellName(cValLC, typeRows[i])))
+			_ = f.SetCellFormula(ws, cellName(cValEUR+2, typeRows[i]), fmt.Sprintf(`=IFERROR(ROUND(%s + %s, 2), %s)`, prevKumEurCell, cellName(cValEUR, typeRows[i]), cellName(cValEUR, typeRows[i])))
 		} else {
-			_ = f.SetCellFormula(ws, cellName(cValLC+1, typeRows[i]), lcFormula)
-			_ = f.SetCellFormula(ws, cellName(cValEUR+1, typeRows[i]), eurFormula)
+			_ = f.SetCellFormula(ws, cellName(cValLC+2, typeRows[i]), lcFormula)
+			_ = f.SetCellFormula(ws, cellName(cValEUR+2, typeRows[i]), eurFormula)
 		}
 	}
 
