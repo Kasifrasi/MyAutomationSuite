@@ -77,11 +77,13 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 		})
 		_ = g.file.SetCellFormula(ws, c1, formula)
 	}
-	infoRow("Periode:", mirror(1, 5), "")
+	infoRow("Periode:", mirror(1, 4), "")
 	r++
-	infoRow("Von:", mirror(1, 6), "DD.MM.YYYY")
+	infoRow("Von:", mirror(1, 5), "DD.MM.YYYY")
 	r++
-	infoRow("Bis:", mirror(1, 7), "DD.MM.YYYY")
+	infoRow("Bis:", mirror(1, 6), "DD.MM.YYYY")
+	r++
+	infoRow("Zeitraum:", mirror(1, 7), `0" Monate"`)
 	r++
 	infoRow("OANDA-Kurs:", mirror(1, 8), "0.0000")
 	r += 2 // Leerzeile
@@ -204,11 +206,13 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 		})
 		_ = g.file.SetCellFormula(ws, c1, formula)
 	}
-	infoRow("Periode:", mirror(1, 5), "")
+	infoRow("Periode:", mirror(1, 4), "")
 	r++
-	infoRow("Von:", mirror(1, 6), "DD.MM.YYYY")
+	infoRow("Von:", mirror(1, 5), "DD.MM.YYYY")
 	r++
-	infoRow("Bis:", mirror(1, 7), "DD.MM.YYYY")
+	infoRow("Bis:", mirror(1, 6), "DD.MM.YYYY")
+	r++
+	infoRow("Zeitraum:", mirror(1, 7), `0" Monate"`)
 	r++
 	infoRow("Durchschnittskurs:", mirror(1, 8), "0.000000")
 	r += 2 // Leerzeile
