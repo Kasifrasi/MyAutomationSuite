@@ -279,9 +279,12 @@ func (g *Generator) drawReportTable(
 
 		// Kum LC and EUR formulas
 		if periodenNr > 1 {
-			prevAusgName := fmt.Sprintf("Ausgaben_%d", periodenNr-1)
-			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=IFERROR(%s + SUMIFS(%s[Kum. Ausgaben (LC)], %s[ID], %s), %s)`, cellName(cLabel+1, row), prevAusgName, prevAusgName, cellName(cLabel, row), cellName(cLabel+1, row)))
-			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=IFERROR(%s + SUMIFS(%s[Kum. Ausgaben (EUR)], %s[ID], %s), %s)`, cellName(cLabel+2, row), prevAusgName, prevAusgName, cellName(cLabel, row), cellName(cLabel+2, row)))
+			prevIdRange := fmt.Sprintf("%s:%s", absName(prevStartCol, ausgHdrRow+1), absName(prevStartCol, ausgHdrRow+ausgDataRows))
+			prevKumLcRange := fmt.Sprintf("%s:%s", absName(prevStartCol+3, ausgHdrRow+1), absName(prevStartCol+3, ausgHdrRow+ausgDataRows))
+			prevKumEurRange := fmt.Sprintf("%s:%s", absName(prevStartCol+4, ausgHdrRow+1), absName(prevStartCol+4, ausgHdrRow+ausgDataRows))
+
+			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=IFERROR(%s + SUMIFS(%s, %s, %s), %s)`, cellName(cLabel+1, row), prevKumLcRange, prevIdRange, cellName(cLabel, row), cellName(cLabel+1, row)))
+			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=IFERROR(%s + SUMIFS(%s, %s, %s), %s)`, cellName(cLabel+2, row), prevKumEurRange, prevIdRange, cellName(cLabel, row), cellName(cLabel+2, row)))
 		} else {
 			_ = f.SetCellFormula(ws, cellName(cLabel+3, row), fmt.Sprintf(`=IFERROR(%s, 0)`, cellName(cLabel+1, row)))
 			_ = f.SetCellFormula(ws, cellName(cLabel+4, row), fmt.Sprintf(`=IFERROR(%s, 0)`, cellName(cLabel+2, row)))
@@ -325,10 +328,16 @@ func (g *Generator) drawReportTable(
 
 	// Summen-Zeile Gesamtausgaben schreiben
 	_ = f.SetCellValue(ws, cellName(cLabel, ausgTotalsRow), "Gesamtausgaben")
-	_ = f.SetCellFormula(ws, cellName(cLabel+1, ausgTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s[Ausgaben (LC)]),2)`, ausgName))
-	_ = f.SetCellFormula(ws, cellName(cLabel+2, ausgTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s[Ausgaben (EUR)]),2)`, ausgName))
-	_ = f.SetCellFormula(ws, cellName(cLabel+3, ausgTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s[Kum. Ausgaben (LC)]),2)`, ausgName))
-	_ = f.SetCellFormula(ws, cellName(cLabel+4, ausgTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s[Kum. Ausgaben (EUR)]),2)`, ausgName))
+
+	lcRange := fmt.Sprintf("%s:%s", absName(cLabel+1, ausgHdrRow+1), absName(cLabel+1, ausgHdrRow+ausgDataRows))
+	eurRange := fmt.Sprintf("%s:%s", absName(cLabel+2, ausgHdrRow+1), absName(cLabel+2, ausgHdrRow+ausgDataRows))
+	kumLcRange := fmt.Sprintf("%s:%s", absName(cLabel+3, ausgHdrRow+1), absName(cLabel+3, ausgHdrRow+ausgDataRows))
+	kumEurRange := fmt.Sprintf("%s:%s", absName(cLabel+4, ausgHdrRow+1), absName(cLabel+4, ausgHdrRow+ausgDataRows))
+
+	_ = f.SetCellFormula(ws, cellName(cLabel+1, ausgTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s),2)`, lcRange))
+	_ = f.SetCellFormula(ws, cellName(cLabel+2, ausgTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s),2)`, eurRange))
+	_ = f.SetCellFormula(ws, cellName(cLabel+3, ausgTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s),2)`, kumLcRange))
+	_ = f.SetCellFormula(ws, cellName(cLabel+4, ausgTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s),2)`, kumEurRange))
 
 	// Summen-Zeile formatieren
 	_ = g.setStyle(ws, cellName(cLabel, ausgTotalsRow), cellName(cLabel, ausgTotalsRow), StyleOptions{
@@ -421,8 +430,9 @@ func (g *Generator) drawReportTable(
 	// ==================================================================================
 	_ = g.drawMergedCell(ws, r, cLabel, cLabel, "Einnahmen (Explizite Kurseingabe)", true, "", false)
 	r++
+	r1_start := r // Merken für Ranges
 
-	tblName, totalsRow1, err := g.createEinnahmenTabelle(ws, r, colStart, periodenNr, cellSaldoVorLC, cellSaldoVorEUR, false, rateAddr)
+	_, totalsRow1, err := g.createEinnahmenTabelle(ws, r, colStart, periodenNr, cellSaldoVorLC, cellSaldoVorEUR, false, rateAddr)
 	if err != nil {
 		return err
 	}
@@ -430,8 +440,9 @@ func (g *Generator) drawReportTable(
 
 	_ = g.drawMergedCell(ws, r, cLabel, cLabel, "Einnahmen (Durchschnittskurs)", true, "", false)
 	r++
+	r2_start := r // Merken für Ranges
 
-	tblWKName, totalsRow2, err := g.createEinnahmenTabelle(ws, r, colStart, periodenNr, cellSaldoVorLC, cellSaldoVorEUR, true, rateAddr)
+	_, totalsRow2, err := g.createEinnahmenTabelle(ws, r, colStart, periodenNr, cellSaldoVorLC, cellSaldoVorEUR, true, rateAddr)
 	if err != nil {
 		return err
 	}
@@ -440,10 +451,19 @@ func (g *Generator) drawReportTable(
 	// Set Durchschnittskurs-Formel in rateRow (Ohne strukturelle Referenz auf [#Totals])
 	_ = f.SetCellFormula(ws, cellName(cValLC, rateRow), fmt.Sprintf(`=ROUND(IFERROR(%s,0),6)`, cellName(colStart+4, totalsRow1)))
 
+	// Ranges für SUMIF aufbauen
+	tbl1Typ := fmt.Sprintf("%s:%s", absName(colStart, r1_start+1), absName(colStart, r1_start+5))
+	tbl1LC := fmt.Sprintf("%s:%s", absName(colStart+2, r1_start+1), absName(colStart+2, r1_start+5))
+	tbl1EUR := fmt.Sprintf("%s:%s", absName(colStart+3, r1_start+1), absName(colStart+3, r1_start+5))
+
+	tbl2Typ := fmt.Sprintf("%s:%s", absName(colStart, r2_start+1), absName(colStart, r2_start+6))
+	tbl2LC := fmt.Sprintf("%s:%s", absName(colStart+2, r2_start+1), absName(colStart+2, r2_start+6))
+	tbl2EUR := fmt.Sprintf("%s:%s", absName(colStart+3, r2_start+1), absName(colStart+3, r2_start+6))
+
 	// Formeln für Einnahmen-Typen (LC/EUR)
 	for i, tStr := range TYPE_NAMES {
-		lcFormula := fmt.Sprintf(`=ROUND(SUMIF(%s[Typ],"%s",%s[Einnahmen (LC)])+SUMIF(%s[Typ],"%s",%s[Einnahmen (LC)]),2)`, tblName, tStr, tblName, tblWKName, tStr, tblWKName)
-		eurFormula := fmt.Sprintf(`=ROUND(SUMIF(%s[Typ],"%s",%s[Einnahmen (EUR)])+SUMIF(%s[Typ],"%s",%s[Einnahmen (EUR)]),2)`, tblName, tStr, tblName, tblWKName, tStr, tblWKName)
+		lcFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,"%s",%s)+SUMIF(%s,"%s",%s),2)`, tbl1Typ, tStr, tbl1LC, tbl2Typ, tStr, tbl2LC)
+		eurFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,"%s",%s)+SUMIF(%s,"%s",%s),2)`, tbl1Typ, tStr, tbl1EUR, tbl2Typ, tStr, tbl2EUR)
 
 		_ = f.SetCellFormula(ws, cellName(cValLC, typeRows[i]), lcFormula)
 		_ = f.SetCellFormula(ws, cellName(cValEUR, typeRows[i]), eurFormula)
@@ -667,8 +687,8 @@ func (g *Generator) createEinnahmenTabelle(
 	}
 	_ = f.SetCellValue(ws, cellName(colStart+1, totalsRow), "Durchschnittskurs:")
 
-	_ = f.SetCellFormula(ws, cellName(colStart+2, totalsRow), fmt.Sprintf("=ROUND(SUBTOTAL(109,%s[Einnahmen (LC)]),2)", tblName))
-	_ = f.SetCellFormula(ws, cellName(colStart+3, totalsRow), fmt.Sprintf("=ROUND(SUBTOTAL(109,%s[Einnahmen (EUR)]),2)", tblName))
+	_ = f.SetCellFormula(ws, cellName(colStart+2, totalsRow), fmt.Sprintf("=ROUND(SUBTOTAL(109,%s:%s),2)", absName(colStart+2, startRow+1), absName(colStart+2, startRow+dataRows)))
+	_ = f.SetCellFormula(ws, cellName(colStart+3, totalsRow), fmt.Sprintf("=ROUND(SUBTOTAL(109,%s:%s),2)", absName(colStart+3, startRow+1), absName(colStart+3, startRow+dataRows)))
 
 	_ = f.SetCellFormula(ws, cellName(colStart+4, totalsRow), fmt.Sprintf("=ROUND(IFERROR(%s/%s,0),6)", cellName(colStart+2, totalsRow), cellName(colStart+3, totalsRow)))
 
