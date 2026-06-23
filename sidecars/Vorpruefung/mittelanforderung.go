@@ -86,7 +86,9 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	cLC := colS + 1
 	cEUR := colS + 2
 
-	r := startR
+	// Periode rückt eine Zeile nach oben (Zeile 4), damit Von/Bis/Zeitraum/Kurs
+	// darunter passen und der Tabellenkopf weiterhin auf Zeile 9 bleibt.
+	r := startR - 1
 
 	// ─── Zeile 1: Periode-Kopfzeile (Dropdown 1..18) ──────────────────────────
 	lblPer := cellName(cLbl, r)
@@ -108,6 +110,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	r++
 
 	// ─── Zeile 2/3: Zeitraum (Von / Bis) ──────────────────────────────────────
+	vonRow := r
 	for _, zlbl := range []string{"Von:", "Bis:"} {
 		lblZeit := cellName(cLbl, r)
 		_ = f.SetCellValue(ws, lblZeit, zlbl)
@@ -122,7 +125,23 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 		r++
 	}
 
-	// ─── Zeile 4: OANDA-Kurs-Eingabe (benannt MA_Kurs_<p>) ────────────────────
+	// ─── Zeile 4: Zeitraum (Monate, berechnet) ────────────────────────────────
+	lblZr := cellName(cLbl, r)
+	_ = f.SetCellValue(ws, lblZr, "Zeitraum:")
+	_ = g.setStyle(ws, lblZr, lblZr, StyleOptions{Bold: true, HAlign: "left", VAlign: "center"})
+
+	zrStart := cellName(cLC, r)
+	zrEnd := cellName(cEUR, r)
+	_ = f.MergeCell(ws, zrStart, zrEnd)
+	_ = f.SetCellFormula(ws, zrStart, fmt.Sprintf(
+		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s,"m")+1)`,
+		cellName(cLC, vonRow), cellName(cLC, vonRow+1), cellName(cLC, vonRow), cellName(cLC, vonRow+1)))
+	_ = g.setStyle(ws, zrStart, zrEnd, StyleOptions{
+		HAlign: "center", VAlign: "center", FillColor: MA_CLR_GRAY, BorderBottom: 1, BorderColor: "D3D3D3", NumFormat: `0" Monate"`,
+	})
+	r++
+
+	// ─── Zeile 5: OANDA-Kurs-Eingabe (benannt MA_Kurs_<p>) ────────────────────
 	rateAddr := absName(cLC, r)
 	maKursName := fmt.Sprintf("MA_Kurs_%d", periodNr)
 

@@ -97,7 +97,9 @@ func (g *Generator) drawReportTable(
 	prevStartCol int,
 ) error {
 	f := g.file
-	r := START_ROW
+	// Periode rückt eine Zeile nach oben (Zeile 4), damit Von/Bis/Zeitraum/Kurs
+	// darunter passen und die Einnahmen weiterhin ab Zeile 9 beginnen.
+	r := START_ROW - 1
 	periodenNr := ((colStart - START_COL) / (TABLE_COLS + TABLE_SPACING)) + 1
 
 	cLabel := colStart
@@ -110,7 +112,7 @@ func (g *Generator) drawReportTable(
 
 	// ➤ Pfeil zeichnen (nur für Nachfolgeperioden)
 	if colStart > START_COL {
-		_ = g.drawSeparatorArrow(ws, r-2, colStart-1)
+		_ = g.drawSeparatorArrow(ws, START_ROW-2, colStart-1)
 	}
 
 	// ─── KOPFZEILE ─── (Eingabefeld nur über LC..EUR – reduziert)
@@ -128,6 +130,7 @@ func (g *Generator) drawReportTable(
 	r++
 
 	// ─── ZEITRAUM (Von / Bis) ───
+	vonRow := r
 	for _, zlbl := range []string{"Von:", "Bis:"} {
 		_ = g.drawMergedCell(ws, r, cLabel, cLabel, zlbl, true, "", false)
 		_ = g.drawMergedCell(ws, r, cValLC, cValEUR, "", false, COLOR_INPUT, false)
@@ -141,6 +144,22 @@ func (g *Generator) drawReportTable(
 		})
 		r++
 	}
+
+	// ─── ZEITRAUM (Monate, berechnet) ───
+	_ = g.drawMergedCell(ws, r, cLabel, cLabel, "Zeitraum:", true, "", false)
+	_ = g.drawMergedCell(ws, r, cValLC, cValEUR, "", false, COLOR_TOTAL, false)
+	_ = f.SetCellFormula(ws, cellName(cValLC, r), fmt.Sprintf(
+		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s,"m")+1)`,
+		cellName(cValLC, vonRow), cellName(cValLC, vonRow+1), cellName(cValLC, vonRow), cellName(cValLC, vonRow+1)))
+	_ = g.setStyle(ws, cellName(cValLC, r), cellName(cValEUR, r), StyleOptions{
+		HAlign:       "center",
+		VAlign:       "center",
+		BorderBottom: 1,
+		BorderColor:  "D3D3D3",
+		FillColor:    COLOR_TOTAL,
+		NumFormat:    `0" Monate"`,
+	})
+	r++
 
 	// ─── DURCHSCHNITTSKURS ───
 	_ = g.drawMergedCell(ws, r, cLabel, cLabel, "Durchschnittskurs:", true, "", false)
@@ -426,8 +445,8 @@ func (g *Generator) drawReportTable(
 	_ = g.fbDrawDifferenceRow(ws, r, cLabel, cValLC, cValEUR, cellSaldoTotal, cellSaldoTotalEUR, rowStartAufsch, rowEndAufsch)
 	r++
 
-	// Äußerer Rahmen für den gesamten Hauptblock
-	_ = g.styleOuterBorder(ws, START_ROW, colStart, r-1, colStart+TABLE_COLS-1, 2, "808080")
+	// Äußerer Rahmen für den gesamten Hauptblock (Periode-Kopf ab Zeile 4)
+	_ = g.styleOuterBorder(ws, START_ROW-1, colStart, r-1, colStart+TABLE_COLS-1, 2, "808080")
 	r += 2
 
 	// ==================================================================================

@@ -86,7 +86,7 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	for j := 1; j <= MA_PERIOD_COUNT; j++ {
 		colS := 2 + (j-1)*4
 		maName := fmt.Sprintf("MA_%d", j)
-		perCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 5))
+		perCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 4)) // Periode-Kopf liegt auf Zeile 4
 
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_J, j), j)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_PER, j),
