@@ -591,7 +591,7 @@ func (g *Generator) createEinnahmenTabelle(
 	if !isWK {
 		rows = []RowData{
 			{Typ: saldoLabel, Geber: "", LC: fmt.Sprintf("=ROUND(%s,2)", saldoLCAddr), EUR: fmt.Sprintf("=ROUND(%s,2)", saldoEURAddr)},
-			{Typ: "KMW-Mittel", Geber: "KMW", LC: "", EUR: ""},
+			{Typ: "KMW-Mittel", Geber: "", LC: "", EUR: ""},
 			{Typ: "", Geber: "", LC: "", EUR: ""},
 			{Typ: "", Geber: "", LC: "", EUR: ""},
 			{Typ: "", Geber: "", LC: "", EUR: ""},
@@ -600,9 +600,9 @@ func (g *Generator) createEinnahmenTabelle(
 		// For EUR formulas in WK table, we reference the LC column directly to avoid [@...] syntax
 		// The EUR formula string will be formatted in the loop below where we have the specific row index
 		rows = []RowData{
-			{Typ: "Eigenmittel", Geber: "Projektpartner", LC: "", EUR: ""},
+			{Typ: "Eigenmittel", Geber: "", LC: "", EUR: ""},
 			{Typ: "Drittmittel", Geber: "", LC: "", EUR: ""},
-			{Typ: "Zinsertraege", Geber: "Bank", LC: "", EUR: ""},
+			{Typ: "Zinsertraege", Geber: "", LC: "", EUR: ""},
 			{Typ: "", Geber: "", LC: "", EUR: ""},
 			{Typ: "", Geber: "", LC: "", EUR: ""},
 			{Typ: "", Geber: "", LC: "", EUR: ""},
