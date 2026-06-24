@@ -601,7 +601,7 @@ func (g *Generator) dbSetupColumnWidths(sheet string) {
 	// Spalte E: Eingabe 2 / Dokumentenname (35.0, passend für längere Dokumentnamen der Checkliste)
 	g.setColWidth(sheet, 1, 3.0)
 	g.setColWidth(sheet, 2, 32.0)
-	g.setColWidth(sheet, 3, 25.0)
+	g.setColWidth(sheet, 3, 43.0)
 	g.setColWidth(sheet, 4, 24.0)
 	g.setColWidth(sheet, 5, 35.0)
 }

@@ -422,9 +422,9 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		addrManR := absName(valR, r)
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
-		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s)-MAX(0,%s),2)", addrVerf, addrReqL, addrManL), true)
+		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(MAX(0,%s-MAX(0,%s)),2)", addrVerf, addrManL), true)
 		g.evalKmwLabel(ws, r, tog, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
-		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s)-MAX(0,%s),2)", addrBereinigt, addrReqR, addrManR), true)
+		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(MAX(0,%s-MAX(0,%s)),2)", addrBereinigt, addrManR), true)
 		p2Bottom := r
 		g.styleOuterBorder(ws, p2Top, lblL1, p2Bottom, valL, 2, EV_CLR_BORDER)
 		g.styleOuterBorder(ws, p2Top, tog, p2Bottom, valR, 2, EV_CLR_BORDER)
