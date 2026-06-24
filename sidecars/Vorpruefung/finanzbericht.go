@@ -158,7 +158,7 @@ func (g *Generator) drawReportTable(
 			BorderBottom: 1,
 			BorderColor:  "D3D3D3",
 			FillColor:    COLOR_INPUT,
-			NumFormat:    "DD.MM.YYYY",
+			NumFmtID:     14,
 		})
 		r++
 	}

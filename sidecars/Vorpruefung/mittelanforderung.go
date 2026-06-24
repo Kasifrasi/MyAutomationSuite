@@ -132,7 +132,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 		rngZeitEnd := cellName(cEUR, r)
 		_ = f.MergeCell(ws, rngZeitStart, rngZeitEnd)
 		_ = g.setStyle(ws, rngZeitStart, rngZeitEnd, StyleOptions{
-			HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFormat: "DD.MM.YYYY",
+			HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFmtID: 14,
 		})
 		r++
 	}
