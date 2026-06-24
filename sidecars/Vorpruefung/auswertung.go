@@ -1076,13 +1076,36 @@ func evalFBChooseRefRows(selNum string, rows []int, colOffset int) string {
 	parts := make([]string, 0, 18)
 	for p := 1; p <= 18; p++ {
 		colBase := 2 + (p-1)*7 + colOffset
-		cellRefs := make([]string, 0, len(rows))
-		for _, br := range rows {
-			cellRefs = append(cellRefs, fmt.Sprintf("'%s'!%s", EVAL_FB_SHEET, absName(colBase, br)))
-		}
-		parts = append(parts, strings.Join(cellRefs, "+"))
+		parts = append(parts, fbRowsSumExpr(colBase, rows))
 	}
 	return fmt.Sprintf(`=IFERROR(ROUND(CHOOSE(%s,%s),2),0)`, selNum, strings.Join(parts, ","))
+}
+
+// fbRowsSumExpr baut für eine Spalte einen kompakten SUM-Ausdruck über die Zeilen
+// einer Kategorie, indem aufeinanderfolgende Zeilen zu Bereichen zusammengefasst
+// werden: SUM('FB'!$A$10:$A$39). Bei vielen Positionen je Kategorie blieb die alte
+// Einzelzellen-Addition (A10+A11+...) sonst über Excels 8192-Zeichen-Formellimit.
+// rows ist aufsteigend (siehe fbExpenseRowsForCategory).
+func fbRowsSumExpr(col int, rows []int) string {
+	segs := make([]string, 0)
+	start, prev := rows[0], rows[0]
+	flush := func(a, b int) {
+		if a == b {
+			segs = append(segs, fmt.Sprintf("'%s'!%s", EVAL_FB_SHEET, absName(col, a)))
+		} else {
+			segs = append(segs, fmt.Sprintf("'%s'!%s:%s", EVAL_FB_SHEET, absName(col, a), absName(col, b)))
+		}
+	}
+	for _, r := range rows[1:] {
+		if r == prev+1 {
+			prev = r
+			continue
+		}
+		flush(start, prev)
+		start, prev = r, r
+	}
+	flush(start, prev)
+	return fmt.Sprintf("SUM(%s)", strings.Join(segs, ","))
 }
 
 // evalMAExpenseActual summiert die ausgewählten Mittelanforderungen (#1..#k) der
