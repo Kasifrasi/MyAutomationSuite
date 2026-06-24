@@ -253,7 +253,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 		return err
 	}
 	laufzeitFormula := fmt.Sprintf(
-		`=IF(OR(%s="",%s=""),"",TEXT(%s,"dd.mm.yyyy")&" - "&TEXT(%s,"dd.mm.yyyy"))`,
+		`=IF(AND(ISNUMBER(%s),ISNUMBER(%s)),TEXT(%s,"DD.MM.YYYY")&" - "&TEXT(%s,"DD.MM.YYYY"),"")`,
 		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde),
 		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde))
 	err = g.setFormula(ws, cellName(DB_C_IN1, r), laufzeitFormula, StyleOptions{
@@ -274,7 +274,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 		return err
 	}
 	monateFormula := fmt.Sprintf(
-		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s+1,"M"))`,
+		`=IF(AND(ISNUMBER(%s),ISNUMBER(%s)),DATEDIF(%s,%s+1,"M"),"")`,
 		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde),
 		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde))
 	err = g.setFormula(ws, cellName(DB_C_IN2, r), monateFormula, StyleOptions{
