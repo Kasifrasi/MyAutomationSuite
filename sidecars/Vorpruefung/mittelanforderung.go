@@ -64,6 +64,18 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 		}
 	}
 
+	// Perioden 2–18 gruppieren und zugeklappt ausblenden (nur Inhaltsspalten der Tabelle).
+	f = g.file
+	for p := 2; p <= MA_PERIOD_COUNT; p++ {
+		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
+		groupFirst := colS
+		groupLast := colS + MA_TABLE_COLS - 1
+		for c := groupFirst; c <= groupLast; c++ {
+			_ = f.SetColOutlineLevel(ws, colLetter(c), 1)
+			_ = f.SetColVisible(ws, colLetter(c), false)
+		}
+	}
+
 	return nil
 }
 
@@ -75,9 +87,9 @@ func (g *Generator) maEnsurePeriodList(ws string) {
 }
 
 func (g *Generator) maSetupColumnWidths(ws string, colS int) {
-	g.setColWidth(ws, colS, 25.0)   // Kostenkategorie (~180px)
-	g.setColWidth(ws, colS+1, 18.0) // Angefordert LC (~130px)
-	g.setColWidth(ws, colS+2, 18.0) // Angefordert EUR (~130px)
+	g.setColWidth(ws, colS, 25.14)
+	g.setColWidth(ws, colS+1, 20.71)
+	g.setColWidth(ws, colS+2, 20.71)
 }
 
 func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists bool) error {

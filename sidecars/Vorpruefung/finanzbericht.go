@@ -93,6 +93,17 @@ func (g *Generator) CreateFinanzberichteSheet() error {
 		}
 	}
 
+	// Perioden 2–18 gruppieren und zugeklappt ausblenden (nur Inhaltsspalten der Tabelle).
+	for p := 2; p <= 18; p++ {
+		colStart := START_COL + (p-1)*(TABLE_COLS+TABLE_SPACING)
+		groupFirst := colStart
+		groupLast := colStart + TABLE_COLS - 1
+		for c := groupFirst; c <= groupLast; c++ {
+			_ = f.SetColOutlineLevel(ws, colLetter(c), 1)
+			_ = f.SetColVisible(ws, colLetter(c), false)
+		}
+	}
+
 	return nil
 }
 
@@ -755,11 +766,11 @@ func (g *Generator) createEinnahmenTabelle(
 // ─── ZEICHEN-HILFSFUNKTIONEN ──────────────────────────────────────────────────
 
 func (g *Generator) fbSetupColumnWidths(ws string, colStart int) {
-	g.setColWidth(ws, colStart, 16.0)
-	g.setColWidth(ws, colStart+1, 18.0)
-	g.setColWidth(ws, colStart+2, 18.0)
-	g.setColWidth(ws, colStart+3, 18.0)
-	g.setColWidth(ws, colStart+4, 18.0)
+	g.setColWidth(ws, colStart, 30.43)
+	g.setColWidth(ws, colStart+1, 20.71)
+	g.setColWidth(ws, colStart+2, 20.71)
+	g.setColWidth(ws, colStart+3, 20.71)
+	g.setColWidth(ws, colStart+4, 20.71)
 }
 
 func (g *Generator) drawSeparatorArrow(ws string, row int, col int) error {
