@@ -252,29 +252,30 @@ func dashboardEdits() []cellEdit {
 		// Zeile 7: Projekttraeger | Berichtswaehrung (aus Währungsliste)
 		strEdit(c(7), "Beispiel Hilfswerk e.V."),
 		strEdit(e(7), "USD"),
-		// Zeile 8: Projektlaufzeit (geplant) – "In Monate" rechnet daraus 36 Monate
-		strEdit(c(8), "01.01.2025 - 31.12.2027"),
+		// Zeile 8: Projektstart | Projektende (Datum-Eingaben; Projektlaufzeit/In-Monate sind Formeln)
+		dateEdit(c(8), date(2025, 1, 1)),
+		dateEdit(e(8), date(2027, 12, 31)),
 
 		// ── Vorprojekt-Block ──
-		// Zeile 9: Vorprojektnummer | VP-Berichtswaehrung
-		strEdit(c(9), "PRJ-2022-017"),
-		strEdit(e(9), "USD"),
-		// Zeile 10: Vorprojektende | Wechselkurs
-		dateEdit(c(10), date(2024, 12, 31)),
-		numEdit(e(10), exRate),
-		// Zeile 11: Saldo (LW) | Saldo (EUR) bei Vorprojektende
-		numEdit(c(11), exSaldovortragLC),
-		numEdit(e(11), exSaldovortragEUR),
-		// Zeile 12: Folgeprojektstart | Wechselkurs
-		dateEdit(c(12), date(2025, 1, 1)),
-		numEdit(e(12), exRate),
-		// Zeile 13: Saldovortrag (LW)/(EUR) → benannte Bereiche (FB-/MA-Vorprojektsaldo)
-		numEdit(c(13), exSaldovortragLC),
-		numEdit(e(13), exSaldovortragEUR),
+		// Zeile 10: Vorprojektnummer | VP-Berichtswaehrung
+		strEdit(c(10), "PRJ-2022-017"),
+		strEdit(e(10), "USD"),
+		// Zeile 11: Vorprojektende | Wechselkurs
+		dateEdit(c(11), date(2024, 12, 31)),
+		numEdit(e(11), exRate),
+		// Zeile 12: Saldo (LW) | Saldo (EUR) bei Vorprojektende
+		numEdit(c(12), exSaldovortragLC),
+		numEdit(e(12), exSaldovortragEUR),
+		// Zeile 13: Folgeprojektstart | Wechselkurs
+		dateEdit(c(13), date(2025, 1, 1)),
+		numEdit(e(13), exRate),
+		// Zeile 14: Saldovortrag (LW)/(EUR) → benannte Bereiche (FB-/MA-Vorprojektsaldo)
+		numEdit(c(14), exSaldovortragLC),
+		numEdit(e(14), exSaldovortragEUR),
 	)
 
-	// Dokumenten-Checkliste: Dropdowns D15..D21 auf "Ja" (alle Belege liegen vor).
-	const docFirstRow, docCount, docDropdownCol = 15, 7, 4 // Spalte D
+	// Dokumenten-Checkliste: Dropdowns D16..D22 auf "Ja" (alle Belege liegen vor).
+	const docFirstRow, docCount, docDropdownCol = 16, 7, 4 // Spalte D
 	for i := 0; i < docCount; i++ {
 		edits = append(edits, strEdit(cell(docDropdownCol, docFirstRow+i), "Ja"))
 	}

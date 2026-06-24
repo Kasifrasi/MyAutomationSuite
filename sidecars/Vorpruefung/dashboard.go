@@ -43,8 +43,8 @@ const (
 
 	DB_CCY_COL = 27 // Spalte AA (weit rechts, ausgeblendet)
 
-	DB_SALDOVORTRAG_ROW = 13
-	DB_DOCS_START_ROW   = 15
+	DB_SALDOVORTRAG_ROW = 14
+	DB_DOCS_START_ROW   = 16
 )
 
 // --- Dokumenten-Checkliste ---
@@ -226,21 +226,38 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
-	// --- Zeile: Projektlaufzeit (geplant) | In Monate (Formel) ---
+	// --- Zeile: Projektstart | Projektende ---
+	rStartEnde := r
+	err = g.dbLabel(ws, r, DB_C_LBL1, "Projektstart")
+	if err != nil {
+		return err
+	}
+	err = g.dbInputDate(ws, r, DB_C_IN1)
+	if err != nil {
+		return err
+	}
+	err = g.dbLabel(ws, r, DB_C_LBL2, "Projektende")
+	if err != nil {
+		return err
+	}
+	err = g.dbInputDate(ws, r, DB_C_IN2)
+	if err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, r, 22.0)
+	r++
+
+	// --- Zeile: Projektlaufzeit (geplant, berechnet) | In Monate (Formel) ---
 	err = g.dbLabel(ws, r, DB_C_LBL1, "Projektlaufzeit (geplant)")
 	if err != nil {
 		return err
 	}
-	err = g.dbInput(ws, r, DB_C_IN1, "")
-	if err != nil {
-		return err
-	}
-	err = g.dbLabel(ws, r, DB_C_LBL2, "In Monate")
-	if err != nil {
-		return err
-	}
-	monateCellOpts := StyleOptions{
-		FillColor:    DB_CLR_DISABLED, // berechnet -> grau
+	laufzeitFormula := fmt.Sprintf(
+		`=IF(OR(%s="",%s=""),"",TEXT(%s,"dd.mm.yyyy")&" - "&TEXT(%s,"dd.mm.yyyy"))`,
+		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde),
+		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde))
+	err = g.setFormula(ws, cellName(DB_C_IN1, r), laufzeitFormula, StyleOptions{
+		FillColor:    DB_CLR_DISABLED,
 		VAlign:       "center",
 		HAlign:       "left",
 		BorderTop:    1,
@@ -248,9 +265,28 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 		BorderLeft:   1,
 		BorderRight:  1,
 		BorderColor:  DB_CLR_BORDER,
+	})
+	if err != nil {
+		return err
 	}
-	formula := dbMonateFormula(cellName(DB_C_IN1, r))
-	err = g.setFormula(ws, cellName(DB_C_IN2, r), formula, monateCellOpts)
+	err = g.dbLabel(ws, r, DB_C_LBL2, "In Monate")
+	if err != nil {
+		return err
+	}
+	monateFormula := fmt.Sprintf(
+		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s+1,"M"))`,
+		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde),
+		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde))
+	err = g.setFormula(ws, cellName(DB_C_IN2, r), monateFormula, StyleOptions{
+		FillColor:    DB_CLR_DISABLED,
+		VAlign:       "center",
+		HAlign:       "left",
+		BorderTop:    1,
+		BorderBottom: 1,
+		BorderLeft:   1,
+		BorderRight:  1,
+		BorderColor:  DB_CLR_BORDER,
+	})
 	if err != nil {
 		return err
 	}
@@ -331,7 +367,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
-	err = g.dbInput(ws, r, DB_C_IN1, DB_FMT_DATE)
+	err = g.dbInputDate(ws, r, DB_C_IN1)
 	if err != nil {
 		return err
 	}
@@ -376,7 +412,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
-	err = g.dbInput(ws, r, DB_C_IN1, DB_FMT_DATE)
+	err = g.dbInputDate(ws, r, DB_C_IN1)
 	if err != nil {
 		return err
 	}
@@ -554,6 +590,21 @@ func (g *Generator) dbInput(sheet string, row, col int, numFmt string) error {
 	return g.setValue(sheet, cellName(col, row), "", opts)
 }
 
+func (g *Generator) dbInputDate(sheet string, row, col int) error {
+	opts := StyleOptions{
+		FillColor:    DB_CLR_INPUT,
+		VAlign:       "center",
+		HAlign:       "left",
+		NumFmtID:     14, // Excel built-in kurzes Datum, lokalsensitiv
+		BorderTop:    1,
+		BorderBottom: 1,
+		BorderLeft:   1,
+		BorderRight:  1,
+		BorderColor:  DB_CLR_BORDER,
+	}
+	return g.setValue(sheet, cellName(col, row), "", opts)
+}
+
 func (g *Generator) dbDropdownJaNein(sheet string, row, col int, defaultValue string, fillColor string) error {
 	opts := StyleOptions{
 		FillColor:    fillColor,
@@ -614,6 +665,3 @@ func (g *Generator) dbUpsertNamedRange(sheet string, name string, col, row int) 
 	})
 }
 
-func dbMonateFormula(srcAddr string) string {
-	return fmt.Sprintf(`=IFERROR(LET(AllNums, TEXTJOIN("", TRUE, IFERROR(MID(%s, SEQUENCE(LEN(%s)), 1) * 1, "")), StartDate, DATE(MID(AllNums, 5, 4), MID(AllNums, 3, 2), LEFT(AllNums, 2)), EndDate, DATE(MID(AllNums, 13, 4), MID(AllNums, 11, 2), MID(AllNums, 9, 2)), DATEDIF(StartDate, EndDate + 1, "M")), "")`, srcAddr, srcAddr)
-}
