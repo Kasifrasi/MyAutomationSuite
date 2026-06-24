@@ -23,10 +23,12 @@ jobs:
         with:
           go-version: "1.22.x"
 
-      - name: Build Go Sidecar
+      - name: Build Go Sidecars
         run: |
           cd sidecars/Excelize
           go build -o generator.exe ./cmd/report_generator
+          cd ../Vorpruefung
+          go build -o vorpruefung.exe .
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
