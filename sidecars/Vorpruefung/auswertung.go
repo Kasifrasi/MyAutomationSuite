@@ -38,13 +38,13 @@ const (
 	EV_COL_DIF_EUR = 9
 	EV_COL_ABW_EUR = 10
 
-	// Auswahl-Panel (zentriert, oben in der Sektion; Spalten C … I)
+	// Auswahl-Panel (zentriert, oben in der Sektion; Spalten C … G)
 	EV_PB_C1   = 3 // Box-/Label-Start (C)
-	EV_PB_L2   = 5 // Label-Ende (E)
-	EV_PB_V1   = 6 // Wert-/Slot-LC-Start (F)
-	EV_PB_SLC2 = 7 // Slot-LC-Ende (G)
-	EV_PB_SEU1 = 8 // Slot-EUR-Start (H)
-	EV_PB_C2   = 9 // Box-/Wert-Ende (I)
+	EV_PB_L2   = 4 // Label-Ende (D)
+	EV_PB_V1   = 5 // Wert-/Slot-LC-Start (E)
+	EV_PB_SLC2 = 6 // Slot-LC-Ende (F)
+	EV_PB_SEU1 = 7 // Slot-EUR-Start (G)
+	EV_PB_C2   = 7 // Box-/Wert-Ende (G)
 
 	EV_TABLE_GAP = 2
 	EV_MA_SLOTS  = 6 // max. gleichzeitig anzeigbare Anforderungen je Periode
@@ -647,15 +647,7 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 	g.evalMergedFormula(ws, numCell, cellName(EV_PB_C2, r), numF, num0)
 	r++
 
-	g.evalSelLabel(ws, r, "Saldo (LC)")
-	g.evalMergedFormula(ws, cellName(EV_PB_V1, r), cellName(EV_PB_C2, r),
-		fmt.Sprintf(`=IFERROR(ROUND(%s,2),0)`, evalFBChooseSaldo(numCell, "LC")), lcSt)
-	r++
-
-	g.evalSelLabel(ws, r, "Saldo (EUR)")
-	g.evalMergedFormula(ws, cellName(EV_PB_V1, r), cellName(EV_PB_C2, r),
-		fmt.Sprintf(`=IFERROR(ROUND(%s,2),0)`, evalFBChooseSaldo(numCell, "EUR")), euSt)
-	bottom := r
+	bottom := r - 1
 
 	g.styleOuterBorder(ws, top, EV_PB_C1, bottom, EV_PB_C2, 2, EV_CLR_BORDER)
 	return numCell, bottom
