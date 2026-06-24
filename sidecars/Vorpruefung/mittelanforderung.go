@@ -295,15 +295,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	saldoEURCell := cellName(cEUR, r)
 	_ = f.SetCellFormula(ws, saldoEURCell, fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, addrSaldoLC, rateAddr))
 	_ = g.setStyle(ws, saldoEURCell, saldoEURCell, StyleOptions{NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	r++
-
-	// ─── Manueller Betrag (EUR) ───────────────────────────────────────────────
-	_ = f.SetCellValue(ws, cellName(cLbl, r), "Manueller Betrag:")
-	_ = g.setStyle(ws, cellName(cLC, r), cellName(cLC, r), StyleOptions{FillColor: MA_CLR_GRAY, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	manEUR := cellName(cEUR, r)
-	_ = g.setStyle(ws, manEUR, manEUR, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	g.dbUpsertNamedRange(ws, fmt.Sprintf("MA_ManBetrag_%d", periodNr), cEUR, r)
-	r++
+	r += 2
 
 	// ─── KMW-Mittel Anforderung ───────────────────────────────────────────────
 	lblKMW := cellName(cLbl, r)
@@ -317,6 +309,14 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	kmwEUR := cellName(cEUR, r)
 	_ = f.SetCellFormula(ws, kmwEUR, fmt.Sprintf(`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`, addrSumGE, addrEigenEUR, addrDrittEUR, addrSaldoEUR))
 	_ = g.setStyle(ws, kmwEUR, kmwEUR, StyleOptions{Bold: true, Size: 12.0, FillColor: MA_CLR_KMW, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 6, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080"})
+	r += 2
+
+	// ─── Manueller Betrag (EUR) – zwei Zeilen unter KMW-Mittel Anforderung ────
+	_ = f.MergeCell(ws, cellName(cLbl, r), cellName(cLC, r))
+	_ = f.SetCellValue(ws, cellName(cLbl, r), "Manueller Betrag (EUR):")
+	_ = g.setStyle(ws, cellName(cLbl, r), cellName(cLC, r), StyleOptions{HAlign: "left", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
+	_ = g.setStyle(ws, cellName(cEUR, r), cellName(cEUR, r), StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
+	g.dbUpsertNamedRange(ws, fmt.Sprintf("MA_ManBetrag_%d", periodNr), cEUR, r)
 
 	return nil
 }
