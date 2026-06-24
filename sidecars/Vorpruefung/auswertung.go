@@ -86,6 +86,7 @@ const (
 	EV_CLR_TOTAL_TXT  = "FFFFFF"
 	EV_CLR_INPUT      = "FFFAE5" // nur für bearbeitbare Felder
 	EV_CLR_DEDUCT     = "EAF2F8" // abzuziehende (berechnete) Beträge
+	EV_CLR_DEDUCT_OFF = "D9D9D9" // deaktivierte Abzugszelle ("Kein Abzug")
 	EV_CLR_CALC       = "F2F2F2" // sonstige berechnete Felder
 	EV_CLR_BORDER     = "808080"
 	EV_CLR_GRID       = "D3D3D3"
@@ -357,6 +358,22 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		prognCell = cellName(valR, rr)
 		deds = append(deds, dedRow{absName(tog, rr), absName(valR, rr)})
 		rr++
+	}
+
+	// Bedingte Formatierung: Wertfelder ausgegraut wenn "Kein Abzug" gewählt.
+	// Zwei Regeln pro Zelle, da StyleOptions nur eine BorderColor kennt:
+	// Regel 1 – Füllung/Schrift + drei dünne Gitterlinien (links/oben/unten)
+	// Regel 2 – dicker rechter Außenrahmen (passend zu styleOuterBorder)
+	for _, d := range deds {
+		cond := fmt.Sprintf(`%s="Kein Abzug"`, d.togCell)
+		g.addConditionalFormat(ws, d.valCell, cond, StyleOptions{
+			HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR,
+			FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
+			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderColor: EV_CLR_GRID,
+		})
+		g.addConditionalFormat(ws, d.valCell, cond, StyleOptions{
+			BorderRight: 2, BorderColor: EV_CLR_BORDER,
+		})
 	}
 
 	// Abzugsoptionen KMW insgesamt

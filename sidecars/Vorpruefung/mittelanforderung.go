@@ -87,7 +87,7 @@ func (g *Generator) maEnsurePeriodList(ws string) {
 }
 
 func (g *Generator) maSetupColumnWidths(ws string, colS int) {
-	g.setColWidth(ws, colS, 25.14)
+	g.setColWidth(ws, colS, 32.00)
 	g.setColWidth(ws, colS+1, 20.71)
 	g.setColWidth(ws, colS+2, 20.71)
 }
