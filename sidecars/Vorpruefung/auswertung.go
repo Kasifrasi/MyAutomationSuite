@@ -649,12 +649,12 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 
 	g.evalSelLabel(ws, r, "Saldo (LC)")
 	g.evalMergedFormula(ws, cellName(EV_PB_V1, r), cellName(EV_PB_C2, r),
-		fmt.Sprintf(`=IFERROR(ROUND(INDIRECT("FB_SaldoLC_"&%s),2),0)`, numCell), lcSt)
+		fmt.Sprintf(`=IFERROR(ROUND(%s,2),0)`, evalFBChooseSaldo(numCell, "LC")), lcSt)
 	r++
 
 	g.evalSelLabel(ws, r, "Saldo (EUR)")
 	g.evalMergedFormula(ws, cellName(EV_PB_V1, r), cellName(EV_PB_C2, r),
-		fmt.Sprintf(`=IFERROR(ROUND(INDIRECT("FB_SaldoEUR_"&%s),2),0)`, numCell), euSt)
+		fmt.Sprintf(`=IFERROR(ROUND(%s,2),0)`, evalFBChooseSaldo(numCell, "EUR")), euSt)
 	bottom := r
 
 	g.styleOuterBorder(ws, top, EV_PB_C1, bottom, EV_PB_C2, 2, EV_CLR_BORDER)
@@ -672,8 +672,8 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	const lbl1, lbl2, vLC, vEUR = EV_COL_LABEL, EV_COL_LABEL + 1, EV_COL_LABEL + 2, EV_COL_LABEL + 3
 	top := r
 
-	// Wechselkurs (LC→EUR) der geprüften Periode aus der zugehörigen Mittelanforderung.
-	rate := fmt.Sprintf(`IFERROR(INDIRECT("MA_Kurs_"&%s),0)`, sel.maSelP)
+	// Jahresbudget-EUR wird mit dem Budget-Kurs (Gesamtprojekt) umgerechnet.
+	rate := BG_NAME_KURS
 
 	// ─── Währungs-Unterüberschrift (dezent): links Lokalwährung, rechts Euro ──
 	g.evalKmwLabel(ws, r, lbl1, lbl2, "", false)
@@ -1057,6 +1057,27 @@ func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS))
+}
+
+// evalFBChooseSaldo liefert einen nicht-volatilen CHOOSE-Ausdruck über alle 18
+// FB_Saldo{LC|EUR}_<n>-Namen. Ersatz für INDIRECT("FB_Saldo…"&N).
+func evalFBChooseSaldo(numCell, currency string) string {
+	parts := make([]string, MA_PERIOD_COUNT)
+	for i := range parts {
+		parts[i] = fmt.Sprintf("FB_Saldo%s_%d", currency, i+1)
+	}
+	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, numCell, strings.Join(parts, ","))
+}
+
+// evalMAChooseKurs liefert einen nicht-volatilen CHOOSE-Ausdruck über alle 18
+// MA_Kurs_<n>-Namen. Ersatz für INDIRECT("MA_Kurs_"&maSelP), das Excel 365 mit
+// dem @-Operator (implizite Schnittmenge) versieht und dadurch falsch rendert.
+func evalMAChooseKurs(maSelP string) string {
+	parts := make([]string, MA_PERIOD_COUNT)
+	for i := range parts {
+		parts[i] = fmt.Sprintf("MA_Kurs_%d", i+1)
+	}
+	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, maSelP, strings.Join(parts, ","))
 }
 
 // evalMACurrentKMWRequest summiert die KMW-Mittel-Anforderung der EINEN aktuell
