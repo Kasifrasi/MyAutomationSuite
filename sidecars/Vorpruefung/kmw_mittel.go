@@ -150,7 +150,7 @@ func (g *Generator) CreateKMWMittelSheet() error {
 			FillColor:    KMW_CLR_INPUT,
 			VAlign:       "center",
 			HAlign:       "center",
-			NumFormat:    "dd.mm.yyyy",
+			NumFmtID:     14, // Excel built-in kurzes Datum, lokalsensitiv
 			BorderTop:    1,
 			BorderBottom: 1,
 			BorderLeft:   1,
