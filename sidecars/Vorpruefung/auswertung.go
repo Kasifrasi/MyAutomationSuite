@@ -617,11 +617,6 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
 	inputCtr := StyleOptions{HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
-	lcSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_LC, FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
-	euSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
-
 	r := top
 	g.evalSelTitle(ws, r, "Finanzbericht auswählen")
 	r++
@@ -1049,16 +1044,6 @@ func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS))
-}
-
-// evalFBChooseSaldo liefert einen nicht-volatilen CHOOSE-Ausdruck über alle 18
-// FB_Saldo{LC|EUR}_<n>-Namen. Ersatz für INDIRECT("FB_Saldo…"&N).
-func evalFBChooseSaldo(numCell, currency string) string {
-	parts := make([]string, MA_PERIOD_COUNT)
-	for i := range parts {
-		parts[i] = fmt.Sprintf("FB_Saldo%s_%d", currency, i+1)
-	}
-	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, numCell, strings.Join(parts, ","))
 }
 
 // evalMAChooseKurs liefert einen nicht-volatilen CHOOSE-Ausdruck über alle 18
