@@ -295,7 +295,15 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	saldoEURCell := cellName(cEUR, r)
 	_ = f.SetCellFormula(ws, saldoEURCell, fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, addrSaldoLC, rateAddr))
 	_ = g.setStyle(ws, saldoEURCell, saldoEURCell, StyleOptions{NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	r += 2
+	r++
+
+	// ─── Manueller Betrag (EUR) ───────────────────────────────────────────────
+	_ = f.SetCellValue(ws, cellName(cLbl, r), "Manueller Betrag:")
+	_ = g.setStyle(ws, cellName(cLC, r), cellName(cLC, r), StyleOptions{FillColor: MA_CLR_GRAY, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
+	manEUR := cellName(cEUR, r)
+	_ = g.setStyle(ws, manEUR, manEUR, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
+	g.dbUpsertNamedRange(ws, fmt.Sprintf("MA_ManBetrag_%d", periodNr), cEUR, r)
+	r++
 
 	// ─── KMW-Mittel Anforderung ───────────────────────────────────────────────
 	lblKMW := cellName(cLbl, r)
