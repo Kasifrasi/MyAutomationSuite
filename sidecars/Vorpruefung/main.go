@@ -18,6 +18,7 @@ type StyleOptions struct {
 	HAlign       string
 	VAlign       string
 	NumFormat    string
+	NumFmtID     int // Built-in Excel format ID (z.B. 14 = kurzes Datum, lokalsensitiv)
 	BorderTop    int // 0: none, 1: thin, 2: medium
 	BorderBottom int
 	BorderLeft   int
@@ -71,9 +72,9 @@ func absName(col, row int) string {
 }
 
 func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
-	key := fmt.Sprintf("%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%s-%t-%t",
+	key := fmt.Sprintf("%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%d-%s-%t-%t",
 		opts.Bold, opts.Italic, opts.Size, opts.FontColor, opts.FillColor,
-		opts.HAlign, opts.VAlign, opts.NumFormat,
+		opts.HAlign, opts.VAlign, opts.NumFormat, opts.NumFmtID,
 		opts.BorderTop, opts.BorderBottom, opts.BorderLeft, opts.BorderRight,
 		opts.BorderColor, opts.WrapText, opts.Strike)
 
@@ -120,7 +121,9 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 	style.Alignment = alignment
 
 	// Number Format
-	if opts.NumFormat != "" {
+	if opts.NumFmtID > 0 {
+		style.NumFmt = opts.NumFmtID
+	} else if opts.NumFormat != "" {
 		style.CustomNumFmt = &opts.NumFormat
 	}
 
@@ -156,9 +159,9 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 }
 
 func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) {
-	key := fmt.Sprintf("cond-%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%s-%t-%t",
+	key := fmt.Sprintf("cond-%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%d-%s-%t-%t",
 		opts.Bold, opts.Italic, opts.Size, opts.FontColor, opts.FillColor,
-		opts.HAlign, opts.VAlign, opts.NumFormat,
+		opts.HAlign, opts.VAlign, opts.NumFormat, opts.NumFmtID,
 		opts.BorderTop, opts.BorderBottom, opts.BorderLeft, opts.BorderRight,
 		opts.BorderColor, opts.WrapText, opts.Strike)
 
@@ -205,7 +208,9 @@ func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) 
 	style.Alignment = alignment
 
 	// Number Format
-	if opts.NumFormat != "" {
+	if opts.NumFmtID > 0 {
+		style.NumFmt = opts.NumFmtID
+	} else if opts.NumFormat != "" {
 		style.CustomNumFmt = &opts.NumFormat
 	}
 
