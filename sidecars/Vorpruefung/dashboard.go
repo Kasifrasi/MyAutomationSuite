@@ -252,10 +252,13 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	fmtDate := func(addr string) string {
+		return fmt.Sprintf(`TEXT(DAY(%s),"00")&"."&TEXT(MONTH(%s),"00")&"."&TEXT(YEAR(%s),"0000")`, addr, addr, addr)
+	}
 	laufzeitFormula := fmt.Sprintf(
-		`=IF(AND(ISNUMBER(%s),ISNUMBER(%s)),TEXT(%s,"DD.MM.YYYY")&" - "&TEXT(%s,"DD.MM.YYYY"),"")`,
+		`=IF(AND(ISNUMBER(%s),ISNUMBER(%s)),%s&" - "&%s,"")`,
 		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde),
-		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde))
+		fmtDate(absName(DB_C_IN1, rStartEnde)), fmtDate(absName(DB_C_IN2, rStartEnde)))
 	err = g.setFormula(ws, cellName(DB_C_IN1, r), laufzeitFormula, StyleOptions{
 		FillColor:    DB_CLR_DISABLED,
 		VAlign:       "center",
