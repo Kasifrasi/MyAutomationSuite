@@ -730,11 +730,6 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	_ = g.setValue(ws, cellName(vEUR, r), "Euro", subHdr)
 	r++
 
-	// Geprüfte Periode = Periode der gewählten Mittelanforderung (= FB-Auswahl + 1).
-	label(r, "Geprüfte Periode (aus MA-Auswahl)", false)
-	sharedCalc(r, fmt.Sprintf("=%s", sel.maSelP), "0")
-	r++
-
 	// Anforderungshöhe = Summe der ausgewählten Mittelanforderungen (#1..#k) der
 	// geprüften Periode (identisch zur GESAMT-Zeile der Prognoseprüfung).
 	rAnf := r
@@ -1019,13 +1014,14 @@ func (g *Generator) evalTotalRow(ws string, totalRow, dataStart, dataEnd int) {
 func (g *Generator) evalDeviationConditional(ws string, col, dataStart, dataEnd int) {
 	rng := fmt.Sprintf("%s:%s", cellName(col, dataStart), cellName(col, dataEnd))
 	topRel := cellName(col, dataStart)
+	// Bewusst OHNE eigene Rahmen: die bedingte Formatierung überschreibt sonst die
+	// vorhandene Zellkante (innen dünnes Gitter, an der Box rechts kräftig durch
+	// styleOuterBorder). Nur Schrift/Füllung/Format setzen – wie evalLimitUeber.
 	g.addConditionalFormat(ws, rng, fmt.Sprintf("%s>=0.2", topRel), StyleOptions{
 		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_PCT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
 	g.addConditionalFormat(ws, rng, fmt.Sprintf("AND(%s>=0.1,%s<0.2)", topRel, topRel), StyleOptions{
 		Bold: true, FontColor: EV_CLR_WARN_TXT, FillColor: EV_CLR_WARN, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_PCT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
 }
 

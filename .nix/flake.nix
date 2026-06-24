@@ -65,6 +65,28 @@
           go build && ./vorpruefung
         '';
 
+        # Erzeugt die Vorlage MIT eingetragenem Budget (Blatt "I. Budget").
+        # Nur der Generator-Aufruf trägt das Budget ein – testfill tut das NICHT.
+        # Usage: vorpruefung-budget [budget.json] [output.xlsx]
+        script-vorpruefung-budget = pkgs.writeShellScriptBin "vorpruefung-budget" ''
+          cd "$(git rev-parse --show-toplevel)/sidecars/Vorpruefung" || exit 1
+          budget="''${1:-budget.example.json}"
+          out="''${2:-vorpruefung_output.xlsx}"
+          go run . -budget "$budget" -o "$out"
+        '';
+
+        # Voller Durchlauf: erst Vorlage mit Budget erzeugen, dann via testfill alle
+        # weiteren Daten (Dashboard, KMW, Finanzberichte, Mittelanforderung) befüllen.
+        # Usage: vorpruefung-fill [budget.json] [template.xlsx] [output.xlsx]
+        script-vorpruefung-fill = pkgs.writeShellScriptBin "vorpruefung-fill" ''
+          cd "$(git rev-parse --show-toplevel)/sidecars/Vorpruefung" || exit 1
+          budget="''${1:-budget.example.json}"
+          template="''${2:-vorpruefung_output.xlsx}"
+          out="''${3:-vorpruefung_befuellt.xlsx}"
+          go run . -budget "$budget" -o "$template" || exit 1
+          go run ./testfill -in "$template" -budget "$budget" -o "$out"
+        '';
+
         # Build-time tools and dependencies
         buildInputs = with pkgs; [
           # --- C/C++ Build Tools ---
@@ -100,6 +122,8 @@
           script-fmt
           script-build-go
           script-run-vorpruefung
+          script-vorpruefung-budget
+          script-vorpruefung-fill
         ] ++ runtimeLibs;
 
       in {
@@ -134,6 +158,8 @@
             echo '  lint         - cargo clippy'
             echo '  build-go     - Kompiliert das Go Sidecar'
             echo '  run-vorpruefung - Baut und führt das Vorpruefung Go-Skript aus'
+            echo '  vorpruefung-budget [budget.json] [out.xlsx] - Vorlage NUR mit Budget erzeugen'
+            echo '  vorpruefung-fill [budget.json] [tmpl.xlsx] [out.xlsx] - Budget + alle Testdaten (testfill)'
           '';
         };
       });
