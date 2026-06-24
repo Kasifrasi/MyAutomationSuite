@@ -394,6 +394,17 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 		StyleName:      "",
 		ShowRowStripes: falsePtr(),
 	})
+
+	// Geber_Liste = die im Budget hinterlegten Drittmittelgeber (nur diese).
+	// Robuste Bereichs-Referenz (OFFSET/COUNTA) direkt auf die Geber-Eingabezellen –
+	// die Höhe folgt der Anzahl befüllter Geber, leere Folgezeilen werden abgeschnitten.
+	firstDataRow := headerRow + 1
+	lastDataRow := headerRow + dataRows
+	g.upsertNamedFormula(BG_NAME_GEBER_LIST, fmt.Sprintf(
+		"OFFSET('%s'!%s,0,0,MAX(1,COUNTA('%s'!$%s$%d:$%s$%d)),1)",
+		ws, absName(cName, firstDataRow),
+		ws, colLetter(cName), firstDataRow, colLetter(cName), lastDataRow))
+
 	g.styleOuterBorder(ws, titleRow, cName, headerRow+dataRows, cEur, 2, BG_CLR_BORDER)
 }
 
@@ -483,12 +494,9 @@ func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
 }
 
 func (g *Generator) bgBuildLookupLists(ws string) {
-	// VSTACK mit skalaren String-Argumenten (NICHT dem Array-Konstanten
-	// {"Projektpartner";"Bank"} – das liefert in Excel einen Fehlerwert und ließ
-	// die Geber-Dropdownliste leer). Identisch zur funktionierenden FB-/MA-Liste.
-	g.setDynArrayFormula(ws, cellName(BG_COL_LIST_GEBER, 1), fmt.Sprintf(`_xlfn.VSTACK("Projektpartner","Bank",IFERROR(_xlfn._xlws.FILTER(%s[Name des Gebers],%s[Name des Gebers]<>""),""))`, BG_TABLE_NAME, BG_TABLE_NAME), StyleOptions{})
-	g.upsertNamedFormula(BG_NAME_GEBER_LIST, fmt.Sprintf("OFFSET('%s'!%s, 0, 0, COUNTA('%s'!%s:%s), 1)", ws, absName(BG_COL_LIST_GEBER, 1), ws, colLetter(BG_COL_LIST_GEBER), colLetter(BG_COL_LIST_GEBER)))
-
+	// Geber_Liste wird direkt in bgDrawDrittmittelTable definiert (robuste
+	// Bereichs-Referenz auf die Geber-Eingabezellen statt eines Dynamic-Array-Spills,
+	// der in der Datenvalidierung leer blieb).
 	g.setDynArrayFormula(ws, cellName(BG_COL_LIST_ID, 1), fmt.Sprintf(`IFERROR(_xlfn._xlws.FILTER(%s[ID],%s[ID]<>""),"")`, BG_TABLE_AUSG, BG_TABLE_AUSG), StyleOptions{})
 	g.upsertNamedFormula(BG_NAME_ID_LIST, fmt.Sprintf("OFFSET('%s'!%s, 0, 0, COUNTA('%s'!%s:%s), 1)", ws, absName(BG_COL_LIST_ID, 1), ws, colLetter(BG_COL_LIST_ID), colLetter(BG_COL_LIST_ID)))
 }
