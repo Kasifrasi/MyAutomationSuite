@@ -923,17 +923,23 @@ fn budget_to_vp_budget(d: &budget_scanner::BudgetData) -> VpBudget {
         let y3 = parse_amount(&p.cost_year3);
         let eur = parse_amount(&p.cost_col2);
 
-        // Reine Kategorie-Kopfzeilen ("1.", "2." ...) ohne Unterposition UND ohne
-        // Werte überspringen. Die Sonderkategorien (Evaluierung/Audit/Reserve) tragen
-        // ihren Betrag aber direkt auf der Kategoriezeile ("6.", "7.", "8.") ohne
-        // Unterposition – solche Zeilen mit Werten als Einzelposition übernehmen.
-        let has_value =
-            lc.is_some() || eur.is_some() || y1.is_some() || y2.is_some() || y3.is_some();
-        if sub.is_empty() && !has_value {
+        // Wertlose Positionen (kein/0-Wert in allen Spalten) weglassen, wenn sie entweder
+        // eine reine Kategorie-Kopfzeile sind (keine Unterposition, label = Kategoriename)
+        // ODER ein namenloser Platzhalter. Ihre ID wird gar nicht erst an das Prüftool
+        // übergeben. Da die ID direkt aus dem Budget übernommen wird (id = p.number),
+        // behalten die übrigen Positionen ihre Original-Nummern – es entsteht höchstens eine
+        // Lücke (z. B. 1.1, 1.3), aber keine Verschiebung. Die Sonderkategorien
+        // (Evaluierung/Audit/Reserve) tragen ihren Wert direkt auf der Kategoriezeile und
+        // bleiben dadurch erhalten; benannte Positionen mit 0 ebenfalls (bewusste Eingabe).
+        let is_zero = |v: Option<f64>| v.is_none_or(|x| x == 0.0);
+        let valueless = is_zero(lc) && is_zero(y1) && is_zero(y2) && is_zero(y3) && is_zero(eur);
+        let label_empty = p.label.trim().is_empty();
+        let is_header = sub.is_empty();
+        if valueless && (is_header || label_empty) {
             continue;
         }
 
-        let position = if p.label.trim().is_empty() {
+        let position = if label_empty {
             VP_CATEGORIES[idx].to_string()
         } else {
             p.label.clone()
@@ -2525,9 +2531,19 @@ mod vp_tests {
     use super::*;
 
     fn pos(number: &str, lc: &str, y1: &str, eur: &str) -> budget_scanner::BudgetPosition {
+        posn(number, "", lc, y1, eur)
+    }
+
+    fn posn(
+        number: &str,
+        label: &str,
+        lc: &str,
+        y1: &str,
+        eur: &str,
+    ) -> budget_scanner::BudgetPosition {
         budget_scanner::BudgetPosition {
             number: number.into(),
-            label: String::new(),
+            label: label.into(),
             cost_col1: lc.into(),
             cost_col2: eur.into(),
             cost_year1: y1.into(),
@@ -2568,11 +2584,13 @@ mod vp_tests {
     #[test]
     fn skips_empty_category_header_but_keeps_special_categories() {
         let d = data_with(vec![
-            pos("1.", "", "", ""),       // reine Kopfzeile -> skip
+            // Kopfzeile trägt (wie im echten Scanner) den Kategorienamen als Label, hat
+            // aber keine Werte -> muss trotzdem gefiltert werden.
+            posn("1.", "Bauausgaben", "", "", ""),
             pos("1.1", "10000", "10000", "5000"), // normale Position
-            pos("6.", "10000", "10000", "5000"),  // Evaluierung (Wert auf Kategoriezeile)
-            pos("7.", "10000", "10000", "5000"),  // Audit
-            pos("8.", "79000", "79000", "39500"), // Reserve
+            posn("6.", "Evaluierung", "10000", "10000", "5000"), // Wert auf Kategoriezeile
+            posn("7.", "Audit", "10000", "10000", "5000"),       // Audit
+            posn("8.", "Reserve", "79000", "79000", "39500"),    // Reserve
         ]);
         let vp = budget_to_vp_budget(&d);
         let ids: Vec<&str> = vp.ausgaben.iter().map(|a| a.id.as_str()).collect();
@@ -2585,6 +2603,24 @@ mod vp_tests {
         let reserve = vp.ausgaben.iter().find(|a| a.id == "8.").unwrap();
         assert_eq!(reserve.kategorie, "Reserve");
         assert_eq!(reserve.lc, Some(79000.0));
+    }
+
+    #[test]
+    fn filters_empty_placeholders_without_renumbering() {
+        let d = data_with(vec![
+            pos("1.", "", "", ""),                  // Kopfzeile -> raus
+            pos("1.1", "10000", "10000", "5000"),   // Wert -> bleibt
+            pos("1.2", "0", "", "0"),               // leer + 0 -> raus (ID 1.2 entfällt)
+            pos("1.3", "11000", "11000", "5500"),   // Wert -> bleibt
+            posn("1.4", "Büromaterial", "0", "", "0"), // Name vorhanden -> bleibt (auch bei 0)
+        ]);
+        let vp = budget_to_vp_budget(&d);
+        let ids: Vec<&str> = vp.ausgaben.iter().map(|a| a.id.as_str()).collect();
+        // 1.2 fehlt (Lücke), aber 1.3 behält seine Original-ID – keine Verschiebung.
+        assert_eq!(ids, vec!["1.1", "1.3", "1.4"]);
+        let bm = vp.ausgaben.iter().find(|a| a.id == "1.4").unwrap();
+        assert_eq!(bm.position, "Büromaterial");
+        assert_eq!(bm.lc, Some(0.0));
     }
 
     // Voller Pfad mit echtem Budget (nur wenn Testdatei vorhanden, sonst übersprungen).
