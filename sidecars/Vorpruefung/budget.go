@@ -563,7 +563,8 @@ func (g *Generator) bgDrawBegruendung(ws string, reserveCheckAddr string) {
 
 	// Aktiver Stil für Header bei TRUE: Dunkelgrauer Header mit weißem Text und deutlichem Rahmen
 	styleActiveHeaderOpts := StyleOptions{Bold: true, Size: 9, FontColor: "FFFFFF", FillColor: "3C3C3C", HAlign: "center", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER}
-	g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(c1, hdrRow), cellName(c2, hdrRow)), condFormula, styleActiveHeaderOpts)
+	// Nur Ankerzelle, nicht den vollen Merge-Bereich — sonst doppeltes Text-Rendering.
+	g.addConditionalFormat(ws, cellName(c1, hdrRow), condFormula, styleActiveHeaderOpts)
 
 	// Aktiver Stil für Eingabebereich bei TRUE: Zartgelb (BG_CLR_INPUT) mit deutlichem Rahmen
 	styleActiveAreaOpts := StyleOptions{FillColor: BG_CLR_INPUT, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER}
