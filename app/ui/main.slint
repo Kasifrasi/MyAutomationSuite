@@ -2,6 +2,7 @@ import { Palette, Switch, AboutSlint, Button } from "std-widgets.slint";
 export { Palette }
 import { FBPage } from "fb_page.slint";
 import { BudgetPage } from "budget_to_fb.slint";
+import { VorpruefungPage } from "vorpruefung_page.slint";
 import { FolderPage } from "folder_page.slint";
 import { HomePage } from "home_page.slint";
 import {
@@ -11,10 +12,11 @@ import {
     GlobalUI,
     FBState,
     BudgetState,
+    VorpruefungState,
     FolderState,
     UpdateState,
 } from "state.slint";
-export { Languages, Categories, SheetPermissions, FBState, BudgetState, FolderState, UpdateState }
+export { Languages, Categories, SheetPermissions, FBState, BudgetState, VorpruefungState, FolderState, UpdateState }
 import "./fonts/InterVariable.ttf";
 import "./fonts/InterVariable-Italic.ttf";
 
@@ -115,14 +117,14 @@ export component MainWindow inherits Window {
                     spacing: 2px;
                     alignment: center;
                     Text {
-                        text: root.current-page == "fb" ? "FB-Generator" : (root.current-page == "budget" ? "Budget zu FB" : "Ordner erstellen");
+                        text: root.current-page == "fb" ? "FB-Generator" : (root.current-page == "budget" ? "Budget zu FB" : (root.current-page == "vorpruefung" ? "Budget zu Prüfvorlage" : "Ordner erstellen"));
                         font-size: 18px;
                         font-weight: 700;
                         color: Palette.foreground;
                     }
 
                     Text {
-                        text: root.current-page == "fb" ? "Excel-Vorlagen erstellen" : (root.current-page == "budget" ? "Budget-Dateien scannen & FB-Berichte erstellen" : "Standardisierte Projektordner anlegen");
+                        text: root.current-page == "fb" ? "Excel-Vorlagen erstellen" : (root.current-page == "budget" ? "Budget-Dateien scannen & FB-Berichte erstellen" : (root.current-page == "vorpruefung" ? "Budgets scannen & Prüfvorlagen erstellen" : "Standardisierte Projektordner anlegen"));
                         font-size: 13px;
                         color: Palette.foreground;
                         opacity: 0.55;
@@ -204,7 +206,12 @@ export component MainWindow inherits Window {
         if root.current-page == "budget": BudgetPage { }
 
         // ================================================================
-        // Seite 3: Ordner erstellen
+        // Seite 3: Budget zu Prüfvorlage (Vorpruefung)
+        // ================================================================
+        if root.current-page == "vorpruefung": VorpruefungPage { }
+
+        // ================================================================
+        // Seite 4: Ordner erstellen
         // ================================================================
         if root.current-page == "folder": FolderPage { }
     }

@@ -131,6 +131,33 @@ export global BudgetState {
 }
 
 // ========================================
+// Budget-to-Prüfvorlage State (Vorpruefung)
+// ========================================
+export global VorpruefungState {
+    in-out property <string> src-folder;
+    in-out property <string> out-folder;
+
+    // Settings (persistent via confy)
+    in-out property <bool> show-settings: true;
+    in-out property <string> name;
+    in-out property <bool> protect-workbook;
+    in-out property <string> workbook-password;
+
+    in-out property <string> status-type: "idle";
+    in-out property <string> status-message: "";
+    in-out property <[[StandardListViewItem]]> table-data: [];
+    in-out property <[TableColumn]> table-columns: [];
+
+    callback select-src();
+    callback select-out();
+    callback generate();
+    callback do-reset();
+    callback dismiss-status();
+    callback toggle-settings();
+    callback save-settings();
+}
+
+// ========================================
 // Folder-Creation State
 // ========================================
 export global FolderState {

@@ -4,7 +4,9 @@ use std::path::Path;
 const ASSETS: &str = "assets";
 
 fn asset(name: &str) -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join(ASSETS).join(name)
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(ASSETS)
+        .join(name)
 }
 
 #[test]

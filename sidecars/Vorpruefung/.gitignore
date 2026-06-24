@@ -1,1 +1,8 @@
+# Go-Build-Artefakte (lokal gebaut, vor `cargo build` via `build-go`)
 vorpruefung
+*.exe
+
+# Generierte Test-Ausgaben
+vorpruefung_output.xlsx
+vorpruefung_befuellt.xlsx
+output.xlsx

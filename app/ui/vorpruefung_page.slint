@@ -1,0 +1,203 @@
+import {
+    Button,
+    LineEdit,
+    GridBox,
+    Palette,
+    StandardTableView,
+    ScrollView,
+} from "std-widgets.slint";
+import {
+    Card,
+    StatusBanner,
+    SettingCheckBox,
+    PasswordField,
+} from "components.slint";
+import { VorpruefungState } from "state.slint";
+
+// Seite: Aus Budgets Prüfvorlagen (Vorpruefung) erzeugen.
+export component VorpruefungPage inherits VerticalLayout {
+    spacing: 10px;
+
+    // --- 1. FIXED HEADER (Status & Pfade) ---
+    VerticalLayout {
+        spacing: 10px;
+
+        if VorpruefungState.status-type != "idle": StatusBanner {
+            status-type: VorpruefungState.status-type;
+            status-message: VorpruefungState.status-message;
+            dismiss => {
+                VorpruefungState.dismiss-status();
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 16px;
+            // Quelle (Budget-Ordner)
+            HorizontalLayout {
+                horizontal-stretch: 1;
+                spacing: 8px;
+                LineEdit {
+                    text <=> VorpruefungState.src-folder;
+                    read-only: true;
+                    placeholder-text: "* Budget-Ordner...";
+                    horizontal-stretch: 1;
+                }
+
+                Button {
+                    text: "Quelle...";
+                    clicked => {
+                        VorpruefungState.select-src();
+                    }
+                }
+            }
+            // Ausgabe
+            HorizontalLayout {
+                horizontal-stretch: 1;
+                spacing: 8px;
+                padding-right: 12px;
+                LineEdit {
+                    text <=> VorpruefungState.out-folder;
+                    read-only: true;
+                    placeholder-text: "* Ausgabeordner...";
+                    horizontal-stretch: 1;
+                }
+
+                Button {
+                    text: "Ausgabe...";
+                    clicked => {
+                        VorpruefungState.select-out();
+                    }
+                }
+            }
+        }
+    }
+
+    // --- 2. SCROLLABLE CONTENT (Settings & Tabelle) ---
+    ScrollView {
+        vertical-stretch: 1;
+
+        VerticalLayout {
+            spacing: 12px;
+            padding-right: 12px;
+
+            if VorpruefungState.show-settings: Card {
+                title: "Erweiterte Einstellungen";
+                VerticalLayout {
+                    spacing: 12px;
+
+                    // Dateiname / Muster
+                    HorizontalLayout {
+                        spacing: 16px;
+                        alignment: start;
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text {
+                                text: "* Dateinamens-Muster";
+                                font-size: 13px;
+                                font-weight: 600;
+                                opacity: 0.8;
+                            }
+
+                            LineEdit {
+                                text <=> VorpruefungState.name;
+                                placeholder-text: "* z.B. Pruefvorlage_{pn}_{la}.xlsx";
+                                width: 320px;
+                                edited => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+
+                        VerticalLayout {
+                            spacing: 4px;
+                            alignment: center;
+                            Text {
+                                text: "💡 Platzhalter:\n{pn} = Projektnummer\n{la} = Sprache\n{version} = Version aus Budget\n{i} = Duplikate-Zähler";
+                                font-size: 12px;
+                                opacity: 0.7;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    // Schutz: nur Mappenschutz (sperrt keine Eingabezellen)
+                    GridBox {
+                        spacing: 10px;
+                        Row {
+                            SettingCheckBox {
+                                text: "Mappenschutz (Struktur sperren)";
+                                value <=> VorpruefungState.protect-workbook;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        PasswordField {
+                            label: "Mappen-Passwort";
+                            password <=> VorpruefungState.workbook-password;
+                            is-enabled: VorpruefungState.protect-workbook;
+                            changed => {
+                                VorpruefungState.save-settings();
+                            }
+                        }
+                    }
+
+                    Text {
+                        text: "Hinweis: Blattschutz wird hier bewusst nicht angeboten – die Prüfvorlage enthält viele Eingabefelder, die editierbar bleiben müssen.";
+                        font-size: 12px;
+                        opacity: 0.6;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+
+            // Ergebnistabelle
+            Card {
+                title: "Ergebnisse";
+                min-height: 250px;
+                StandardTableView {
+                    columns: VorpruefungState.table-columns;
+                    rows: VorpruefungState.table-data;
+                }
+            }
+        }
+    }
+
+    // --- 3. FIXED FOOTER (Aktionen) ---
+    HorizontalLayout {
+        padding-top: 5px;
+        spacing: 12px;
+
+        Button {
+            text: VorpruefungState.show-settings ? "Einstellungen ▲" : "Einstellungen ▼";
+            clicked => {
+                VorpruefungState.toggle-settings();
+            }
+        }
+
+        Button {
+            text: "Zurücksetzen";
+            clicked => {
+                VorpruefungState.do-reset();
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        Button {
+            text: VorpruefungState.status-type == "pending" ? "Erstellt..." : "Prüfvorlagen erstellen (F5)";
+            primary: true;
+            enabled: VorpruefungState.src-folder != "" && VorpruefungState.out-folder != "" && VorpruefungState.name != "" && VorpruefungState.status-type != "pending";
+            clicked => {
+                VorpruefungState.generate();
+            }
+            width: 240px;
+        }
+    }
+}

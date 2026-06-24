@@ -40,16 +40,30 @@ impl std::fmt::Display for ProtectionError {
 }
 impl std::error::Error for ProtectionError {}
 
-impl From<std::io::Error> for ProtectionError { fn from(e: std::io::Error) -> Self { Self::Io(e) } }
-impl From<zip::result::ZipError> for ProtectionError { fn from(e: zip::result::ZipError) -> Self { Self::Zip(e) } }
-impl From<quick_xml::Error> for ProtectionError { fn from(e: quick_xml::Error) -> Self { Self::Xml(e) } }
-impl From<std::str::Utf8Error> for ProtectionError { fn from(e: std::str::Utf8Error) -> Self { Self::InvalidUtf8(e) } }
-
+impl From<std::io::Error> for ProtectionError {
+    fn from(e: std::io::Error) -> Self {
+        Self::Io(e)
+    }
+}
+impl From<zip::result::ZipError> for ProtectionError {
+    fn from(e: zip::result::ZipError) -> Self {
+        Self::Zip(e)
+    }
+}
+impl From<quick_xml::Error> for ProtectionError {
+    fn from(e: quick_xml::Error) -> Self {
+        Self::Xml(e)
+    }
+}
+impl From<std::str::Utf8Error> for ProtectionError {
+    fn from(e: std::str::Utf8Error) -> Self {
+        Self::InvalidUtf8(e)
+    }
+}
 
 /// Fester Salt für den Batch-Vorgang, damit Hashes deterministisch vorgekaut werden können.
 const FIXED_SALT: [u8; 16] = [
-    0x6b, 0x6d, 0x77, 0x66, 0x62, 0x5f, 0x72, 0x70,
-    0x74, 0x5f, 0x76, 0x31, 0x5f, 0x21, 0x21, 0x00,
+    0x6b, 0x6d, 0x77, 0x66, 0x62, 0x5f, 0x72, 0x70, 0x74, 0x5f, 0x76, 0x31, 0x5f, 0x21, 0x21, 0x00,
 ];
 
 #[derive(Clone, Default)]
@@ -123,7 +137,10 @@ pub fn precompute_hash(password: &str) -> PrecomputedHash {
         };
     }
 
-    let pw_utf16: Vec<u8> = password.encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
+    let pw_utf16: Vec<u8> = password
+        .encode_utf16()
+        .flat_map(|c| c.to_le_bytes())
+        .collect();
     let mut hasher = Sha512::new();
     hasher.update(FIXED_SALT);
     hasher.update(&pw_utf16);
@@ -150,7 +167,10 @@ pub fn precompute_hash(password: &str) -> PrecomputedHash {
 // XML INJECTION LOGIK (Workbook)
 // ============================================================================
 
-pub fn inject_workbook_protection(xml_content: &[u8], hash: Option<&PrecomputedHash>) -> Result<Vec<u8>, ProtectionError> {
+pub fn inject_workbook_protection(
+    xml_content: &[u8],
+    hash: Option<&PrecomputedHash>,
+) -> Result<Vec<u8>, ProtectionError> {
     let protection_tag = match hash {
         Some(h) if h.password_empty => r#"<workbookProtection lockStructure="1"/>"#.to_string(),
         Some(h) => format!(
@@ -165,22 +185,27 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: Option<&PrecomputedH
     let mut buf = Vec::new();
     let mut inserted = false;
 
-    let try_insert = |w: &mut Writer<_>, tag: &str, inserted: &mut bool| -> Result<(), ProtectionError> {
-        if !*inserted {
-            if !tag.is_empty() {
-                write_tag(w, tag)?;
+    let try_insert =
+        |w: &mut Writer<_>, tag: &str, inserted: &mut bool| -> Result<(), ProtectionError> {
+            if !*inserted {
+                if !tag.is_empty() {
+                    write_tag(w, tag)?;
+                }
+                *inserted = true;
             }
-            *inserted = true;
-        }
-        Ok(())
-    };
+            Ok(())
+        };
 
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
-                if !inserted && (name_str == "sheets" || name_str == "bookViews" || name_str == "functionGroups") {
+                if !inserted
+                    && (name_str == "sheets"
+                        || name_str == "bookViews"
+                        || name_str == "functionGroups")
+                {
                     try_insert(&mut writer, &protection_tag, &mut inserted)?;
                 }
 
@@ -215,7 +240,11 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: Option<&PrecomputedH
             Ok(Event::Empty(ref e)) => {
                 let name_str = std::str::from_utf8(e.name().into_inner())?;
 
-                if !inserted && (name_str == "sheets" || name_str == "bookViews" || name_str == "functionGroups") {
+                if !inserted
+                    && (name_str == "sheets"
+                        || name_str == "bookViews"
+                        || name_str == "functionGroups")
+                {
                     try_insert(&mut writer, &protection_tag, &mut inserted)?;
                 }
 
@@ -233,7 +262,9 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: Option<&PrecomputedH
                 writer.write_event(Event::End(e.clone()))?;
             }
             Ok(Event::Eof) => break,
-            Ok(e) => { writer.write_event(e)?; }
+            Ok(e) => {
+                writer.write_event(e)?;
+            }
             Err(e) => return Err(e.into()),
         }
         buf.clear();
@@ -246,7 +277,11 @@ pub fn inject_workbook_protection(xml_content: &[u8], hash: Option<&PrecomputedH
 // XML INJECTION LOGIK (Worksheet)
 // ============================================================================
 
-pub fn inject_sheet_protection(xml_content: &[u8], hash: Option<&PrecomputedHash>, options: Option<&SheetProtectionOptions>) -> Result<Vec<u8>, ProtectionError> {
+pub fn inject_sheet_protection(
+    xml_content: &[u8],
+    hash: Option<&PrecomputedHash>,
+    options: Option<&SheetProtectionOptions>,
+) -> Result<Vec<u8>, ProtectionError> {
     let protection_tag = match (hash, options) {
         (Some(h), Some(opts)) => {
             let opts_str = opts.to_xml_attributes();
@@ -267,15 +302,16 @@ pub fn inject_sheet_protection(xml_content: &[u8], hash: Option<&PrecomputedHash
     let mut buf = Vec::new();
     let mut inserted = false;
 
-    let try_insert = |w: &mut Writer<_>, tag: &str, inserted: &mut bool| -> Result<(), ProtectionError> {
-        if !*inserted {
-            if !tag.is_empty() {
-                write_tag(w, tag)?;
+    let try_insert =
+        |w: &mut Writer<_>, tag: &str, inserted: &mut bool| -> Result<(), ProtectionError> {
+            if !*inserted {
+                if !tag.is_empty() {
+                    write_tag(w, tag)?;
+                }
+                *inserted = true;
             }
-            *inserted = true;
-        }
-        Ok(())
-    };
+            Ok(())
+        };
 
     loop {
         match reader.read_event_into(&mut buf) {
@@ -291,10 +327,14 @@ pub fn inject_sheet_protection(xml_content: &[u8], hash: Option<&PrecomputedHash
                     let mut skip_buf = Vec::new();
                     loop {
                         match reader.read_event_into(&mut skip_buf) {
-                            Ok(Event::Start(e)) if e.name().into_inner() == target_name => depth += 1,
+                            Ok(Event::Start(e)) if e.name().into_inner() == target_name => {
+                                depth += 1
+                            }
                             Ok(Event::End(e)) if e.name().into_inner() == target_name => {
                                 depth -= 1;
-                                if depth == 0 { break; }
+                                if depth == 0 {
+                                    break;
+                                }
                             }
                             Ok(Event::Eof) | Err(_) => break,
                             _ => {}
@@ -334,7 +374,9 @@ pub fn inject_sheet_protection(xml_content: &[u8], hash: Option<&PrecomputedHash
                 }
             }
             Ok(Event::Eof) => break,
-            Ok(e) => { writer.write_event(e)?; }
+            Ok(e) => {
+                writer.write_event(e)?;
+            }
             Err(e) => return Err(e.into()),
         }
         buf.clear();
@@ -350,7 +392,9 @@ fn write_tag<W: std::io::Write>(writer: &mut Writer<W>, tag: &str) -> Result<(),
     loop {
         match temp_reader.read_event() {
             Ok(Event::Eof) => break,
-            Ok(e) => { writer.write_event(e)?; }
+            Ok(e) => {
+                writer.write_event(e)?;
+            }
             Err(e) => return Err(e.into()),
         }
     }

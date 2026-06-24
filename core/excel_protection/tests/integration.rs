@@ -12,7 +12,7 @@ fn test_sheet_protection_full() {
 
     let hash = precompute_hash("password");
     let opts = SheetProtectionOptions::default();
-    
+
     let injected = inject_sheet_protection(xml, Some(&hash), Some(&opts)).unwrap();
     let s = String::from_utf8_lossy(&injected);
     println!("Injected:\n{}", s);

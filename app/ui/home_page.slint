@@ -80,38 +80,57 @@ export component HomePage inherits VerticalLayout {
         }
     }
 
-    // Kacheln
-    HorizontalLayout {
+    // Kacheln (2×2-Raster)
+    VerticalLayout {
         spacing: 16px;
-        alignment: center;
 
-        MenuCard {
-            title: "FB-Generator";
-            description: "Finanzberichtsvorlagen erstellen";
-            icon: @image-url("icons/chart.svg");
-            width: 260px;
-            clicked => {
-                root.navigate("fb");
+        HorizontalLayout {
+            spacing: 16px;
+            alignment: center;
+
+            MenuCard {
+                title: "FB-Generator";
+                description: "Finanzberichtsvorlagen erstellen";
+                icon: @image-url("icons/chart.svg");
+                width: 260px;
+                clicked => {
+                    root.navigate("fb");
+                }
+            }
+
+            MenuCard {
+                title: "Budget zu FB";
+                description: "Budgets in Finanzberichte konvertieren";
+                icon: @image-url("icons/convert.svg");
+                width: 260px;
+                clicked => {
+                    root.navigate("budget");
+                }
             }
         }
 
-        MenuCard {
-            title: "Budget zu FB";
-            description: "Budgets in Finanzberichte konvertieren";
-            icon: @image-url("icons/convert.svg");
-            width: 260px;
-            clicked => {
-                root.navigate("budget");
-            }
-        }
+        HorizontalLayout {
+            spacing: 16px;
+            alignment: center;
 
-        MenuCard {
-            title: "Ordner erstellen";
-            description: "Erstellt Ordner mit Prüfvorlage";
-            icon: @image-url("icons/folder.svg");
-            width: 260px;
-            clicked => {
-                root.navigate("folder");
+            MenuCard {
+                title: "Budget zu Prüfvorlage";
+                description: "Budgets scannen & Prüfvorlagen erstellen";
+                icon: @image-url("icons/chart.svg");
+                width: 260px;
+                clicked => {
+                    root.navigate("vorpruefung");
+                }
+            }
+
+            MenuCard {
+                title: "Ordner erstellen";
+                description: "Erstellt Ordner mit Prüfvorlage";
+                icon: @image-url("icons/folder.svg");
+                width: 260px;
+                clicked => {
+                    root.navigate("folder");
+                }
             }
         }
     }
