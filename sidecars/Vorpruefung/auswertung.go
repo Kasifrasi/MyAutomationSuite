@@ -411,13 +411,14 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		g.styleOuterBorder(ws, p1Top, tog, p1Bottom, valR, 2, EV_CLR_BORDER)
 		r += 2
 
-		// Paar 2: Abzüglich manueller Betrag → Verbleibende KMW-Mittel
+		// Paar 2: Abzüglich manueller Betrag → aus dem "Manueller Betrag"-Feld der gewählten MA
 		p2Top := r
+		manFormula := evalMAChooseManBetrag(sel.maSelP)
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Abzüglich manueller Betrag", false)
-		g.evalKmwInputEmpty(ws, cellName(valL, r))
+		g.evalDeduct(ws, cellName(valL, r), manFormula)
 		addrManL := absName(valL, r)
 		g.evalKmwLabel(ws, r, tog, lblR2, "Abzüglich manueller Betrag", false)
-		g.evalKmwInputEmpty(ws, cellName(valR, r))
+		g.evalDeduct(ws, cellName(valR, r), manFormula)
 		addrManR := absName(valR, r)
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
@@ -1077,6 +1078,16 @@ func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS))
+}
+
+// evalMAChooseManBetrag liefert einen CHOOSE-Ausdruck über die MA_ManBetrag_<n>-Namen
+// aller 18 Perioden, gewählt per maSelP – analog zu evalMAChooseKurs.
+func evalMAChooseManBetrag(maSelP string) string {
+	parts := make([]string, MA_PERIOD_COUNT)
+	for i := range parts {
+		parts[i] = fmt.Sprintf("MA_ManBetrag_%d", i+1)
+	}
+	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, maSelP, strings.Join(parts, ","))
 }
 
 // evalMAChooseKurs liefert einen nicht-volatilen CHOOSE-Ausdruck über alle 18
