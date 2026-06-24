@@ -556,7 +556,7 @@ func (g *Generator) bgDrawBegruendung(ws string, reserveCheckAddr string) {
 	hdrRow, areaTop, areaRows := 8, 9, 4
 
 	// Inaktiver Standard-Stil: Grau hinterlegt, grauer Text, dünner grauer Rahmen
-	g.mergeCells(ws, cellName(c1, hdrRow), cellName(c2, hdrRow), "Begruendung", StyleOptions{Bold: true, Size: 9, FontColor: "7F7F7F", FillColor: "F2F2F2", HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: "D3D3D3"})
+	g.mergeCells(ws, cellName(c1, hdrRow), cellName(c2, hdrRow), "Begruendung", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_BORDER})
 	g.mergeCells(ws, cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1), "", StyleOptions{FillColor: "F2F2F2", HAlign: "left", VAlign: "top", WrapText: true, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: "D3D3D3"})
 
 	condFormula := fmt.Sprintf(`%s="Ja"`, reserveCheckAddr)
