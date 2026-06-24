@@ -767,10 +767,10 @@ func (g *Generator) createEinnahmenTabelle(
 
 func (g *Generator) fbSetupColumnWidths(ws string, colStart int) {
 	g.setColWidth(ws, colStart, 30.43)
-	g.setColWidth(ws, colStart+1, 20.71)
-	g.setColWidth(ws, colStart+2, 20.71)
-	g.setColWidth(ws, colStart+3, 20.71)
-	g.setColWidth(ws, colStart+4, 20.71)
+	g.setColWidth(ws, colStart+1, 24.71)
+	g.setColWidth(ws, colStart+2, 24.71)
+	g.setColWidth(ws, colStart+3, 24.71)
+	g.setColWidth(ws, colStart+4, 24.71)
 }
 
 func (g *Generator) drawSeparatorArrow(ws string, row int, col int) error {
