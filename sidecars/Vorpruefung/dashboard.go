@@ -346,7 +346,8 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
-	// Row 11: Saldo (LW) | Saldo (EUR)
+	// Row 11: Saldo (LW) | Saldo (EUR) — EUR berechnet sich aus LW / Vorprojekt-Kurs
+	rSaldo := r
 	err = g.dbLabel(ws, r, DB_C_LBL1, "Saldo (LW)")
 	if err != nil {
 		return err
@@ -359,7 +360,11 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
-	err = g.dbInput(ws, r, DB_C_IN2, DB_FMT_EUR)
+	// Saldo (EUR) = Saldo (LW) / Wechselkurs (Zeile 10, Spalte E)
+	err = g.setFormula(ws, cellName(DB_C_IN2, r),
+		fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", absName(DB_C_IN1, rSaldo), absName(DB_C_IN2, rSaldo-1)),
+		StyleOptions{FillColor: DB_CLR_DISABLED, VAlign: "center", HAlign: "left", NumFormat: DB_FMT_EUR,
+			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: DB_CLR_BORDER})
 	if err != nil {
 		return err
 	}
@@ -384,9 +389,11 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 		return err
 	}
 	_ = g.file.SetRowHeight(ws, r, 22.0)
+	rFolgeKurs := r
 	r++
 
-	// Row 13: Saldovortrag (LW) | Saldovortrag (EUR)
+	// Row 13: Saldovortrag (LW) | Saldovortrag (EUR) — EUR berechnet sich aus LW / Folgeprojekt-Kurs
+	rSaldovortrag := r
 	err = g.dbLabel(ws, r, DB_C_LBL1, "Saldovortrag (LW)")
 	if err != nil {
 		return err
@@ -399,7 +406,11 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
-	err = g.dbInput(ws, r, DB_C_IN2, DB_FMT_EUR)
+	// Saldovortrag (EUR) = Saldovortrag (LW) / Wechselkurs (Zeile 12, Spalte E)
+	err = g.setFormula(ws, cellName(DB_C_IN2, r),
+		fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", absName(DB_C_IN1, rSaldovortrag), absName(DB_C_IN2, rFolgeKurs)),
+		StyleOptions{FillColor: DB_CLR_DISABLED, VAlign: "center", HAlign: "left", NumFormat: DB_FMT_EUR,
+			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: DB_CLR_BORDER})
 	if err != nil {
 		return err
 	}
