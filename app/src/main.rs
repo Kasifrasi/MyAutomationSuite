@@ -912,23 +912,42 @@ fn budget_to_vp_budget(d: &budget_scanner::BudgetData) -> VpBudget {
         let mut parts = p.number.splitn(2, '.');
         let cat = parts.next().unwrap_or("").trim();
         let sub = parts.next().unwrap_or("").trim();
-        // Kategorie-Kopfzeilen ("1.", "2." ...) ohne Unterposition überspringen.
-        if sub.is_empty() {
-            continue;
-        }
         let idx = match cat.parse::<usize>() {
             Ok(n) if (1..=8).contains(&n) => n - 1,
             _ => continue,
         };
+
+        let lc = parse_amount(&p.cost_col1);
+        let y1 = parse_amount(&p.cost_year1);
+        let y2 = parse_amount(&p.cost_year2);
+        let y3 = parse_amount(&p.cost_year3);
+        let eur = parse_amount(&p.cost_col2);
+
+        // Reine Kategorie-Kopfzeilen ("1.", "2." ...) ohne Unterposition UND ohne
+        // Werte überspringen. Die Sonderkategorien (Evaluierung/Audit/Reserve) tragen
+        // ihren Betrag aber direkt auf der Kategoriezeile ("6.", "7.", "8.") ohne
+        // Unterposition – solche Zeilen mit Werten als Einzelposition übernehmen.
+        let has_value =
+            lc.is_some() || eur.is_some() || y1.is_some() || y2.is_some() || y3.is_some();
+        if sub.is_empty() && !has_value {
+            continue;
+        }
+
+        let position = if p.label.trim().is_empty() {
+            VP_CATEGORIES[idx].to_string()
+        } else {
+            p.label.clone()
+        };
+
         ausgaben.push(VpAusgabe {
             kategorie: VP_CATEGORIES[idx].to_string(),
             id: p.number.clone(),
-            position: p.label.clone(),
-            lc: parse_amount(&p.cost_col1),
-            y1: parse_amount(&p.cost_year1),
-            y2: parse_amount(&p.cost_year2),
-            y3: parse_amount(&p.cost_year3),
-            eur: parse_amount(&p.cost_col2),
+            position,
+            lc,
+            y1,
+            y2,
+            y3,
+            eur,
         });
     }
 
@@ -2499,4 +2518,99 @@ fn main() -> Result<(), slint::PlatformError> {
     });
 
     ui.run()
+}
+
+#[cfg(test)]
+mod vp_tests {
+    use super::*;
+
+    fn pos(number: &str, lc: &str, y1: &str, eur: &str) -> budget_scanner::BudgetPosition {
+        budget_scanner::BudgetPosition {
+            number: number.into(),
+            label: String::new(),
+            cost_col1: lc.into(),
+            cost_col2: eur.into(),
+            cost_year1: y1.into(),
+            cost_year2: String::new(),
+            cost_year3: String::new(),
+        }
+    }
+
+    fn data_with(positions: Vec<budget_scanner::BudgetPosition>) -> budget_scanner::BudgetData {
+        budget_scanner::BudgetData {
+            file_path: std::path::PathBuf::from("test.xlsx"),
+            sheet_name: "Budget".into(),
+            version: "V2".into(),
+            project_title: String::new(),
+            project_number: "P1".into(),
+            language: "deutsch".into(),
+            local_currency: "USD".into(),
+            cost_col1: 8,
+            cost_col2: Some(13),
+            eigenleistung: String::new(),
+            drittmittel: String::new(),
+            kmw_mittel: String::new(),
+            financing: budget_scanner::FinancingDetail::default(),
+            positions,
+        }
+    }
+
+    #[test]
+    fn parse_amount_formats() {
+        assert_eq!(parse_amount("10,000"), Some(10000.0));
+        assert_eq!(parse_amount("5,000.00 €"), Some(5000.0));
+        assert_eq!(parse_amount("1.234,56"), Some(1234.56));
+        assert_eq!(parse_amount("0"), Some(0.0));
+        assert_eq!(parse_amount(""), None);
+        assert_eq!(parse_amount("1589000"), Some(1589000.0));
+    }
+
+    #[test]
+    fn skips_empty_category_header_but_keeps_special_categories() {
+        let d = data_with(vec![
+            pos("1.", "", "", ""),       // reine Kopfzeile -> skip
+            pos("1.1", "10000", "10000", "5000"), // normale Position
+            pos("6.", "10000", "10000", "5000"),  // Evaluierung (Wert auf Kategoriezeile)
+            pos("7.", "10000", "10000", "5000"),  // Audit
+            pos("8.", "79000", "79000", "39500"), // Reserve
+        ]);
+        let vp = budget_to_vp_budget(&d);
+        let ids: Vec<&str> = vp.ausgaben.iter().map(|a| a.id.as_str()).collect();
+        assert_eq!(ids, vec!["1.1", "6.", "7.", "8."], "Kopfzeile raus, Sonderkat. drin");
+
+        let eval = vp.ausgaben.iter().find(|a| a.id == "6.").unwrap();
+        assert_eq!(eval.kategorie, "Evaluierung");
+        assert_eq!(eval.position, "Evaluierung"); // leeres Label -> Kategoriename
+        assert_eq!(eval.lc, Some(10000.0));
+        let reserve = vp.ausgaben.iter().find(|a| a.id == "8.").unwrap();
+        assert_eq!(reserve.kategorie, "Reserve");
+        assert_eq!(reserve.lc, Some(79000.0));
+    }
+
+    // Voller Pfad mit echtem Budget (nur wenn Testdatei vorhanden, sonst übersprungen).
+    #[test]
+    fn maps_real_budget_and_writes_json() {
+        let budget = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../sidecars/Excelize/data/budgets/de.xlsx");
+        if !budget.exists() {
+            eprintln!("de.xlsx fehlt – Test übersprungen");
+            return;
+        }
+        let d = budget_scanner::scan_file(&budget).expect("scan ok");
+        let vp = budget_to_vp_budget(&d);
+
+        // Sonderkategorien müssen jetzt enthalten sein
+        for cat in ["Evaluierung", "Audit", "Reserve"] {
+            assert!(
+                vp.ausgaben.iter().any(|a| a.kategorie == cat),
+                "Kategorie {cat} fehlt im Mapping"
+            );
+        }
+        let json = serde_json::to_string_pretty(&vp).unwrap();
+        std::fs::write("/tmp/vp_real.json", json).unwrap();
+        eprintln!(
+            "vp_real.json geschrieben: {} Ausgaben",
+            vp.ausgaben.len()
+        );
+    }
 }
