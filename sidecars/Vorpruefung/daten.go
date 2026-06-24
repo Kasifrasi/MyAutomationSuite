@@ -128,10 +128,11 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	// ─── FB-Auswahlliste (FILTER der befüllten Perioden) ──────────────────────
 	fbLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_LABEL), colLetter(EV_DTN_FB_META_LABEL), MA_PERIOD_COUNT)
 	fbFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_FILL), colLetter(EV_DTN_FB_META_FILL), MA_PERIOD_COUNT)
-	// "Neuester FB" ⇒ automatisch neuester befüllter Finanzbericht (Standard).
-	// "Kein Finanzbericht (Projektbeginn)" ⇒ N=0 ⇒ MA der Periode 1 wählbar.
+	// Reihenfolge wie die Perioden (aufsteigend): "Kein Finanzbericht (Projektbeginn)"
+	// als frühester Zustand oben (N=0 ⇒ MA der Periode 1 wählbar), darunter die
+	// befüllten Perioden, und der Auto-Eintrag "Neuester FB" ganz unten (= jüngster).
 	_ = g.setDynArrayFormula(ws, dc(EV_DTN_FB_LISTE, 1),
-		fmt.Sprintf(`_xlfn.VSTACK("Neuester FB","Kein Finanzbericht (Projektbeginn)",_xlfn._xlws.FILTER(%s,%s=1,""))`, fbLabelRng, fbFillRng), StyleOptions{})
+		fmt.Sprintf(`_xlfn.VSTACK("Kein Finanzbericht (Projektbeginn)",_xlfn._xlws.FILTER(%s,%s=1,""),"Neuester FB")`, fbLabelRng, fbFillRng), StyleOptions{})
 	g.upsertNamedFormula(EVAL_NAME_FB_LISTE,
 		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
 			ws, absName(EV_DTN_FB_LISTE, 1), ws, colLetter(EV_DTN_FB_LISTE), colLetter(EV_DTN_FB_LISTE)))
@@ -141,9 +142,10 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	maPerRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), MA_PERIOD_COUNT)
 	maFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_FILL), colLetter(EV_DTN_MA_META_FILL), MA_PERIOD_COUNT)
 	maCond := fmt.Sprintf(`(%s=%s+1)*(%s=1)`, maPerRng, g.evalFBSelNumAddr, maFillRng)
-	// "Neuste MA" ⇒ automatisch neueste MA für die gewählte Folgeperiode (Standard).
+	// Perioden aufsteigend zuerst, der Auto-Eintrag "Neuste MA" ganz unten (= jüngste
+	// MA für die gewählte Folgeperiode, Standard).
 	_ = g.setDynArrayFormula(ws, dc(EV_DTN_MA_LISTE, 1),
-		fmt.Sprintf(`_xlfn.VSTACK("Neuste MA",_xlfn._xlws.FILTER(%s,%s,""))`, maLabelRng, maCond), StyleOptions{})
+		fmt.Sprintf(`_xlfn.VSTACK(_xlfn._xlws.FILTER(%s,%s,""),"Neuste MA")`, maLabelRng, maCond), StyleOptions{})
 	g.upsertNamedFormula(EVAL_NAME_MA_LISTE,
 		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
 			ws, absName(EV_DTN_MA_LISTE, 1), ws, colLetter(EV_DTN_MA_LISTE), colLetter(EV_DTN_MA_LISTE)))
