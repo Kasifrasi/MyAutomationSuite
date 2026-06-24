@@ -42,7 +42,7 @@ const KMW_TERMS: &[&str] = &[
 ];
 
 const MAX_EMPTY_ROWS: usize = 100;
-const DEFAULT_COL1: usize = 8;  // Spalte I
+const DEFAULT_COL1: usize = 8; // Spalte I
 const DEFAULT_COL2: usize = 13; // Spalte N
 const FALLBACK_MAX_ROWS: usize = 100;
 const FALLBACK_MAX_COLS: usize = 26;
@@ -67,6 +67,9 @@ pub struct BudgetData {
     pub eigenleistung: String,
     pub drittmittel: String,
     pub kmw_mittel: String,
+    /// Additiv: volle Aufschlüsselung der Finanzierungsquellen (Jahre + EUR).
+    #[serde(default)]
+    pub financing: FinancingDetail,
     pub positions: Vec<BudgetPosition>,
 }
 
@@ -76,6 +79,35 @@ pub struct BudgetPosition {
     pub label: String,
     pub cost_col1: String,
     pub cost_col2: String,
+    /// Kosten je Jahr/Phase (Spalten J/K/L, jeweils Lokalwährung). Additiv für die
+    /// Prüfvorlagen-Generierung; bestehende Consumer (FB-Sidecar) ignorieren sie.
+    #[serde(default)]
+    pub cost_year1: String,
+    #[serde(default)]
+    pub cost_year2: String,
+    #[serde(default)]
+    pub cost_year3: String,
+}
+
+/// FinancingRow bündelt eine Finanzierungszeile (Eigenleistung/Drittmittel/KMW) mit
+/// Gesamt-LC, den drei Jahres-/Phasenwerten (LC) und dem EUR-Gesamtwert.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct FinancingRow {
+    pub lc: String,
+    pub year1: String,
+    pub year2: String,
+    pub year3: String,
+    pub eur: String,
+}
+
+/// FinancingDetail enthält die drei Finanzierungsquellen in voller Aufschlüsselung
+/// (LC-Gesamt, Jahre, EUR). Additiv – wird für die Prüfvorlagen-Generierung genutzt;
+/// die bestehenden String-Felder eigenleistung/drittmittel/kmw_mittel bleiben erhalten.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct FinancingDetail {
+    pub eigenleistung: FinancingRow,
+    pub drittmittel: FinancingRow,
+    pub kmw_mittel: FinancingRow,
 }
 
 #[derive(Debug, Serialize)]
@@ -177,13 +209,7 @@ pub fn write_failure_report(failures: &[ScanFailure], output: &Path) -> std::io:
 
     for f in failures {
         let reason = f.reason.to_string().replace(';', ",");
-        writeln!(
-            buf,
-            "{};{};{}",
-            f.file_name,
-            reason,
-            f.file_path.display()
-        )?;
+        writeln!(buf, "{};{};{}", f.file_name, reason, f.file_path.display())?;
     }
 
     Ok(())
@@ -217,10 +243,9 @@ fn is_exact_cost_term(cell: &Data) -> bool {
 /// Prüft ob eine bestimmte Spalte in irgendeiner Zeile einen Kostenbegriff enthält.
 /// Bricht beim ersten Fund ab.
 fn col_has_cost_term(range: &Range<Data>, col: usize) -> bool {
-    range.rows().any(|row| {
-        row.get(col)
-            .is_some_and(is_exact_cost_term)
-    })
+    range
+        .rows()
+        .any(|row| row.get(col).is_some_and(is_exact_cost_term))
 }
 
 fn find_cost_columns(range: &Range<Data>) -> Result<(usize, Option<usize>), ScanError> {
@@ -261,10 +286,10 @@ fn find_cost_columns(range: &Range<Data>) -> Result<(usize, Option<usize>), Scan
         }
     }
 
-    let resolved_first = first_col.or(found[0]).ok_or(ScanError::CostColumnNotFound)?;
-    let resolved_second = second_col.or_else(|| {
-        found[1].filter(|&col| col > resolved_first)
-    });
+    let resolved_first = first_col
+        .or(found[0])
+        .ok_or(ScanError::CostColumnNotFound)?;
+    let resolved_second = second_col.or_else(|| found[1].filter(|&col| col > resolved_first));
 
     Ok((resolved_first, resolved_second))
 }
@@ -285,9 +310,34 @@ fn find_value_in_col_d(range: &Range<Data>, terms: &[&str], value_col: usize) ->
     String::new()
 }
 
+/// Liest eine vollständige Finanzierungszeile (LC, Jahre, EUR) anhand der Begriffe in
+/// Spalte D. Die Jahresspalten liegen unmittelbar rechts von der LC-Gesamtspalte
+/// (col1 + 1..3), die EUR-Gesamtspalte ist col2 (sofern vorhanden).
+fn find_financing_row(
+    range: &Range<Data>,
+    terms: &[&str],
+    col1: usize,
+    col2: Option<usize>,
+) -> FinancingRow {
+    for row in range.rows() {
+        if let Some(Data::String(s)) = row.get(3) {
+            if terms.contains(&s.trim()) {
+                let get = |c: usize| row.get(c).and_then(cell_text_owned).unwrap_or_default();
+                return FinancingRow {
+                    lc: get(col1),
+                    year1: get(col1 + 1),
+                    year2: get(col1 + 2),
+                    year3: get(col1 + 3),
+                    eur: col2.map(get).unwrap_or_default(),
+                };
+            }
+        }
+    }
+    FinancingRow::default()
+}
+
 fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
-    let mut wb =
-        open_workbook_auto(path).map_err(|e| ScanError::OpenFailed(e.to_string()))?;
+    let mut wb = open_workbook_auto(path).map_err(|e| ScanError::OpenFailed(e.to_string()))?;
 
     let sheet_names = wb.sheet_names();
 
@@ -322,6 +372,13 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
     let eigenleistung = find_value_in_col_d(&range, EIGENLEISTUNG_TERMS, col1);
     let drittmittel = find_value_in_col_d(&range, DRITTMITTEL_TERMS, col1);
     let kmw_mittel = find_value_in_col_d(&range, KMW_TERMS, col1);
+
+    // Additiv: volle Finanzierungs-Aufschlüsselung (Jahre + EUR) für Prüfvorlagen.
+    let financing = FinancingDetail {
+        eigenleistung: find_financing_row(&range, EIGENLEISTUNG_TERMS, col1, col2),
+        drittmittel: find_financing_row(&range, DRITTMITTEL_TERMS, col1, col2),
+        kmw_mittel: find_financing_row(&range, KMW_TERMS, col1, col2),
+    };
 
     // Positionen extrahieren
     let re = &*POSITION_RE;
@@ -379,16 +436,22 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
 
             positions.push(BudgetPosition {
                 number: matched.to_string(),
-                label: row
-                    .get(1)
-                    .and_then(cell_text_owned)
-                    .unwrap_or_default(),
-                cost_col1: row
-                    .get(col1)
-                    .and_then(cell_text_owned)
-                    .unwrap_or_default(),
+                label: row.get(1).and_then(cell_text_owned).unwrap_or_default(),
+                cost_col1: row.get(col1).and_then(cell_text_owned).unwrap_or_default(),
                 cost_col2: col2
                     .and_then(|c| row.get(c))
+                    .and_then(cell_text_owned)
+                    .unwrap_or_default(),
+                cost_year1: row
+                    .get(col1 + 1)
+                    .and_then(cell_text_owned)
+                    .unwrap_or_default(),
+                cost_year2: row
+                    .get(col1 + 2)
+                    .and_then(cell_text_owned)
+                    .unwrap_or_default(),
+                cost_year3: row
+                    .get(col1 + 3)
                     .and_then(cell_text_owned)
                     .unwrap_or_default(),
             });
@@ -408,11 +471,10 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
         eigenleistung,
         drittmittel,
         kmw_mittel,
+        financing,
         positions,
     })
 }
-
-
 
 // ── Output-Ordner Logik ──────────────────────────────────────────────────────
 

@@ -55,9 +55,13 @@
         '';
 
         script-build-go = pkgs.writeShellScriptBin "build-go" ''
-          cd "$(git rev-parse --show-toplevel)/sidecars/Excelize" || exit 1
+          root="$(git rev-parse --show-toplevel)"
+          cd "$root/sidecars/Excelize" || exit 1
           go build -o generator.exe ./cmd/report_generator
           echo "Go Sidecar erfolgreich kompiliert (sidecars/Excelize/generator.exe)"
+          cd "$root/sidecars/Vorpruefung" || exit 1
+          go build -o vorpruefung.exe .
+          echo "Go Sidecar erfolgreich kompiliert (sidecars/Vorpruefung/vorpruefung.exe)"
         '';
 
         script-run-vorpruefung = pkgs.writeShellScriptBin "run-vorpruefung" ''
