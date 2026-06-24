@@ -35,9 +35,14 @@ import (
 
 // ─── Layout-Konstanten (Spiegel der Generator-Konstanten) ─────────────────────
 const (
+	dbSheet  = "Dashboard"
 	kmwSheet = "II. KMW-Mittel"
 	fbSheet  = "III. Finanzberichte"
 	maSheet  = "IV. MA"
+
+	// Dashboard-Spalten (B=Label1, C=Eingabe1, D=Label2, E=Eingabe2).
+	dbColIn1 = 3 // C
+	dbColIn2 = 5 // E
 
 	// Finanzberichte: 5 Spalten + 2 Abstand = 7 Spalten Versatz je Periode,
 	// erste Periode beginnt in Spalte B (=2).
@@ -64,6 +69,15 @@ var maCategories = []string{
 // Durchgehender Kurs: 125 LC = 1 EUR (= Budget-Kurs der budget.example.json).
 // Zwei Berichts-/Anforderungsperioden mit sauberem Saldo-Übertrag von P1 nach P2.
 const exRate = 125.0
+
+// Vorprojektsaldo (Saldovortrag) aus dem Dashboard. Fließt über die benannten
+// Bereiche Saldovortrag_LW/_EUR in den FB-Vorprojektsaldo der Periode 1 und in den
+// MA-Abzug "Saldo Vorprojekt". Die Bank-Aufschlüsselung der FB-Perioden ist darauf
+// abgestimmt (siehe bankLC), damit die Differenzprüfung 0 bleibt.
+const (
+	exSaldovortragLC  = 200_000.0
+	exSaldovortragEUR = exSaldovortragLC / exRate // 1.600
+)
 
 // fbPeriod beschreibt die Beispieleingaben einer FB-Periode.
 type fbPeriod struct {
@@ -94,8 +108,8 @@ var fbPeriods = []fbPeriod{
 			"1.1": 600_000, "2.1": 300_000, "3.1": 200_000,
 			"3.2": 150_000, "4.1": 120_000, "5.1": 80_000, "7.1": 50_000,
 		},
-		// Einnahmen 1.625.000 − Ausgaben 1.500.000 = Saldo 125.000
-		bankLC: 125_000,
+		// (200.000 Vorprojektsaldo + 1.625.000 Einnahmen) − 1.500.000 Ausgaben = 325.000
+		bankLC: 325_000,
 	},
 	{ // Periode 2 (Vorperiodensaldo 125.000 wird automatisch übernommen)
 		von: date(2025, 7, 1), bis: date(2025, 12, 31),
@@ -104,8 +118,8 @@ var fbPeriods = []fbPeriod{
 			"1.1": 400_000, "1.2": 300_000, "3.1": 200_000,
 			"3.2": 150_000, "4.1": 100_000, "5.1": 70_000, "7.1": 30_000,
 		},
-		// (125.000 Saldo + 1.300.000 neue Einnahmen) − 1.250.000 Ausgaben = 175.000
-		bankLC: 175_000,
+		// (325.000 Vorperiodensaldo + 1.300.000 neue Einnahmen) − 1.250.000 Ausgaben = 375.000
+		bankLC: 375_000,
 	},
 }
 
@@ -175,6 +189,9 @@ func main() {
 	}
 
 	// Eingaben je Blatt sammeln und in einem Rutsch in das jeweilige XML patchen.
+	if err := patchSheet(parts, sheetPart, dbSheet, dashboardEdits()); err != nil {
+		log.Fatalf("Dashboard befüllen: %v", err)
+	}
 	if err := patchSheet(parts, sheetPart, kmwSheet, kmwEdits()); err != nil {
 		log.Fatalf("KMW-Mittel befüllen: %v", err)
 	}
@@ -190,6 +207,7 @@ func main() {
 	}
 
 	fmt.Printf("Vorlage befüllt: %s\n", outPath)
+	fmt.Printf("  • Dashboard:       Projektstammdaten + Vorprojektsaldo %g LC / %g EUR\n", exSaldovortragLC, exSaldovortragEUR)
 	fmt.Printf("  • KMW-Mittel:      %d Tranchen\n", len(kmwRows))
 	fmt.Printf("  • Finanzberichte:  %d Perioden (Kurs %g LC/EUR, Saldo-Übertrag)\n", len(fbPeriods), exRate)
 	fmt.Printf("  • Mittelanforderung: %d Perioden\n", len(maPeriods))
@@ -217,6 +235,50 @@ func numEdit(ref string, v float64) cellEdit { return cellEdit{ref: ref, kind: e
 func strEdit(ref, s string) cellEdit         { return cellEdit{ref: ref, kind: editStr, str: s} }
 func dateEdit(ref string, t time.Time) cellEdit {
 	return cellEdit{ref: ref, kind: editDate, num: excelSerial(t)}
+}
+
+// ─── Dashboard (Blatt I/Statische Projektinformationen) ───────────────────────
+// Eingabespalten: C (=dbColIn1) und E (=dbColIn2). Zeilen siehe drawStaticProjectInfo.
+func dashboardEdits() []cellEdit {
+	c := func(row int) string { return cell(dbColIn1, row) } // Spalte C
+	e := func(row int) string { return cell(dbColIn2, row) } // Spalte E
+	var edits []cellEdit
+	edits = append(edits,
+		// Zeile 5: Projektnummer | Vorprojekt vorhanden (Ja → Vorprojekt-Block aktiv)
+		strEdit(c(5), "PRJ-2025-042"),
+		strEdit(e(5), "Ja"),
+		// Zeile 6: Projekttitel (C6:E6 verbunden, Anker C6)
+		strEdit(c(6), "Aufbau Gemeindezentrum Beispielstadt"),
+		// Zeile 7: Projekttraeger | Berichtswaehrung (aus Währungsliste)
+		strEdit(c(7), "Beispiel Hilfswerk e.V."),
+		strEdit(e(7), "USD"),
+		// Zeile 8: Projektlaufzeit (geplant) – "In Monate" rechnet daraus 36 Monate
+		strEdit(c(8), "01.01.2025 - 31.12.2027"),
+
+		// ── Vorprojekt-Block ──
+		// Zeile 9: Vorprojektnummer | VP-Berichtswaehrung
+		strEdit(c(9), "PRJ-2022-017"),
+		strEdit(e(9), "USD"),
+		// Zeile 10: Vorprojektende | Wechselkurs
+		dateEdit(c(10), date(2024, 12, 31)),
+		numEdit(e(10), exRate),
+		// Zeile 11: Saldo (LW) | Saldo (EUR) bei Vorprojektende
+		numEdit(c(11), exSaldovortragLC),
+		numEdit(e(11), exSaldovortragEUR),
+		// Zeile 12: Folgeprojektstart | Wechselkurs
+		dateEdit(c(12), date(2025, 1, 1)),
+		numEdit(e(12), exRate),
+		// Zeile 13: Saldovortrag (LW)/(EUR) → benannte Bereiche (FB-/MA-Vorprojektsaldo)
+		numEdit(c(13), exSaldovortragLC),
+		numEdit(e(13), exSaldovortragEUR),
+	)
+
+	// Dokumenten-Checkliste: Dropdowns D15..D21 auf "Ja" (alle Belege liegen vor).
+	const docFirstRow, docCount, docDropdownCol = 15, 7, 4 // Spalte D
+	for i := 0; i < docCount; i++ {
+		edits = append(edits, strEdit(cell(docDropdownCol, docFirstRow+i), "Ja"))
+	}
+	return edits
 }
 
 // ─── KMW-Mittel (Blatt II): Tabelle B5:E22 ────────────────────────────────────
