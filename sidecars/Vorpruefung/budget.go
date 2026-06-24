@@ -358,13 +358,13 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	cName, cLc, cEur := BG_COL_STATUS, BG_COL_CHECK, BG_COL_BEGR_2
 	titleRow := ausgHdrRow - 1
 	headerRow := ausgHdrRow
-	dataRows := 3
+	// geberRows: explizit benannte Geber (ohne Sonstiges).
+	// dataRows:  geberRows + 1 feste Sonstiges-Zeile (immer vorhanden).
+	geberRows := 3
 	if g.budget != nil {
-		dataRows = len(g.budget.Drittmittel.Geber)
-		if dataRows < 1 {
-			dataRows = 1 // Excel-Tabelle braucht mindestens eine Datenzeile
-		}
+		geberRows = len(g.budget.Drittmittel.Geber)
 	}
+	dataRows := geberRows + 1 // +1 für Sonstiges
 
 	g.mergeCells(ws, cellName(cName, titleRow), cellName(cEur, titleRow), "Drittmittel – Aufstellung je Geber", StyleOptions{
 		Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center",
@@ -374,7 +374,9 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	g.setValue(ws, cellName(cEur, headerRow), "Betrag (EUR)", StyleOptions{})
 
 	nameOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
-	for i := 0; i < dataRows; i++ {
+
+	// Explizite Geber-Zeilen
+	for i := 0; i < geberRows; i++ {
 		row := headerRow + 1 + i
 		g.setValue(ws, cellName(cName, row), "", nameOpts)
 		g.bgInput(ws, cellName(cLc, row), BG_FMT_LC)
@@ -387,6 +389,17 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 		}
 	}
 
+	// Feste Sonstiges-Zeile (immer letzte Zeile der Tabelle)
+	sonstigesRow := headerRow + 1 + geberRows
+	g.setValue(ws, cellName(cName, sonstigesRow), "Sonstige", nameOpts)
+	g.bgInput(ws, cellName(cLc, sonstigesRow), BG_FMT_LC)
+	g.bgInput(ws, cellName(cEur, sonstigesRow), BG_FMT_EUR)
+	if g.budget != nil && g.budget.Drittmittel.Sonstiges != nil {
+		s := g.budget.Drittmittel.Sonstiges
+		g.bgFillInput(ws, cellName(cLc, sonstigesRow), s.LC)
+		g.bgFillInput(ws, cellName(cEur, sonstigesRow), s.EUR)
+	}
+
 	g.bgTableHeader(ws, headerRow, cName, cEur)
 	_ = g.file.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(cName, headerRow), cellName(cEur, headerRow+dataRows)),
@@ -395,9 +408,7 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 		ShowRowStripes: falsePtr(),
 	})
 
-	// Geber_Liste = die im Budget hinterlegten Drittmittelgeber (nur diese).
-	// Robuste Bereichs-Referenz (OFFSET/COUNTA) direkt auf die Geber-Eingabezellen –
-	// die Höhe folgt der Anzahl befüllter Geber, leere Folgezeilen werden abgeschnitten.
+	// Geber_Liste: alle Zeilen inkl. Sonstiges.
 	firstDataRow := headerRow + 1
 	lastDataRow := headerRow + dataRows
 	g.upsertNamedFormula(BG_NAME_GEBER_LIST, fmt.Sprintf(

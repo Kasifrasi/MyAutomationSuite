@@ -38,10 +38,11 @@ type IncomeRow struct {
 // DrittmittelBlock bündelt die Jahreswerte (Summenzeile) und die variable
 // Geber-Aufstellung (Tabelle rechts im Budget).
 type DrittmittelBlock struct {
-	Y1    *float64           `json:"y1"`
-	Y2    *float64           `json:"y2"`
-	Y3    *float64           `json:"y3"`
-	Geber []DrittmittelGeber `json:"geber"`
+	Y1        *float64              `json:"y1"`
+	Y2        *float64              `json:"y2"`
+	Y3        *float64              `json:"y3"`
+	Geber     []DrittmittelGeber    `json:"geber"`
+	Sonstiges *DrittmittelSonstiges `json:"sonstiges,omitempty"`
 }
 
 // DrittmittelGeber ist eine Zeile der Geber-Aufstellung (Name, LC, EUR).
@@ -49,6 +50,15 @@ type DrittmittelGeber struct {
 	Geber string   `json:"geber"`
 	LC    *float64 `json:"lc"`
 	EUR   *float64 `json:"eur"`
+}
+
+// DrittmittelSonstiges hält die Beträge für die feste "Sonstiges"-Zeile, die immer
+// als letzte Zeile der Geber-Aufstellung erscheint. Wird in der JSON-Übergabe nicht
+// angegeben, bleiben LC und EUR leer (Eingabefeld). Die Allokationslogik — also wie
+// viel der Gesamtbetrag auf "Sonstiges" entfällt — liegt beim Aufrufer.
+type DrittmittelSonstiges struct {
+	LC  *float64 `json:"lc"`
+	EUR *float64 `json:"eur"`
 }
 
 // ExpensePos ist eine Kostenposition des Budgets. Kategorie muss einem Eintrag aus
