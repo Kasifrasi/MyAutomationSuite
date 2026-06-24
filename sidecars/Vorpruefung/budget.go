@@ -483,7 +483,10 @@ func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
 }
 
 func (g *Generator) bgBuildLookupLists(ws string) {
-	g.setDynArrayFormula(ws, cellName(BG_COL_LIST_GEBER, 1), fmt.Sprintf(`_xlfn.VSTACK({"Projektpartner";"Bank"},IFERROR(_xlfn._xlws.FILTER(%s[Name des Gebers],%s[Name des Gebers]<>""),""))`, BG_TABLE_NAME, BG_TABLE_NAME), StyleOptions{})
+	// VSTACK mit skalaren String-Argumenten (NICHT dem Array-Konstanten
+	// {"Projektpartner";"Bank"} – das liefert in Excel einen Fehlerwert und ließ
+	// die Geber-Dropdownliste leer). Identisch zur funktionierenden FB-/MA-Liste.
+	g.setDynArrayFormula(ws, cellName(BG_COL_LIST_GEBER, 1), fmt.Sprintf(`_xlfn.VSTACK("Projektpartner","Bank",IFERROR(_xlfn._xlws.FILTER(%s[Name des Gebers],%s[Name des Gebers]<>""),""))`, BG_TABLE_NAME, BG_TABLE_NAME), StyleOptions{})
 	g.upsertNamedFormula(BG_NAME_GEBER_LIST, fmt.Sprintf("OFFSET('%s'!%s, 0, 0, COUNTA('%s'!%s:%s), 1)", ws, absName(BG_COL_LIST_GEBER, 1), ws, colLetter(BG_COL_LIST_GEBER), colLetter(BG_COL_LIST_GEBER)))
 
 	g.setDynArrayFormula(ws, cellName(BG_COL_LIST_ID, 1), fmt.Sprintf(`IFERROR(_xlfn._xlws.FILTER(%s[ID],%s[ID]<>""),"")`, BG_TABLE_AUSG, BG_TABLE_AUSG), StyleOptions{})

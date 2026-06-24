@@ -661,36 +661,27 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	g.evalSectionTitle(ws, r, "Monatslimit-Prüfung")
 	r += 2
 
-	const lbl1, lbl2, vLC, vEUR = EV_COL_LABEL, EV_COL_LABEL + 1, EV_COL_LABEL + 2, EV_COL_LABEL + 3
+	// Spalten: Lokalwährung eine nach links gerückt (C), gemeinsame Eingabefelder
+	// (Monatsanteile) mittig (D), Euro am bewährten Platz (E).
+	const lbl, vLC, vMID, vEUR = EV_COL_LABEL, EV_COL_LABEL + 1, EV_COL_LABEL + 2, EV_COL_LABEL + 3
 	top := r
 
 	// Jahresbudget-EUR wird mit dem Budget-Kurs (Gesamtprojekt) umgerechnet.
 	rate := BG_NAME_KURS
 
-	// ─── Währungs-Unterüberschrift (dezent): links Lokalwährung, rechts Euro ──
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "", false)
-	subHdr := StyleOptions{
-		Italic: true, Size: 9.0, FontColor: "595959", FillColor: EV_CLR_HEADER,
-		HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+	gridBorder := func(fill string) StyleOptions {
+		return StyleOptions{FillColor: fill, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
 	}
-	_ = g.setValue(ws, cellName(vLC, r), "Lokalwährung", subHdr)
-	_ = g.setValue(ws, cellName(vEUR, r), "Euro", subHdr)
-	r++
 
-	// Über beide Währungsspalten (D:E) zusammengeführte Eingabe-/Berechnungszeile
-	// für Werte, die für beide Währungen identisch gelten (Periode, Jahr, Monate).
-	sharedInput := func(row int, val interface{}, numFmt string) string {
-		c1, c2 := cellName(vLC, row), cellName(vEUR, row)
-		_ = g.file.MergeCell(ws, c1, c2)
-		_ = g.setStyle(ws, c1, c2, StyleOptions{
-			HAlign: "center", VAlign: "center", NumFormat: numFmt, FillColor: EV_CLR_INPUT,
+	// Beschriftungszelle (nur Spalte B).
+	label := func(row int, text string, bold bool) {
+		_ = g.setValue(ws, cellName(lbl, row), text, StyleOptions{
+			Bold: bold, Size: 10.0, HAlign: "left", VAlign: "center",
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 		})
-		_ = g.file.SetCellValue(ws, c1, val)
-		return absName(vLC, row)
 	}
-	sharedCalc := func(row int, formula, numFmt string) string {
+	// Über alle drei Wertspalten (C:E) zusammengeführte, währungsunabhängige Zeile.
+	sharedCalc := func(row int, formula, numFmt string) {
 		c1, c2 := cellName(vLC, row), cellName(vEUR, row)
 		_ = g.file.MergeCell(ws, c1, c2)
 		_ = g.setStyle(ws, c1, c2, StyleOptions{
@@ -698,7 +689,23 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 		})
 		_ = g.file.SetCellFormula(ws, c1, formula)
-		return absName(vLC, row)
+	}
+	// Mittiges Eingabefeld (Monatsanteil je Jahr, 0..12).
+	monthsInput := func(row, val int) string {
+		cell := cellName(vMID, row)
+		_ = g.setValue(ws, cell, val, StyleOptions{
+			HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_INPUT,
+			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+		})
+		dv := excelize.NewDataValidation(true)
+		dv.Sqref = cell
+		_ = dv.SetRange(0, 12, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
+		_ = g.file.AddDataValidation(ws, dv)
+		return absName(vMID, row)
+	}
+	// Leere (aber gerahmte) Mittelzelle für reine Währungs-Paarzeilen.
+	blankMid := func(row int) {
+		_ = g.setStyle(ws, cellName(vMID, row), cellName(vMID, row), gridBorder(EV_CLR_CALC))
 	}
 
 	// Anforderungssumme (#1..#k der geprüften Periode) – LC bzw. EUR aus der MA-Meta.
@@ -711,79 +718,104 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT))
 	}
 
+	// ─── Spalten-Unterüberschrift: LC links, Monatsanteil mittig, Euro rechts ──
+	subHdr := StyleOptions{
+		Italic: true, Size: 9.0, FontColor: "595959", FillColor: EV_CLR_HEADER,
+		HAlign: "center", VAlign: "center",
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+	}
+	_ = g.setValue(ws, cellName(lbl, r), "", subHdr)
+	_ = g.setValue(ws, cellName(vLC, r), "Lokalwährung", subHdr)
+	_ = g.setValue(ws, cellName(vMID, r), "Monate (von 12)", subHdr)
+	_ = g.setValue(ws, cellName(vEUR, r), "Euro", subHdr)
+	r++
+
 	// Geprüfte Periode = Periode der gewählten Mittelanforderung (= FB-Auswahl + 1).
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Geprüfte Periode (aus MA-Auswahl)", false)
+	label(r, "Geprüfte Periode (aus MA-Auswahl)", false)
 	sharedCalc(r, fmt.Sprintf("=%s", sel.maSelP), "0")
 	r++
 
 	// Anforderungshöhe = Summe der ausgewählten Mittelanforderungen (#1..#k) der
 	// geprüften Periode (identisch zur GESAMT-Zeile der Prognoseprüfung).
 	rAnf := r
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Anforderungshöhe", false)
+	label(r, "Anforderungshöhe", false)
 	g.evalLimitCalc(ws, cellName(vLC, r), anfSum(EV_DTN_MA_META_SUMLC), EV_FMT_LC, false)
+	blankMid(r)
 	g.evalLimitCalc(ws, cellName(vEUR, r), anfSum(EV_DTN_MA_META_SUMEU), EV_FMT_EUR, false)
 	anfLCAddr := absName(vLC, rAnf)
 	anfEURAddr := absName(vEUR, rAnf)
 	r++
 
-	rJahr := r
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Jahr", false)
-	jahrAddr := sharedInput(r, BG_YEARS[0], "")
-	dvJahr := excelize.NewDataValidation(true)
-	dvJahr.Sqref = cellName(vLC, rJahr)
-	dvJahr.SetDropList(BG_YEARS)
-	_ = g.file.AddDataValidation(ws, dvJahr)
+	// ─── Jahresbudget je Haushaltsjahr inkl. einfließendem Monatsanteil ──────
+	// Eine Mittelanforderung kann sich über zwei (theoretisch drei) Haushaltsjahre
+	// erstrecken. Pro Jahr wird angegeben, wie viele Monate (von 12) in die
+	// Berechnung einfließen; das anteilige Limit summiert je Jahr
+	// Jahresbudget × Monate / 12.
+	yearMonthAddrs := make([]string, len(BG_YEARS))
+	yearBudLCAddrs := make([]string, len(BG_YEARS))
+	yearBudEURAddrs := make([]string, len(BG_YEARS))
+	defaultMonths := []int{8, 0, 0} // bisheriges 8-Monats-Verhalten als Ausgangswert
+	for i, year := range BG_YEARS {
+		label(r, "Jahresbudget "+year, false)
+		budF := fmt.Sprintf("=IFERROR(ROUND(SUBTOTAL(109,%s[%s]),2),0)", BG_TABLE_AUSG, year)
+		g.evalLimitCalc(ws, cellName(vLC, r), budF, EV_FMT_LC, false)
+		yearBudLCAddrs[i] = absName(vLC, r)
+		dm := 0
+		if i < len(defaultMonths) {
+			dm = defaultMonths[i]
+		}
+		yearMonthAddrs[i] = monthsInput(r, dm)
+		g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", yearBudLCAddrs[i], rate), EV_FMT_EUR, false)
+		yearBudEURAddrs[i] = absName(vEUR, r)
+		r++
+	}
+
+	// Limit-Monate = Summe der eingerechneten Monatsanteile über alle Jahre.
+	label(r, "Limit-Monate (Summe Anteile)", false)
+	sharedCalc(r, fmt.Sprintf("=%s", strings.Join(yearMonthAddrs, "+")), "0")
 	r++
 
-	rJB := r
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Jahresbudget", false)
-	jbFormula := fmt.Sprintf(
-		`=IFERROR(ROUND(CHOOSE(MATCH(%s,{"%s";"%s";"%s"},0),SUBTOTAL(109,%s[%s]),SUBTOTAL(109,%s[%s]),SUBTOTAL(109,%s[%s])),2),0)`,
-		jahrAddr, BG_YEARS[0], BG_YEARS[1], BG_YEARS[2],
-		BG_TABLE_AUSG, BG_YEARS[0], BG_TABLE_AUSG, BG_YEARS[1], BG_TABLE_AUSG, BG_YEARS[2])
-	g.evalLimitCalc(ws, cellName(vLC, r), jbFormula, EV_FMT_LC, false)
-	jbLCAddr := absName(vLC, rJB)
-	// Budget kennt keine Jahres-EUR-Werte ⇒ aus LC mit dem MA-Kurs umrechnen.
-	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", jbLCAddr, rate), EV_FMT_EUR, false)
-	jbEURAddr := absName(vEUR, rJB)
+	// Bezugszeitraum = Zeitraum (Monate) der gewählten Mittelanforderung (übernommen,
+	// nicht editierbar). Dient als Kontrolle gegen die Summe der Monatsanteile.
+	label(r, "Bezugszeitraum (Monate, aus MA)", false)
+	sharedCalc(r, evalMASelectedZeitraum(sel), "0")
 	r++
 
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Limit-Monate", false)
-	limitMonAddr := sharedInput(r, 8, "0")
-	r++
-
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Bezugszeitraum (Monate)", false)
-	bezugAddr := sharedInput(r, 12, "0")
-	r++
-
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Anforderung deckt (Monate)", false)
-	sharedInput(r, 6, "0")
-	r++
-
+	// Anteiliges Monatslimit = Σ Jahresbudget_i × Monate_i / 12.
 	rLimit := r
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "8-Monats-Limit", true)
-	g.evalLimitCalc(ws, cellName(vLC, r), fmt.Sprintf("=IFERROR(ROUND(%s*%s/%s,2),0)", jbLCAddr, limitMonAddr, bezugAddr), EV_FMT_LC, true)
-	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s*%s/%s,2),0)", jbEURAddr, limitMonAddr, bezugAddr), EV_FMT_EUR, true)
+	limTermsLC := make([]string, len(BG_YEARS))
+	limTermsEUR := make([]string, len(BG_YEARS))
+	for i := range BG_YEARS {
+		limTermsLC[i] = fmt.Sprintf("%s*%s/12", yearBudLCAddrs[i], yearMonthAddrs[i])
+		limTermsEUR[i] = fmt.Sprintf("%s*%s/12", yearBudEURAddrs[i], yearMonthAddrs[i])
+	}
+	label(r, "Monatslimit (anteilig)", true)
+	g.evalLimitCalc(ws, cellName(vLC, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", strings.Join(limTermsLC, "+")), EV_FMT_LC, true)
+	blankMid(r)
+	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", strings.Join(limTermsEUR, "+")), EV_FMT_EUR, true)
 	limitLCAddr := absName(vLC, rLimit)
 	limitEURAddr := absName(vEUR, rLimit)
 	r++
 
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Status", true)
+	label(r, "Status", true)
 	g.evalLimitStatus(ws, vLC, r, anfLCAddr, limitLCAddr)
+	blankMid(r)
 	g.evalLimitStatus(ws, vEUR, r, anfEURAddr, limitEURAddr)
 	r++
 
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Überschreitung", false)
+	label(r, "Überschreitung", false)
 	g.evalLimitUeber(ws, vLC, r, anfLCAddr, limitLCAddr, EV_FMT_LC)
+	blankMid(r)
 	g.evalLimitUeber(ws, vEUR, r, anfEURAddr, limitEURAddr, EV_FMT_EUR)
 	r++
 
-	g.evalKmwLabel(ws, r, lbl1, lbl2, "Auslastung %", false)
+	label(r, "Auslastung %", false)
 	g.evalLimitCalc(ws, cellName(vLC, r), fmt.Sprintf("=IFERROR(%s/%s,0)", anfLCAddr, limitLCAddr), EV_FMT_PCT, false)
+	blankMid(r)
 	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(%s/%s,0)", anfEURAddr, limitEURAddr), EV_FMT_PCT, false)
 	bottom := r
 
-	g.styleOuterBorder(ws, top, lbl1, bottom, vEUR, 2, EV_CLR_BORDER)
+	g.styleOuterBorder(ws, top, lbl, bottom, vEUR, 2, EV_CLR_BORDER)
 	return bottom
 }
 
@@ -896,10 +928,10 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 	totalRow := dataEnd + 1
 	g.evalTotalRow(ws, totalRow, dataStart, dataEnd)
 
-	if !isIncome {
-		g.evalDeviationConditional(ws, EV_COL_ABW_LC, dataStart, dataEnd)
-		g.evalDeviationConditional(ws, EV_COL_ABW_EUR, dataStart, dataEnd)
-	}
+	// Abweichungs-Ampel auf beiden Währungsspalten (Einnahmen wie Ausgaben):
+	// ≥ 20 % rot, 10–20 % gelb.
+	g.evalDeviationConditional(ws, EV_COL_ABW_LC, dataStart, dataEnd)
+	g.evalDeviationConditional(ws, EV_COL_ABW_EUR, dataStart, dataEnd)
 
 	g.styleOuterBorder(ws, hdrRow, EV_COL_LABEL, totalRow, EV_COL_ABW_EUR, 2, EV_CLR_BORDER)
 
@@ -987,11 +1019,11 @@ func (g *Generator) evalTotalRow(ws string, totalRow, dataStart, dataEnd int) {
 func (g *Generator) evalDeviationConditional(ws string, col, dataStart, dataEnd int) {
 	rng := fmt.Sprintf("%s:%s", cellName(col, dataStart), cellName(col, dataEnd))
 	topRel := cellName(col, dataStart)
-	g.addConditionalFormat(ws, rng, fmt.Sprintf("%s>0.2", topRel), StyleOptions{
+	g.addConditionalFormat(ws, rng, fmt.Sprintf("%s>=0.2", topRel), StyleOptions{
 		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_PCT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
-	g.addConditionalFormat(ws, rng, fmt.Sprintf("AND(%s>=0.1,%s<=0.2)", topRel, topRel), StyleOptions{
+	g.addConditionalFormat(ws, rng, fmt.Sprintf("AND(%s>=0.1,%s<0.2)", topRel, topRel), StyleOptions{
 		Bold: true, FontColor: EV_CLR_WARN_TXT, FillColor: EV_CLR_WARN, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_PCT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
@@ -1073,6 +1105,23 @@ func evalMACurrentKMWRequest(sel evalSelRefs) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK)
+}
+
+// evalMASelectedZeitraum liefert den Zeitraum (Monate) der aktuell gewählten
+// Mittelanforderung (Periode P, Rang k). Es wird – wie im Spiegel-Panel – der
+// Tabellenindex j der gewählten MA bestimmt und der Zeitraum (MA-Quellzeile 7,
+// Wertspalte = colS+1) per CHOOSE über alle 18 MA-Tabellen ausgelesen.
+func evalMASelectedZeitraum(sel evalSelRefs) string {
+	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_PERIOD_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT), sel.maSelK)
+	parts := make([]string, 0, MA_PERIOD_COUNT)
+	for t := 1; t <= MA_PERIOD_COUNT; t++ {
+		colS := MA_START_COL + (t-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
+		parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+1, 7)))
+	}
+	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }
 
 // evalAbsCol liefert einen absoluten Spaltenbereich, z. B. "$BU$1:$BU$144".
