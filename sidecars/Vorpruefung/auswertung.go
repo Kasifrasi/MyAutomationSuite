@@ -304,8 +304,13 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", bgKostenName("Reserve", "EUR")), false)
 	r++
 	rOp := r
-	g.evalKmwLabel(ws, r, lblL1, lblL2, "Operatives Budget (abzgl. Reserve)", false)
-	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-%s,2)", absName(valL, rBew), absName(valL, rRes)), false)
+	g.evalMergedFormula(ws, cellName(lblL1, r), cellName(lblL2, r),
+		fmt.Sprintf(`=IF(%s="Ja","Operatives Budget (Reserve freigegeben)","Operatives Budget (abzgl. Reserve)")`, BG_NAME_RESERVE),
+		StyleOptions{Size: 10.0, HAlign: "left", VAlign: "center",
+			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID})
+	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf(
+		`=IF(%s="Ja",ROUND(%s,2),ROUND(%s-%s,2))`,
+		BG_NAME_RESERVE, absName(valL, rBew), absName(valL, rBew), absName(valL, rRes)), false)
 	r++
 	rBer := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Bereitgestellte KMW-Mittel", false)
