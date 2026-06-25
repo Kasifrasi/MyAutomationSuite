@@ -2,7 +2,7 @@ use crate::{MainWindow, FBState};
 use crate::shared::models::{ExportOptions, ProgressMessage};
 use crate::shared::process::get_fb_path;
 use super::config::{apply_fb_defaults, load_fb_settings, save_fb_settings};
-use slint::{ComponentHandle, Model};
+use slint::{ComponentHandle};
 
 pub fn setup(ui: &MainWindow) {
     apply_fb_defaults(ui);

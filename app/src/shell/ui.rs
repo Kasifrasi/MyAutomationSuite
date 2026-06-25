@@ -1,6 +1,5 @@
 use crate::MainWindow;
-use slint::ComponentHandle; // Für .as_weak()
-use slint::Global; // Für ui.global()
+use slint::ComponentHandle;
 
 use super::config::{load_theme_settings, save_theme_settings};
 

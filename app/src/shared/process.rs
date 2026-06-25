@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 pub fn get_fb_path() -> std::path::PathBuf {
     // Hier binden wir die kompilierte Go-Exe direkt in die Rust-Anwendung ein!
     let sidecar_bytes = include_bytes!("../../../sidecars/FB/generator.exe");

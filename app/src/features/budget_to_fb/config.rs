@@ -60,7 +60,6 @@ pub fn load_b2f_settings(ui: &MainWindow) {
 
 pub fn save_b2f_settings(ui: &MainWindow) {
     let b2f = ui.global::<BudgetState>();
-    let sp = b2f.get_sheet_permissions();
     let s = B2fSettings {
         src_folder: b2f.get_src_folder().to_string(),
         out_folder: b2f.get_out_folder().to_string(),

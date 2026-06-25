@@ -65,7 +65,6 @@ pub struct ExportOptions {
 #[derive(Deserialize, Debug)]
 pub struct ProgressMessage {
     pub status: String,
-    pub file: Option<String>,
     pub current: Option<u32>,
     pub total: Option<u32>,
     pub message: String,

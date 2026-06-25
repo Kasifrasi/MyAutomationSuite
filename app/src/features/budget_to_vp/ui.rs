@@ -2,7 +2,7 @@ use crate::{MainWindow, VorpruefungState};
 use crate::shared::process::get_vorpruefung_path;
 use super::config::{apply_vp_defaults, load_vp_settings, save_vp_settings};
 use super::utils::{budget_to_vp_budget, vp_output_name};
-use slint::{ComponentHandle, Model};
+use slint::{ComponentHandle};
 
 pub fn setup(ui: &MainWindow) {
     apply_vp_defaults(&ui);
