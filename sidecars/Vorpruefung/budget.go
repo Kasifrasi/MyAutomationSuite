@@ -495,10 +495,15 @@ func (g *Generator) bgFillInput(ws, cell string, v *float64) {
 }
 
 func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
-	opts := StyleOptions{
-		Bold: true, Size: 10, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_SUBHEAD, VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER,
-	}
 	for c := c1; c <= c2; c++ {
+		opts := StyleOptions{
+			Bold: true, Size: 10, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_SUBHEAD, VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER,
+		}
+		if c >= BG_COL_LC && c <= BG_COL_Y3 {
+			opts.NumFormat = BG_FMT_LC
+		} else if c == BG_COL_EUR {
+			opts.NumFormat = BG_FMT_EUR
+		}
 		g.setStyle(ws, cellName(c, r), cellName(c, r), opts)
 	}
 	_ = g.file.SetRowHeight(ws, r, 20)
