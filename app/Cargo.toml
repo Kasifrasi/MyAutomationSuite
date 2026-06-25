@@ -11,7 +11,6 @@ license.workspace = true
 confy = "2"
 rfd = "0.14"
 dark-light = "2.0.0"
-rust_xlsxwriter = { workspace = true }
 serde = { workspace = true }
 
 # Import deiner eigenen Logik über den Workspace

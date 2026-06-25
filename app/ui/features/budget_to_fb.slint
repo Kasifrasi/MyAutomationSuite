@@ -13,8 +13,8 @@ import {
     SettingCheckBox,
     CategorySpinBox,
     PasswordField,
-} from "../components.slint";
-import { BudgetState } from "../state.slint";
+} from "../shared/components.slint";
+import { BudgetState } from "../shared/state.slint";
 
 export component BudgetPage inherits VerticalLayout {
     spacing: 10px;
@@ -218,7 +218,7 @@ export component BudgetPage inherits VerticalLayout {
                         Row {
                             SettingCheckBox {
                                 text: "Gesperrte Zellen wählen";
-                                value <=> BudgetState.sheet-permissions.select-locked;
+                                value <=> BudgetState.sheet-permissions.select-locked-cells;
                                 is-enabled: BudgetState.protect-sheet;
                                 changed => {
                                     BudgetState.save-settings();
@@ -238,7 +238,7 @@ export component BudgetPage inherits VerticalLayout {
                         Row {
                             SettingCheckBox {
                                 text: "Freie Zellen wählen";
-                                value <=> BudgetState.sheet-permissions.select-unlocked;
+                                value <=> BudgetState.sheet-permissions.select-unlocked-cells;
                                 is-enabled: BudgetState.protect-sheet;
                                 changed => {
                                     BudgetState.save-settings();
@@ -287,7 +287,7 @@ export component BudgetPage inherits VerticalLayout {
 
                             SettingCheckBox {
                                 text: "Autofilter";
-                                value <=> BudgetState.sheet-permissions.autofilter;
+                                value <=> BudgetState.sheet-permissions.auto-filter;
                                 is-enabled: BudgetState.protect-sheet;
                                 changed => {
                                     BudgetState.save-settings();

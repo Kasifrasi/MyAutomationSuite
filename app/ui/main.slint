@@ -15,10 +15,10 @@ import {
     VorpruefungState,
     FolderState,
     UpdateState,
-} from "state.slint";
+} from "shared/state.slint";
 export { Languages, Categories, SheetPermissions, FBState, BudgetState, VorpruefungState, FolderState, UpdateState }
-import "./fonts/InterVariable.ttf";
-import "./fonts/InterVariable-Italic.ttf";
+import "shared/fonts/InterVariable.ttf";
+import "shared/fonts/InterVariable-Italic.ttf";
 
 export component MainWindow inherits Window {
     init => {
@@ -164,7 +164,7 @@ export component MainWindow inherits Window {
                     }
 
                     Image {
-                        source: @image-url("icons/home.svg");
+                        source: @image-url("shared/icons/home.svg");
                         width: 16px;
                         height: 16px;
                         colorize: Palette.foreground;

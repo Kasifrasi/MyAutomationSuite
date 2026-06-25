@@ -82,8 +82,8 @@ pub struct SheetProtectionOptions {
     pub sort: bool,
     pub auto_filter: bool,
     pub pivot_tables: bool,
-    pub objects: bool,
-    pub scenarios: bool,
+    pub edit_objects: bool,
+    pub edit_scenarios: bool,
 }
 
 impl SheetProtectionOptions {
@@ -114,8 +114,8 @@ impl SheetProtectionOptions {
             b2s(self.sort),
             b2s(self.auto_filter),
             b2s(self.pivot_tables),
-            b2s(self.objects),
-            b2s(self.scenarios),
+            b2s(self.edit_objects),
+            b2s(self.edit_scenarios),
         )
     }
 }

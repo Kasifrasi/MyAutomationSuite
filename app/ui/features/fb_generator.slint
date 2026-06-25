@@ -12,8 +12,8 @@ import {
     CategoryField,
     SettingCheckBox,
     PasswordField,
-} from "../components.slint";
-import { GlobalUI, FBState } from "../state.slint";
+} from "../shared/components.slint";
+import { GlobalUI, FBState } from "../shared/state.slint";
 
 export component FBPage inherits VerticalLayout {
     spacing: GlobalUI.spacing;
@@ -335,7 +335,7 @@ export component FBPage inherits VerticalLayout {
                         Row {
                             SettingCheckBox {
                                 text: "Gesperrte Zellen wählen";
-                                value <=> FBState.sheet-permissions.select-locked;
+                                value <=> FBState.sheet-permissions.select-locked-cells;
                                 is-enabled: FBState.protect-sheet;
                                 changed => {
                                     FBState.save-settings();
@@ -355,7 +355,7 @@ export component FBPage inherits VerticalLayout {
                         Row {
                             SettingCheckBox {
                                 text: "Freie Zellen wählen";
-                                value <=> FBState.sheet-permissions.select-unlocked;
+                                value <=> FBState.sheet-permissions.select-unlocked-cells;
                                 is-enabled: FBState.protect-sheet;
                                 changed => {
                                     FBState.save-settings();
@@ -404,7 +404,7 @@ export component FBPage inherits VerticalLayout {
 
                             SettingCheckBox {
                                 text: "Autofilter";
-                                value <=> FBState.sheet-permissions.autofilter;
+                                value <=> FBState.sheet-permissions.auto-filter;
                                 is-enabled: FBState.protect-sheet;
                                 changed => {
                                     FBState.save-settings();
