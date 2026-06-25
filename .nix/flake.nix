@@ -56,9 +56,9 @@
 
         script-build-go = pkgs.writeShellScriptBin "build-go" ''
           root="$(git rev-parse --show-toplevel)"
-          cd "$root/sidecars/Excelize" || exit 1
+          cd "$root/sidecars/FB" || exit 1
           go build -o generator.exe ./cmd/report_generator
-          echo "Go Sidecar erfolgreich kompiliert (sidecars/Excelize/generator.exe)"
+          echo "Go Sidecar erfolgreich kompiliert (sidecars/FB/generator.exe)"
           cd "$root/sidecars/Vorpruefung" || exit 1
           go build -o vorpruefung.exe .
           echo "Go Sidecar erfolgreich kompiliert (sidecars/Vorpruefung/vorpruefung.exe)"

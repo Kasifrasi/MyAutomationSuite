@@ -690,7 +690,7 @@ struct ProgressMessage {
 
 fn get_sidecar_path() -> std::path::PathBuf {
     // Hier binden wir die kompilierte Go-Exe direkt in die Rust-Anwendung ein!
-    let sidecar_bytes = include_bytes!("../../sidecars/Excelize/generator.exe");
+    let sidecar_bytes = include_bytes!("../../sidecars/FB/generator.exe");
 
     // Wir entpacken sie in den Temp-Ordner
     let dir = std::env::temp_dir().join("MyAutomationSuite");
@@ -728,7 +728,7 @@ fn get_sidecar_path() -> std::path::PathBuf {
 }
 
 fn get_vorpruefung_path() -> std::path::PathBuf {
-    // Vorpruefung-Sidecar (Go) wird wie der Excelize-Generator direkt eingebettet.
+    // Vorpruefung-Sidecar (Go) wird wie der FB-Generator direkt eingebettet.
     // Vor `cargo build` muss er via `build-go` als sidecars/Vorpruefung/vorpruefung.exe
     // erzeugt worden sein.
     let sidecar_bytes = include_bytes!("../../sidecars/Vorpruefung/vorpruefung.exe");
@@ -2627,7 +2627,7 @@ mod vp_tests {
     #[test]
     fn maps_real_budget_and_writes_json() {
         let budget = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../sidecars/Excelize/data/budgets/de.xlsx");
+            .join("../sidecars/FB/data/budgets/de.xlsx");
         if !budget.exists() {
             eprintln!("de.xlsx fehlt – Test übersprungen");
             return;

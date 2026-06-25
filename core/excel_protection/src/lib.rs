@@ -17,6 +17,7 @@ use std::fs::File;
 use std::io::{Cursor, Read, Write};
 use zip::write::FileOptions;
 use zip::{ZipArchive, ZipWriter};
+use serde::{Deserialize, Serialize};
 
 const DEFAULT_SPIN_COUNT: u32 = 100_000;
 
@@ -66,7 +67,7 @@ const FIXED_SALT: [u8; 16] = [
     0x6b, 0x6d, 0x77, 0x66, 0x62, 0x5f, 0x72, 0x70, 0x74, 0x5f, 0x76, 0x31, 0x5f, 0x21, 0x21, 0x00,
 ];
 
-#[derive(Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SheetProtectionOptions {
     pub select_locked_cells: bool,
     pub select_unlocked_cells: bool,
