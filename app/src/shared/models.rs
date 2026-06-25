@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-
+use crate::SheetPermissions;
 pub use excel_protection::SheetProtectionOptions;
 
 // 1. Umwandlung von Bibliothek-Optionen in Slint-UI Permissions
@@ -19,8 +19,8 @@ impl From<SheetProtectionOptions> for SheetPermissions {
             sort: sp.sort,
             auto_filter: sp.auto_filter,
             pivot_tables: sp.pivot_tables,
-            objects: sp.objects,
-            scenarios: sp.scenarios,
+            edit_objects: sp.edit_objects,
+            edit_scenarios: sp.edit_scenarios,
             contents: false, // contents ist ein Slint-interner Standardwert
         }
     }
@@ -43,8 +43,8 @@ impl From<SheetPermissions> for SheetProtectionOptions {
             sort: sp.sort,
             auto_filter: sp.auto_filter,
             pivot_tables: sp.pivot_tables,
-            objects: sp.objects,
-            scenarios: sp.scenarios,
+            edit_objects: sp.edit_objects,
+            edit_scenarios: sp.edit_scenarios,
         }
     }
 }
@@ -59,7 +59,7 @@ pub struct ExportOptions {
     pub hide_lang_sheet: bool,
     pub empty_rows: i32,
     #[serde(flatten)]
-    pub protection: ExcelProtectionSettings,
+    pub protection: SheetProtectionOptions,
 }
 
 #[derive(Deserialize, Debug)]

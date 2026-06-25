@@ -1,4 +1,8 @@
-fn vp_income_from(row: &budget_scanner::FinancingRow) -> VpIncome {
+use super::models::{VpBudget, VpIncome, VpAusgabe, VpDritt, VpSonstiges, VP_CATEGORIES};
+use crate::shared::utils::parse_amount;
+
+
+pub fn vp_income_from(row: &budget_scanner::FinancingRow) -> VpIncome {
     VpIncome {
         lc: parse_amount(&row.lc),
         y1: parse_amount(&row.year1),
@@ -10,7 +14,7 @@ fn vp_income_from(row: &budget_scanner::FinancingRow) -> VpIncome {
 
 /// Bildet die gescannten Budgetdaten auf das Vorpruefung-Budget-Schema ab.
 /// Nicht spezifizierte Drittmittelgeber landen gesammelt unter "Sonstige".
-fn budget_to_vp_budget(d: &budget_scanner::BudgetData) -> VpBudget {
+pub fn budget_to_vp_budget(d: &budget_scanner::BudgetData) -> VpBudget {
     let mut ausgaben = Vec::with_capacity(d.positions.len());
     for p in &d.positions {
         let mut parts = p.number.splitn(2, '.');
@@ -79,6 +83,30 @@ fn budget_to_vp_budget(d: &budget_scanner::BudgetData) -> VpBudget {
         ausgaben,
         reserve_freigabe: false,
     }
+}
+
+pub fn vp_output_name(
+    pattern: &str,
+    data: &budget_scanner::BudgetData,
+    used: &mut std::collections::HashSet<String>,
+) -> String {
+    let mut replacements = std::collections::HashMap::new();
+
+    // Originalen Dateinamen ohne Endung ermitteln (z.B. "de" statt "de.xlsx")
+    let file_stem = data.file_path
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    // Platzhalter-Ersetzungen definieren
+    replacements.insert("{pn}".to_string(), data.project_number.clone());
+    replacements.insert("{la}".to_string(), data.language.clone());
+    replacements.insert("{pt}".to_string(), data.project_title.clone());
+    replacements.insert("{fn}".to_string(), file_stem);
+    replacements.insert("{vs}".to_string(), data.version.clone());
+
+    // Aufruf der Shared-Util-Funktion zur sicheren Namensgenerierung
+    crate::shared::utils::render_unique_filename(pattern, &replacements, used)
 }
 
 

@@ -47,7 +47,7 @@ pub fn render_unique_filename(
 /// Parst einen Geldbetrag aus dem Budget (z.B. "10,000", "5,000.00 €", "1.234,56").
 /// Erkennt Tausender-/Dezimaltrenner heuristisch. Leer/unparsbar ⇒ None (leeres
 /// Eingabefeld in der Prüfvorlage).
-fn parse_amount(raw: &str) -> Option<f64> {
+pub fn parse_amount(raw: &str) -> Option<f64> {
     let mut s: String = raw
         .chars()
         .filter(|c| c.is_ascii_digit() || *c == ',' || *c == '.' || *c == '-')

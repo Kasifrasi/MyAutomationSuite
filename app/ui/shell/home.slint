@@ -91,7 +91,7 @@ export component HomePage inherits VerticalLayout {
             MenuCard {
                 title: "FB-Generator";
                 description: "Finanzberichtsvorlagen erstellen";
-                icon: @image-url("shared/icons/chart.svg");
+                icon: @image-url("../shared/icons/chart.svg");
                 width: 260px;
                 clicked => {
                     root.navigate("fb");
@@ -101,7 +101,7 @@ export component HomePage inherits VerticalLayout {
             MenuCard {
                 title: "Budget zu FB";
                 description: "Budgets in Finanzberichte konvertieren";
-                icon: @image-url("shared/icons/convert.svg");
+                icon: @image-url("../shared/icons/convert.svg");
                 width: 260px;
                 clicked => {
                     root.navigate("budget");
@@ -116,7 +116,7 @@ export component HomePage inherits VerticalLayout {
             MenuCard {
                 title: "Budget zu Prüfvorlage";
                 description: "Budgets scannen & Prüfvorlagen erstellen";
-                icon: @image-url("shared/shared/icons/chart.svg");
+                icon: @image-url("../shared/icons/chart.svg");
                 width: 260px;
                 clicked => {
                     root.navigate("vorpruefung");
@@ -126,7 +126,7 @@ export component HomePage inherits VerticalLayout {
             MenuCard {
                 title: "Ordner erstellen";
                 description: "Erstellt Ordner mit Prüfvorlage";
-                icon: @image-url("shared/icons/folder.svg");
+                icon: @image-url("../shared/icons/folder.svg");
                 width: 260px;
                 clicked => {
                     root.navigate("folder");

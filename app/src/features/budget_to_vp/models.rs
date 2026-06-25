@@ -1,13 +1,9 @@
-
-use serde::Serialize;
-
-// ==========================================================================
-// Budget → Vorpruefung-Prüfvorlage: Mapping & Hilfsfunktionen
-// ==========================================================================
+use serde::{Deserialize, Serialize};
+use crate::shared::models::SheetProtectionOptions;
 
 // Kostenkategorien in der Reihenfolge, die der Vorpruefung-Generator (BG_CATEGORIES)
 // erwartet. Die Positionsnummer "n.m" aus dem Budget bestimmt über n (1..8) die Kategorie.
-const VP_CATEGORIES: [&str; 8] = [
+pub const VP_CATEGORIES: [&str; 8] = [
     "Bauausgaben",
     "Investitionen",
     "Personalkosten",
@@ -21,75 +17,75 @@ const VP_CATEGORIES: [&str; 8] = [
 // Die folgenden Structs spiegeln exakt das BudgetConfig-Schema von
 // sidecars/Vorpruefung/config.go (das den Decoder mit DisallowUnknownFields nutzt).
 #[derive(serde::Serialize)]
-struct VpBudget {
+pub struct VpBudget {
     #[serde(skip_serializing_if = "Option::is_none")]
-    kurs: Option<f64>,
-    eigenmittel: VpIncome,
-    drittmittel: VpDritt,
+    pub kurs: Option<f64>,
+    pub eigenmittel: VpIncome,
+    pub drittmittel: VpDritt,
     #[serde(rename = "kmwMittel")]
-    kmw_mittel: VpIncome,
-    ausgaben: Vec<VpAusgabe>,
+    pub kmw_mittel: VpIncome,
+    pub ausgaben: Vec<VpAusgabe>,
     #[serde(rename = "reserveFreigabe")]
-    reserve_freigabe: bool,
+    pub reserve_freigabe: bool,
 }
 
 #[derive(serde::Serialize, Default)]
-struct VpIncome {
+pub struct VpIncome {
     #[serde(skip_serializing_if = "Option::is_none")]
-    lc: Option<f64>,
+    pub lc: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    y1: Option<f64>,
+    pub y1: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    y2: Option<f64>,
+    pub y2: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    y3: Option<f64>,
+    pub y3: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    eur: Option<f64>,
+    pub eur: Option<f64>,
 }
 
 #[derive(serde::Serialize)]
-struct VpDritt {
+pub struct VpDritt {
     #[serde(skip_serializing_if = "Option::is_none")]
-    y1: Option<f64>,
+    pub y1: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    y2: Option<f64>,
+    pub y2: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    y3: Option<f64>,
-    geber: Vec<VpGeber>,
+    pub y3: Option<f64>,
+    pub geber: Vec<VpGeber>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    sonstiges: Option<VpSonstiges>,
+    pub sonstiges: Option<VpSonstiges>,
 }
 
 #[derive(serde::Serialize)]
-struct VpGeber {
-    geber: String,
+pub struct VpGeber {
+    pub geber: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    lc: Option<f64>,
+    pub lc: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    eur: Option<f64>,
+    pub eur: Option<f64>,
 }
 
 #[derive(serde::Serialize)]
-struct VpSonstiges {
+pub struct VpSonstiges {
     #[serde(skip_serializing_if = "Option::is_none")]
-    lc: Option<f64>,
+    pub lc: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    eur: Option<f64>,
+    pub eur: Option<f64>,
 }
 
 #[derive(serde::Serialize)]
-struct VpAusgabe {
-    kategorie: String,
-    id: String,
-    position: String,
+pub struct VpAusgabe {
+    pub kategorie: String,
+    pub id: String,
+    pub position: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    lc: Option<f64>,
+    pub lc: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    y1: Option<f64>,
+    pub y1: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    y2: Option<f64>,
+    pub y2: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    y3: Option<f64>,
+    pub y3: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    eur: Option<f64>,
+    pub eur: Option<f64>,
 }

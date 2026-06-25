@@ -1,5 +1,9 @@
+use crate::{MainWindow, BudgetState, SheetPermissions, APP_NAME};
+use super::models::B2fSettings;
 
-fn apply_b2f_defaults(ui: &MainWindow) {
+use slint::ComponentHandle;
+
+pub fn apply_b2f_defaults(ui: &MainWindow) {
     let b2f = ui.global::<BudgetState>();
     b2f.set_src_folder("".into());
     b2f.set_out_folder("".into());
@@ -16,8 +20,8 @@ fn apply_b2f_defaults(ui: &MainWindow) {
     b2f.set_show_settings(true);
 
     b2f.set_sheet_permissions(SheetPermissions {
-        select_locked: true,
-        select_unlocked: true,
+        select_locked_cells: true,
+        select_unlocked_cells: true,
         format_cells: true,
         format_columns: true,
         format_rows: true,
@@ -27,7 +31,7 @@ fn apply_b2f_defaults(ui: &MainWindow) {
         delete_columns: true,
         delete_rows: true,
         sort: true,
-        autofilter: true,
+        auto_filter: true,
         pivot_tables: true,
         edit_objects: false,
         edit_scenarios: true,
@@ -35,10 +39,7 @@ fn apply_b2f_defaults(ui: &MainWindow) {
     });
 }
 
-#[allow(clippy::too_many_arguments)]
-fb.set_sheet_permissions(s.protection.into());
-
-fn load_b2f_settings(ui: &MainWindow) {
+pub fn load_b2f_settings(ui: &MainWindow) {
     let s: B2fSettings = confy::load(APP_NAME, "b2f").unwrap_or_default();
     let b2f = ui.global::<BudgetState>();
     b2f.set_name(s.name.into());
@@ -57,7 +58,7 @@ fn load_b2f_settings(ui: &MainWindow) {
     b2f.set_sheet_permissions(s.protection.into());
 }
 
-fn save_b2f_settings(ui: &MainWindow) {
+pub fn save_b2f_settings(ui: &MainWindow) {
     let b2f = ui.global::<BudgetState>();
     let sp = b2f.get_sheet_permissions();
     let s = B2fSettings {

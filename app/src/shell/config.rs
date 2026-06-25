@@ -1,3 +1,7 @@
+use crate::{MainWindow, Palette};
+use super::super::APP_NAME;
+
+use slint::ComponentHandle;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ThemeSettings {
@@ -13,7 +17,7 @@ impl Default for ThemeSettings {
 }
 
 
-fn load_theme_settings(ui: &MainWindow) {
+pub fn load_theme_settings(ui: &MainWindow) {
     let s: ThemeSettings = confy::load(APP_NAME, "theme").unwrap_or_default();
     ui.set_dark_mode(s.dark_mode);
     let scheme = if s.dark_mode {
@@ -24,6 +28,6 @@ fn load_theme_settings(ui: &MainWindow) {
     ui.global::<Palette>().set_color_scheme(scheme);
 }
 
-fn save_theme_settings(dark_mode: bool) {
+pub fn save_theme_settings(dark_mode: bool) {
     let _ = confy::store(APP_NAME, "theme", &ThemeSettings { dark_mode });
 }

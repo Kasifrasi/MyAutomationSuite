@@ -1,4 +1,9 @@
-fn apply_fb_defaults(ui: &MainWindow) {
+use crate::{MainWindow, FBState, Languages, Categories, SheetPermissions, APP_NAME};
+use super::models::FbSettings;
+
+use slint::ComponentHandle;
+
+pub fn apply_fb_defaults(ui: &MainWindow) {
     let fb = ui.global::<FBState>();
 
     fb.set_langs(Languages {
@@ -32,8 +37,8 @@ fn apply_fb_defaults(ui: &MainWindow) {
     fb.set_hide_lang_sheet(true);
 
     fb.set_sheet_permissions(SheetPermissions {
-        select_locked: true,
-        select_unlocked: true,
+        select_locked_cells: true,
+        select_unlocked_cells: true,
         format_cells: true,
         format_columns: true,
         format_rows: true,
@@ -43,7 +48,7 @@ fn apply_fb_defaults(ui: &MainWindow) {
         delete_columns: true,
         delete_rows: true,
         sort: true,
-        autofilter: true,
+        auto_filter: true,
         pivot_tables: true,
         edit_objects: false,
         edit_scenarios: true,
@@ -54,7 +59,7 @@ fn apply_fb_defaults(ui: &MainWindow) {
     fb.set_status_message("".into());
 }
 
-fn load_fb_settings(ui: &MainWindow) {
+pub fn load_fb_settings(ui: &MainWindow) {
     let s: FbSettings = confy::load(APP_NAME, "fb").unwrap_or_default();
     let fb = ui.global::<FBState>();
     fb.set_langs(Languages {
@@ -82,8 +87,8 @@ fn load_fb_settings(ui: &MainWindow) {
     fb.set_hide_columns(s.hide_columns);
     fb.set_empty_rows(s.empty_rows);
     fb.set_sheet_permissions(permissions_from_settings(
-        s.select_locked,
-        s.select_unlocked,
+        s.select_locked_cells,
+        s.select_unlocked_cells,
         s.format_cells,
         s.format_columns,
         s.format_rows,
@@ -93,7 +98,7 @@ fn load_fb_settings(ui: &MainWindow) {
         s.delete_columns,
         s.delete_rows,
         s.sort,
-        s.autofilter,
+        s.auto_filter,
         s.pivot_tables,
         s.edit_objects,
         s.edit_scenarios,
@@ -101,7 +106,7 @@ fn load_fb_settings(ui: &MainWindow) {
     ));
 }
 
-fn save_fb_settings(ui: &MainWindow) {
+pub fn save_fb_settings(ui: &MainWindow) {
     let fb = ui.global::<FBState>();
     let sp = fb.get_sheet_permissions();
     let langs = fb.get_langs();
@@ -117,8 +122,8 @@ fn save_fb_settings(ui: &MainWindow) {
         sheet_password: fb.get_sheet_password().to_string(),
         workbook_password: fb.get_workbook_password().to_string(),
         hide_columns: fb.get_hide_columns(),
-        select_locked: sp.select_locked,
-        select_unlocked: sp.select_unlocked,
+        select_locked_cells: sp.select_locked_cells,
+        select_unlocked_cells: sp.select_unlocked_cells,
         format_cells: sp.format_cells,
         format_columns: sp.format_columns,
         format_rows: sp.format_rows,
@@ -128,7 +133,7 @@ fn save_fb_settings(ui: &MainWindow) {
         delete_columns: sp.delete_columns,
         delete_rows: sp.delete_rows,
         sort: sp.sort,
-        autofilter: sp.autofilter,
+        auto_filter: sp.auto_filter,
         pivot_tables: sp.pivot_tables,
         edit_objects: sp.edit_objects,
         edit_scenarios: sp.edit_scenarios,
@@ -136,4 +141,42 @@ fn save_fb_settings(ui: &MainWindow) {
         empty_rows: fb.get_empty_rows(),
     };
     let _ = confy::store(APP_NAME, "fb", &s);
+}
+
+pub fn permissions_from_settings(
+    select_locked_cells: bool,
+    select_unlocked_cells: bool,
+    format_cells: bool,
+    format_columns: bool,
+    format_rows: bool,
+    insert_columns: bool,
+    insert_rows: bool,
+    insert_hyperlinks: bool,
+    delete_columns: bool,
+    delete_rows: bool,
+    sort: bool,
+    auto_filter: bool,
+    pivot_tables: bool,
+    edit_objects: bool,
+    edit_scenarios: bool,
+    contents: bool,
+) -> SheetPermissions {
+    SheetPermissions {
+        select_locked_cells,
+        select_unlocked_cells,
+        format_cells,
+        format_columns,
+        format_rows,
+        insert_columns,
+        insert_rows,
+        insert_hyperlinks,
+        delete_columns,
+        delete_rows,
+        sort,
+        auto_filter,
+        pivot_tables,
+        edit_objects,
+        edit_scenarios,
+        contents,
+    }
 }

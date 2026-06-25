@@ -1,5 +1,10 @@
+use crate::{MainWindow, FolderState, Model};
+use std::path::PathBuf;
+
+use slint::ComponentHandle;
+
 /// Sortiert wie Windows Explorer: Zahlen numerisch, dann alphabetisch (case-insensitive).
-fn sort_subfolders(items: &mut [slint::SharedString]) {
+pub fn sort_subfolders(items: &mut [slint::SharedString]) {
     items.sort_by(|a, b| natural_cmp(&a.to_string(), &b.to_string()));
 }
 
@@ -34,7 +39,7 @@ fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     }
 }
 
-fn get_subfolders_vec(ui: &MainWindow) -> Vec<String> {
+pub fn get_subfolders_vec(ui: &MainWindow) -> Vec<String> {
     ui.global::<FolderState>()
         .get_subfolders()
         .iter()
@@ -42,7 +47,7 @@ fn get_subfolders_vec(ui: &MainWindow) -> Vec<String> {
         .collect()
 }
 
-fn validate_project_name(ui: &MainWindow) {
+pub fn validate_project_name(ui: &MainWindow) {
     let fs = ui.global::<FolderState>();
     let raw = fs.get_project_name().to_string();
     let skip = fs.get_skip_validation();

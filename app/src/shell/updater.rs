@@ -10,6 +10,45 @@ const GITHUB_REPO: &str = "MyAutomationSuite";
 const ASSET_NAME: &str = "app";
 
 // ── Öffentliche API ──────────────────────────────────────────────────────────
+pub fn setup(ui: &MainWindow) {
+    // ==========================================
+    // UpdateState: Versionsnummer + Callback
+    // ==========================================
+    ui.global::<UpdateState>()
+        .set_app_version(env!("CARGO_PKG_VERSION").into());
+
+    // Beim Start automatisch nach Updates suchen
+    spawn_check(ui.as_weak());
+
+    ui.global::<UpdateState>().on_check_for_update({
+        let ui_handle = ui.as_weak();
+        move || {
+            if let Some(ui) = ui_handle.upgrade() {
+                let us = ui.global::<UpdateState>();
+                if us.get_update_available() {
+                    spawn_install(ui_handle.clone());
+                } else {
+                    spawn_check(ui_handle.clone());
+                }
+            }
+        }
+    });
+
+    ui.global::<UpdateState>().on_restart({
+        let ui_handle = ui.as_weak();
+        move || {
+            // Aktuellen Pfad der .exe ermitteln und neu starten
+            if let Ok(exe) = std::env::current_exe() {
+                let _ = std::process::Command::new(exe).spawn();
+            }
+            // Aktuelles Fenster schließen
+            if let Some(ui) = ui_handle.upgrade() {
+                let _ = ui.hide();
+            }
+            std::process::exit(0);
+        }
+    });
+}
 
 /// Phase 1: Prüft ob eine neuere Version auf GitHub verfügbar ist.
 /// Setzt `update-available = true` und zeigt den Tag, wenn ein Update gefunden wird.

@@ -1,4 +1,7 @@
-// Budget-zu-Prüfvorlage (Vorpruefung): Einstellungen
+use crate::{MainWindow, VorpruefungState, APP_NAME};
+
+
+use slint::ComponentHandle;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct VpSettings {
@@ -21,7 +24,7 @@ impl Default for VpSettings {
     }
 }
 
-fn apply_vp_defaults(ui: &MainWindow) {
+pub fn apply_vp_defaults(ui: &MainWindow) {
     let vp = ui.global::<VorpruefungState>();
     vp.set_src_folder("".into());
     vp.set_out_folder("".into());
@@ -35,7 +38,7 @@ fn apply_vp_defaults(ui: &MainWindow) {
     vp.set_table_columns(slint::ModelRc::default());
 }
 
-fn load_vp_settings(ui: &MainWindow) {
+pub fn load_vp_settings(ui: &MainWindow) {
     let s: VpSettings = confy::load(APP_NAME, "vorpruefung").unwrap_or_default();
     let vp = ui.global::<VorpruefungState>();
     vp.set_name(s.name.into());
@@ -49,7 +52,7 @@ fn load_vp_settings(ui: &MainWindow) {
     }
 }
 
-fn save_vp_settings(ui: &MainWindow) {
+pub fn save_vp_settings(ui: &MainWindow) {
     let vp = ui.global::<VorpruefungState>();
     let s = VpSettings {
         src_folder: vp.get_src_folder().to_string(),

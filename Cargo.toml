@@ -25,3 +25,5 @@ slint = { version = "1.15.1", default-features = false }
 slint-build = "1.15.1"
 thiserror = "2"
 rayon = "1"
+rust_xlsxwriter = "0.95.0"
+

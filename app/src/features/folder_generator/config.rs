@@ -1,3 +1,8 @@
+use crate::{MainWindow, FolderState, Model};
+use super::super::super::APP_NAME;
+
+use slint::ComponentHandle;
+
 // Ordner-Generator: Einstellungen & Hilfsfunktionen
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -20,7 +25,7 @@ impl Default for FolderSettings {
     }
 }
 
-fn apply_folder_defaults(ui: &MainWindow) {
+pub fn apply_folder_defaults(ui: &MainWindow) {
     let fs = ui.global::<FolderState>();
     fs.set_target_folder("".into());
     fs.set_template_file("".into());
@@ -39,7 +44,7 @@ fn apply_folder_defaults(ui: &MainWindow) {
     fs.set_subfolders(std::rc::Rc::new(slint::VecModel::from(defaults)).into());
 }
 
-fn load_folder_settings(ui: &MainWindow) {
+pub fn load_folder_settings(ui: &MainWindow) {
     let s: FolderSettings = confy::load(APP_NAME, "folder").unwrap_or_default();
     let fs = ui.global::<FolderState>();
     if !s.target_folder.is_empty() {
@@ -52,7 +57,7 @@ fn load_folder_settings(ui: &MainWindow) {
     fs.set_subfolders(std::rc::Rc::new(slint::VecModel::from(model)).into());
 }
 
-fn save_folder_settings(ui: &MainWindow) {
+pub fn save_folder_settings(ui: &MainWindow) {
     let fs = ui.global::<FolderState>();
     let subfolders: Vec<String> = fs.get_subfolders().iter().map(|s| s.to_string()).collect();
     let s = FolderSettings {
