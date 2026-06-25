@@ -43,17 +43,17 @@ jobs:
       - name: Build GUI
         run: cargo build --release -p app
 
+      - name: Zip artifact
+        run: Compress-Archive -Path target/release/app.exe -DestinationPath target/release/app-x86_64-pc-windows-msvc.zip
+
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: target/release/app.exe
+          path: target/release/app-x86_64-pc-windows-msvc.zip
           if-no-files-found: error
-
-      - name: Rename artifact
-        run: cp target/release/app.exe target/release/app-x86_64-pc-windows-msvc.exe
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: target/release/app-x86_64-pc-windows-msvc.exe
+          files: target/release/app-x86_64-pc-windows-msvc.zip
