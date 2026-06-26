@@ -1,5 +1,4 @@
 # Go-Build-Artefakte (lokal gebaut, vor `cargo build` via `build-go`)
-vorpruefung
 *.exe
 
 # Generierte Test-Ausgaben

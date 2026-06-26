@@ -1,11 +1,8 @@
-package main
+package vorpruefung
 
 import (
 	"fmt"
 	"strings"
-
-	"shared/models"
-	"shared/runner"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -19,8 +16,8 @@ type StyleOptions struct {
 	HAlign       string
 	VAlign       string
 	NumFormat    string
-	NumFmtID     int // Built-in Excel format ID (z.B. 14 = kurzes Datum, lokalsensitiv)
-	BorderTop    int // 0: none, 1: thin, 2: medium
+	NumFmtID     int
+	BorderTop    int
 	BorderBottom int
 	BorderLeft   int
 	BorderRight  int
@@ -34,23 +31,14 @@ type Generator struct {
 	styleCache     map[string]int
 	condStyleCache map[string]int
 
-	// Ranges for VSTACK in "Daten"
 	rangesAusgaben   []string
 	rangesEinnahmen1 []string
 	rangesEinnahmen2 []string
 	rangesMA         []string
 
-	// Zellen mit dynamischen Array-Formeln (Spill); werden nach dem Speichern
-	// mit den Dynamic-Array-Metadaten versehen (siehe dynarray.go).
 	dynArrayCells []dynArrayCell
-
-	// Sheet-qualifizierte Absolutadresse der FB-Auswahl-Periodennummer auf dem
-	// Auswertungsblatt (z. B. "'V. AUSWERTUNG'!$N$120"). Wird von daten.go genutzt,
-	// um die Mittelanforderungs-Auswahlliste auf "Periode FB+1" zu filtern.
 	evalFBSelNumAddr string
 
-	// budget hält optional die per -budget übergebenen Budgetwerte. nil ⇒ leeres
-	// Eingabe-Template (Standardverhalten).
 	budget *BudgetConfig
 }
 
@@ -85,7 +73,6 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 
 	style := &excelize.Style{}
 
-	// Font
 	font := &excelize.Font{
 		Family: "Segoe UI",
 		Size:   opts.Size,
@@ -100,7 +87,6 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 	}
 	style.Font = font
 
-	// Fill
 	if opts.FillColor != "" {
 		style.Fill = excelize.Fill{
 			Type:    "pattern",
@@ -109,7 +95,6 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 		}
 	}
 
-	// Alignment
 	alignment := &excelize.Alignment{
 		WrapText: opts.WrapText,
 	}
@@ -121,14 +106,12 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 	}
 	style.Alignment = alignment
 
-	// Number Format
 	if opts.NumFmtID > 0 {
 		style.NumFmt = opts.NumFmtID
 	} else if opts.NumFormat != "" {
 		style.CustomNumFmt = &opts.NumFormat
 	}
 
-	// Borders
 	var borders []excelize.Border
 	borderColor := "808080"
 	if opts.BorderColor != "" {
@@ -172,7 +155,6 @@ func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) 
 
 	style := &excelize.Style{}
 
-	// Font
 	font := &excelize.Font{
 		Family: "Segoe UI",
 		Size:   opts.Size,
@@ -187,7 +169,6 @@ func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) 
 	}
 	style.Font = font
 
-	// Fill
 	if opts.FillColor != "" {
 		style.Fill = excelize.Fill{
 			Type:    "pattern",
@@ -196,7 +177,6 @@ func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) 
 		}
 	}
 
-	// Alignment
 	alignment := &excelize.Alignment{
 		WrapText: opts.WrapText,
 	}
@@ -208,14 +188,12 @@ func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) 
 	}
 	style.Alignment = alignment
 
-	// Number Format
 	if opts.NumFmtID > 0 {
 		style.NumFmt = opts.NumFmtID
 	} else if opts.NumFormat != "" {
 		style.CustomNumFmt = &opts.NumFormat
 	}
 
-	// Borders
 	var borders []excelize.Border
 	borderColor := "808080"
 	if opts.BorderColor != "" {
@@ -270,8 +248,6 @@ func (g *Generator) setFormula(sheet, cell, formula string, opts StyleOptions) e
 	return g.setStyle(sheet, cell, cell, opts)
 }
 
-// setDynArrayFormula schreibt eine dynamische Array-Formel (Spill) und merkt sich die
-// Zelle für das nachträgliche Setzen der Dynamic-Array-Metadaten (siehe dynarray.go).
 func (g *Generator) setDynArrayFormula(sheet, cell, formula string, opts StyleOptions) error {
 	setDynArrayFormula(g.file, sheet, cell, formula)
 	g.dynArrayCells = append(g.dynArrayCells, dynArrayCell{sheet: sheet, cell: cell})
@@ -482,10 +458,6 @@ func (g *Generator) styleOuterBorder(sheet string, r1, c1, r2, c2 int, weight in
 	return nil
 }
 
-// reapplyRightBorder hebt die rechte Kante einer einzelnen Zelle auf das angegebene
-// Gewicht/Farbe an, ohne die übrigen Stil-Eigenschaften (Füllung, Format, Formel) zu
-// verlieren. Nötig, wenn eine Zelle nach styleOuterBorder erneut formatiert wurde
-// (z. B. nachgelagerte Abzugsformeln) und dadurch die kräftige Box-Kante einbüßt.
 func (g *Generator) reapplyRightBorder(sheet, cell string, weight int, color string) {
 	styleID, err := g.file.GetCellStyle(sheet, cell)
 	if err != nil {
@@ -541,7 +513,6 @@ func (g *Generator) addConditionalFormat(sheet, cell, formula string, opts Style
 	if err != nil {
 		return err
 	}
-	// Führendes '=' entfernen, um doppelte Gleichheitszeichen im generierten XML zu vermeiden
 	formula = strings.TrimPrefix(formula, "=")
 	return g.file.SetConditionalFormat(sheet, cell, []excelize.ConditionalFormatOptions{
 		{
@@ -549,68 +520,5 @@ func (g *Generator) addConditionalFormat(sheet, cell, formula string, opts Style
 			Criteria: formula,
 			Format:   &styleID,
 		},
-	})
-}
-
-// UIProgress sendet Statusmeldungen im JSON-Format an die Standardausgabe,
-// die von deiner Slint/Python-GUI leicht geparst werden können.
-
-func generateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
-	f := excelize.NewFile()
-
-	g := &Generator{
-		file:           f,
-		styleCache:     make(map[string]int),
-		condStyleCache: make(map[string]int),
-		budget:         budgetCfg,
-	}
-
-	if err := g.CreateDashboardSheet(); err != nil {
-		return fmt.Errorf("fehler beim Erstellen des Dashboard-Blatts: %w", err)
-	}
-	if err := g.CreateBudgetSheet(); err != nil {
-		return fmt.Errorf("fehler beim Erstellen des Budget-Blatts: %w", err)
-	}
-	if err := g.CreateKMWMittelSheet(); err != nil {
-		return fmt.Errorf("fehler beim Erstellen des KMW-Mittel-Blatts: %w", err)
-	}
-	if err := g.CreateFinanzberichteSheet(); err != nil {
-		return fmt.Errorf("fehler beim Erstellen des Finanzberichte-Blatts: %w", err)
-	}
-	if err := g.CreateMittelanforderungSheet(); err != nil {
-		return fmt.Errorf("fehler beim Erstellen des Mittelanforderung-Blatts: %w", err)
-	}
-	if err := g.CreateAuswertungSheet(); err != nil {
-		return fmt.Errorf("fehler beim Erstellen des Auswertungs-Blatts: %w", err)
-	}
-	if err := g.CreateDatenSheet(); err != nil {
-		return fmt.Errorf("fehler beim Erstellen des Daten-Blatts: %w", err)
-	}
-
-	_ = f.DeleteSheet("Sheet1")
-
-	fullCalc := true
-	if err := f.SetCalcProps(&excelize.CalcPropsOptions{FullCalcOnLoad: &fullCalc}); err != nil {
-		return fmt.Errorf("fehler beim Setzen der Berechnungsoptionen: %w", err)
-	}
-
-	if err := f.SaveAs(outputPath); err != nil {
-		return fmt.Errorf("fehler beim Speichern des Dokuments: %w", err)
-	}
-
-	if err := applyDynamicArrayMetadata(outputPath, g.dynArrayCells); err != nil {
-		return fmt.Errorf("fehler beim Setzen der Dynamic-Array-Metadaten: %w", err)
-	}
-
-	return nil
-}
-
-func main() {
-	runner.Run(func(data models.ScannedBudgetData, outputPath string, optionsJSON string) error {
-		cfg := mapScannedToBudget(&data)
-		if err := cfg.validate(); err != nil {
-			return fmt.Errorf("budget-daten sind ungültig: %w", err)
-		}
-		return generateVorpruefung(outputPath, cfg)
 	})
 }

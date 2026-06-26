@@ -1,4 +1,4 @@
-package main
+package vorpruefung
 
 import (
 	"encoding/json"
@@ -21,7 +21,7 @@ import (
 // BudgetConfig hält die für das Blatt "I. Budget" aufbereiteten Werte. Ist keine
 // Budget-Datei angegeben, bleibt das Blatt ein leeres Eingabe-Template
 // (g.budget == nil). Diese Typen sind NICHT das JSON-Schema mehr — sie werden von
-// mapScannedToBudget aus der kanonischen BudgetData befüllt.
+// MapScannedToBudget aus der kanonischen BudgetData befüllt.
 //
 // Beträge sind durchweg *float64: nil ⇒ Zelle bleibt leer (Eingabefeld), 0 ⇒ es
 // wird ausdrücklich eine 0 eingetragen.
@@ -91,11 +91,11 @@ func isZeroAmount(v *float64) bool {
 	return v == nil || *v == 0
 }
 
-// mapScannedToBudget bildet die kanonische BudgetData auf das Generator-Modell ab.
+// MapScannedToBudget bildet die kanonische BudgetData auf das Generator-Modell ab.
 // Hier lebt die VP-spezifische Formung (vormals in Rust): leere Kategorie-Kopfzeilen
 // und namenlose 0-Platzhalter werden ausgelassen; Drittmittel ohne Geber-Aufstellung
 // landen gesammelt unter "Sonstige".
-func mapScannedToBudget(s *models.ScannedBudgetData) *BudgetConfig {
+func MapScannedToBudget(s *models.ScannedBudgetData) *BudgetConfig {
 	cfg := &BudgetConfig{
 		Eigenmittel: incomeFromRow(s.Financing.Eigenmittel),
 		KMWMittel:   incomeFromRow(s.Financing.KMWMittel),
@@ -171,14 +171,14 @@ func loadBudgetConfig(path string) (*BudgetConfig, error) {
 	if err := json.Unmarshal(data, &scanned); err != nil {
 		return nil, fmt.Errorf("budget-datei (%s) ist kein gültiges JSON: %w", path, err)
 	}
-	cfg := mapScannedToBudget(&scanned)
-	if err := cfg.validate(); err != nil {
+	cfg := MapScannedToBudget(&scanned)
+	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("budget-datei (%s) ist ungültig: %w", path, err)
 	}
 	return cfg, nil
 }
 
-func (c *BudgetConfig) validate() error {
+func (c *BudgetConfig) Validate() error {
 	valid := make(map[string]bool, len(BG_CATEGORIES))
 	for _, cat := range BG_CATEGORIES {
 		valid[cat] = true
