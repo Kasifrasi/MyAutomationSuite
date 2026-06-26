@@ -113,7 +113,6 @@
           # --- Rust Tools (GUI & Core Scanner) ---
           bacon
           cargo-release
-          cargo-about
           cargo-audit
           cargo-cyclonedx
           cargo-deny
