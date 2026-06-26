@@ -147,9 +147,6 @@ mod vp_tests {
             local_currency: "USD".into(),
             cost_col1: 8,
             cost_col2: Some(13),
-            eigenleistung: String::new(),
-            drittmittel: String::new(),
-            kmw_mittel: String::new(),
             financing: budget_scanner::FinancingDetail::default(),
             positions,
         }

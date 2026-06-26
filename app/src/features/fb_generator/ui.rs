@@ -1,4 +1,5 @@
 use super::config::{apply_fb_defaults, load_fb_settings, save_fb_settings};
+use crate::features::budget_to_fb::models::FbExportModel;
 use crate::shared::models::{ExportOptions, ProgressMessage};
 use crate::shared::process::get_fb_path;
 use crate::{FBState, MainWindow};
@@ -192,9 +193,6 @@ pub fn setup(ui: &MainWindow) {
                             local_currency: "".into(),
                             cost_col1: 8,
                             cost_col2: Some(13),
-                            eigenleistung: "0".into(),
-                            drittmittel: "0".into(),
-                            kmw_mittel: "0".into(),
                             financing: budget_scanner::FinancingDetail::default(),
                             positions,
                         });
@@ -222,9 +220,13 @@ pub fn setup(ui: &MainWindow) {
                         }
                     };
 
+                    // Generische BudgetData auf das flache FB-Sidecar-Schema abbilden.
+                    let fb_models: Vec<FbExportModel> =
+                        templates.iter().map(FbExportModel::from_budget).collect();
+
                     if let Err(e) = std::io::Write::write_all(
                         &mut tmp_json_file,
-                        serde_json::to_string(&templates)
+                        serde_json::to_string(&fb_models)
                             .unwrap_or_default()
                             .as_bytes(),
                     ) {

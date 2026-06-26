@@ -64,11 +64,9 @@ pub struct BudgetData {
     pub local_currency: String,
     pub cost_col1: usize,
     pub cost_col2: Option<usize>,
-    pub eigenleistung: String,
-    pub drittmittel: String,
-    pub kmw_mittel: String,
-    /// Additiv: volle Aufschlüsselung der Finanzierungsquellen (Jahre + EUR).
-    #[serde(default)]
+    /// Volle Aufschlüsselung der Finanzierungsquellen (LC-Gesamt, Jahre, EUR).
+    /// Kanonische Repräsentation der Finanzierung – seitenspezifische Consumer
+    /// (z. B. das FB-Sidecar) leiten ihre flachen Felder hieraus ab.
     pub financing: FinancingDetail,
     pub positions: Vec<BudgetPosition>,
 }
@@ -79,13 +77,9 @@ pub struct BudgetPosition {
     pub label: String,
     pub cost_col1: String,
     pub cost_col2: String,
-    /// Kosten je Jahr/Phase (Spalten J/K/L, jeweils Lokalwährung). Additiv für die
-    /// Prüfvorlagen-Generierung; bestehende Consumer (FB-Sidecar) ignorieren sie.
-    #[serde(default)]
+    /// Kosten je Jahr/Phase (Spalten J/K/L, jeweils Lokalwährung).
     pub cost_year1: String,
-    #[serde(default)]
     pub cost_year2: String,
-    #[serde(default)]
     pub cost_year3: String,
 }
 
@@ -101,8 +95,7 @@ pub struct FinancingRow {
 }
 
 /// FinancingDetail enthält die drei Finanzierungsquellen in voller Aufschlüsselung
-/// (LC-Gesamt, Jahre, EUR). Additiv – wird für die Prüfvorlagen-Generierung genutzt;
-/// die bestehenden String-Felder eigenleistung/drittmittel/kmw_mittel bleiben erhalten.
+/// (LC-Gesamt, Jahre, EUR) und ist die kanonische Repräsentation der Finanzierung.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct FinancingDetail {
     pub eigenleistung: FinancingRow,
@@ -294,22 +287,6 @@ fn find_cost_columns(range: &Range<Data>) -> Result<(usize, Option<usize>), Scan
     Ok((resolved_first, resolved_second))
 }
 
-/// Sucht in Spalte D nach exakt passendem Term und gibt den Wert aus value_col zurück.
-fn find_value_in_col_d(range: &Range<Data>, terms: &[&str], value_col: usize) -> String {
-    for row in range.rows() {
-        if let Some(Data::String(s)) = row.get(3) {
-            let trimmed = s.trim();
-            if terms.contains(&trimmed) {
-                return row
-                    .get(value_col)
-                    .and_then(cell_text_owned)
-                    .unwrap_or_default();
-            }
-        }
-    }
-    String::new()
-}
-
 /// Liest eine vollständige Finanzierungszeile (LC, Jahre, EUR) anhand der Begriffe in
 /// Spalte D. Die Jahresspalten liegen unmittelbar rechts von der LC-Gesamtspalte
 /// (col1 + 1..3), die EUR-Gesamtspalte ist col2 (sofern vorhanden).
@@ -369,11 +346,7 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
 
     let (col1, col2) = find_cost_columns(&range)?;
 
-    let eigenleistung = find_value_in_col_d(&range, EIGENLEISTUNG_TERMS, col1);
-    let drittmittel = find_value_in_col_d(&range, DRITTMITTEL_TERMS, col1);
-    let kmw_mittel = find_value_in_col_d(&range, KMW_TERMS, col1);
-
-    // Additiv: volle Finanzierungs-Aufschlüsselung (Jahre + EUR) für Prüfvorlagen.
+    // Finanzierungsquellen in voller Aufschlüsselung (LC-Gesamt, Jahre, EUR).
     let financing = FinancingDetail {
         eigenleistung: find_financing_row(&range, EIGENLEISTUNG_TERMS, col1, col2),
         drittmittel: find_financing_row(&range, DRITTMITTEL_TERMS, col1, col2),
@@ -468,9 +441,6 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
         local_currency: get_str(3, 8),
         cost_col1: col1,
         cost_col2: col2,
-        eigenleistung,
-        drittmittel,
-        kmw_mittel,
         financing,
         positions,
     })
