@@ -131,7 +131,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "app"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "budget_scanner",
  "confy",
@@ -638,7 +638,7 @@ dependencies = [
 
 [[package]]
 name = "budget_scanner"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "calamine",
  "comfy-table",
@@ -1501,7 +1501,7 @@ dependencies = [
 
 [[package]]
 name = "excel_protection"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "base64",
  "byteorder",
@@ -1625,7 +1625,7 @@ checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
 
 [[package]]
 name = "folder_generator"
-version = "0.3.2"
+version = "0.4.0"
 dependencies = [
  "thiserror 2.0.18",
 ]
