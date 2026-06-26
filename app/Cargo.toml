@@ -24,6 +24,8 @@ rust_xlsxwriter = { workspace = true }
 slint = { workspace = true, features = ["backend-winit", "renderer-winit-software", "compat-1-2", "std"] }
 self_update = { version = "0.41", default-features = false, features = ["rustls"] }
 semver = "1"
+csv = "1.4.0"
+tempfile = "3.27.0"
 
 [build-dependencies]
 slint-build = { workspace = true }

@@ -1,9 +1,8 @@
-use crate::{MainWindow, BudgetState};
+use super::config::{apply_b2f_defaults, load_b2f_settings, save_b2f_settings};
 use crate::shared::models::{ExportOptions, ProgressMessage};
 use crate::shared::process::get_fb_path;
-use super::config::{apply_b2f_defaults, load_b2f_settings, save_b2f_settings};
+use crate::{BudgetState, MainWindow};
 use slint::{ComponentHandle, Model};
-
 
 pub fn setup(ui: &MainWindow) {
     apply_b2f_defaults(&ui);
@@ -12,7 +11,7 @@ pub fn setup(ui: &MainWindow) {
     // ==========================================
     // Budget-to-FB Callbacks
     // ==========================================
-    
+
     ui.global::<BudgetState>().on_select_src({
         let ui_handle = ui.as_weak();
         move || {
@@ -25,7 +24,7 @@ pub fn setup(ui: &MainWindow) {
             }
         }
     });
-    
+
     ui.global::<BudgetState>().on_select_out({
         let ui_handle = ui.as_weak();
         move || {
@@ -38,16 +37,16 @@ pub fn setup(ui: &MainWindow) {
             }
         }
     });
-    
+
     ui.global::<BudgetState>().on_scan({
         let ui_handle = ui.as_weak();
         move || {
             if let Some(ui) = ui_handle.upgrade() {
                 let b2f = ui.global::<BudgetState>();
-    
+
                 let src = b2f.get_src_folder().to_string();
                 let out_base = b2f.get_out_folder().to_string();
-    
+
                 if src.is_empty() {
                     b2f.set_status_type("error".into());
                     b2f.set_status_message("Bitte Quellordner wählen.".into());
@@ -58,12 +57,12 @@ pub fn setup(ui: &MainWindow) {
                     b2f.set_status_message("Bitte Ausgabeordner wählen.".into());
                     return;
                 }
-    
+
                 b2f.set_status_type("pending".into());
                 b2f.set_status_message("Scannt...".into());
-    
+
                 let filename = b2f.get_name().to_string();
-    
+
                 let sp = b2f.get_sheet_permissions();
                 let options = ExportOptions {
                     protect_sheet: b2f.get_protect_sheet(),
@@ -75,7 +74,7 @@ pub fn setup(ui: &MainWindow) {
                     empty_rows: b2f.get_empty_rows(),
                     protection: sp.into(),
                 };
-    
+
                 let wb_hash = if options.protect_workbook {
                     Some(excel_protection::precompute_hash(
                         &options.workbook_password,
@@ -83,51 +82,64 @@ pub fn setup(ui: &MainWindow) {
                 } else {
                     None
                 };
-    
+
                 let sh_hash = if options.protect_sheet {
                     Some(excel_protection::precompute_hash(&options.sheet_password))
                 } else {
                     None
                 };
-    
+
                 let sh_opts = if options.protect_sheet {
                     Some(options.protection.clone()) // 2. Einfach das fertige Objekt klonen!
                 } else {
                     None
                 };
-    
+
                 // Dem Sidecar geben wir protect=false mit, damit es das XML nicht verschlüsselt
                 let mut sidecar_options = options.clone();
                 sidecar_options.protect_sheet = false;
                 sidecar_options.protect_workbook = false;
                 let options_json = serde_json::to_string(&sidecar_options).unwrap_or_default();
-    
+
                 let ui_handle_clone = ui_handle.clone();
                 std::thread::spawn(move || {
                     let start_time = std::time::Instant::now();
                     let src_path = std::path::PathBuf::from(&src);
                     let out_base_path = std::path::PathBuf::from(&out_base);
-    
+
                     // 1. Budget-Dateien scannen
                     let result = budget_scanner::scan_directory(&src_path);
-    
+
                     // 3. Output-Ordner bestimmen
                     let output_dir = budget_scanner::resolve_output_dir(&out_base_path);
                     let _ = std::fs::create_dir_all(&output_dir);
-    
-                    // 4. Temporäres JSON erstellen
-                    let tmp_json_path = std::env::temp_dir().join(format!(
-                        "scan_{}.json",
-                        std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis()
-                    ));
-                    if let Err(e) = std::fs::File::create(&tmp_json_path).and_then(|mut f| {
-                        let json = serde_json::to_string(&result.successes)?;
-                        std::io::Write::write_all(&mut f, json.as_bytes())?;
-                        Ok(())
-                    }) {
+
+                    // 4. Temporäres JSON erstellen (wird automatisch gelöscht, wenn tmp_json_file out-of-scope geht)
+                    let mut tmp_json_file = match tempfile::Builder::new()
+                        .prefix("scan_")
+                        .suffix(".json")
+                        .tempfile()
+                    {
+                        Ok(f) => f,
+                        Err(e) => {
+                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                let b2f = ui.global::<BudgetState>();
+                                b2f.set_status_type("error".into());
+                                b2f.set_status_message(
+                                    format!("Fehler beim Erstellen der temporären Datei: {e}")
+                                        .into(),
+                                );
+                            });
+                            return;
+                        }
+                    };
+
+                    if let Err(e) = std::io::Write::write_all(
+                        &mut tmp_json_file,
+                        serde_json::to_string(&result.successes)
+                            .unwrap_or_default()
+                            .as_bytes(),
+                    ) {
                         let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                             let b2f = ui.global::<BudgetState>();
                             b2f.set_status_type("error".into());
@@ -137,19 +149,22 @@ pub fn setup(ui: &MainWindow) {
                         });
                         return;
                     }
-    
+                    let _ = std::io::Write::flush(&mut tmp_json_file);
+
+                    let tmp_json_path = tmp_json_file.path().to_path_buf();
+
                     // 5. Go Sidecar aufrufen
                     let sidecar_exe = get_fb_path();
-    
+
                     let mut cmd = std::process::Command::new(&sidecar_exe);
-    
+
                     #[cfg(target_os = "windows")]
                     {
                         use std::os::windows::process::CommandExt;
                         const CREATE_NO_WINDOW: u32 = 0x08000000;
                         cmd.creation_flags(CREATE_NO_WINDOW);
                     }
-    
+
                     cmd.arg("-input")
                         .arg(&tmp_json_path)
                         .arg("-output")
@@ -158,13 +173,12 @@ pub fn setup(ui: &MainWindow) {
                         .arg(&options_json)
                         .arg("-filename")
                         .arg(&filename);
-    
+
                     cmd.stdout(std::process::Stdio::piped());
-    
+
                     let mut child = match cmd.spawn() {
                         Ok(c) => c,
                         Err(e) => {
-                            let _ = std::fs::remove_file(&tmp_json_path);
                             let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                                 let b2f = ui.global::<BudgetState>();
                                 b2f.set_status_type("error".into());
@@ -179,17 +193,19 @@ pub fn setup(ui: &MainWindow) {
                             return;
                         }
                     };
-    
+
                     let Some(stdout) = child.stdout.take() else {
                         let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                             let b2f = ui.global::<BudgetState>();
                             b2f.set_status_type("error".into());
-                            b2f.set_status_message("Konnte die Ausgabe des Hintergrund-Prozesses nicht lesen.".into());
+                            b2f.set_status_message(
+                                "Konnte die Ausgabe des Hintergrund-Prozesses nicht lesen.".into(),
+                            );
                         });
                         return; // Thread sicher beenden
                     };
                     let reader = std::io::BufReader::new(stdout);
-    
+
                     use std::io::BufRead;
                     for line in reader.lines().map_while(Result::ok) {
                         if let Ok(msg) = serde_json::from_str::<ProgressMessage>(&line) {
@@ -198,10 +214,10 @@ pub fn setup(ui: &MainWindow) {
                                 let msg_text = msg.message.clone();
                                 let current = msg.current.unwrap_or(0);
                                 let total = msg.total.unwrap_or(0);
-    
+
                                 move |ui| {
                                     let b2f = ui.global::<BudgetState>();
-    
+
                                     if msg_status == "error" {
                                         b2f.set_status_type("error".into());
                                     } else if msg_status == "done" {
@@ -209,7 +225,7 @@ pub fn setup(ui: &MainWindow) {
                                     } else {
                                         b2f.set_status_type("pending".into());
                                     }
-    
+
                                     if total > 0 {
                                         b2f.set_status_message(
                                             format!("{current}/{total} - {msg_text}").into(),
@@ -221,10 +237,10 @@ pub fn setup(ui: &MainWindow) {
                             });
                         }
                     }
-    
+
                     let _ = child.wait();
-                    let _ = std::fs::remove_file(&tmp_json_path);
-    
+                    // Tempfile löscht sich automatisch am Ende des Scopes von tmp_json_file
+
                     // --- RUST EXCEL PROTECTION ---
                     // Wir durchlaufen alle generierten XLSX Dateien und wenden den schnellen XML-Schutz an
                     if wb_hash.is_some() || sh_hash.is_some() {
@@ -232,7 +248,7 @@ pub fn setup(ui: &MainWindow) {
                             let b2f = ui.global::<BudgetState>();
                             b2f.set_status_message("Wende Schutz an...".into());
                         });
-    
+
                         use rayon::prelude::*;
                         if let Ok(entries) = std::fs::read_dir(&output_dir) {
                             let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
@@ -248,18 +264,18 @@ pub fn setup(ui: &MainWindow) {
                             });
                         }
                     }
-    
+
                     // 6. Fehler-CSV schreiben
                     if !result.failures.is_empty() {
                         let csv_path = output_dir.join("scan_fehler.csv");
                         let _ = budget_scanner::write_failure_report(&result.failures, &csv_path);
                     }
-    
+
                     // 7. Tabelle aktualisieren
                     let success_count = result.successes.len();
                     let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                         let b2f = ui.global::<BudgetState>();
-    
+
                         let mk_col = |t: &str| {
                             let mut c = slint::TableColumn::default();
                             c.title = t.into();
@@ -271,16 +287,16 @@ pub fn setup(ui: &MainWindow) {
                             mk_col("Details"),
                         ]));
                         b2f.set_table_columns(columns);
-    
+
                         let mut rows: Vec<slint::ModelRc<slint::StandardListViewItem>> = Vec::new();
-    
+
                         for data in &result.successes {
                             let fname = data
                                 .file_path
                                 .file_name()
                                 .map(|n| n.to_string_lossy().to_string())
                                 .unwrap_or_default();
-    
+
                             rows.push(slint::ModelRc::new(slint::VecModel::from(vec![
                                 slint::StandardListViewItem::from(slint::SharedString::from(
                                     &fname,
@@ -291,7 +307,7 @@ pub fn setup(ui: &MainWindow) {
                                 )),
                             ])));
                         }
-    
+
                         for f in &result.failures {
                             rows.push(slint::ModelRc::new(slint::VecModel::from(vec![
                                 slint::StandardListViewItem::from(slint::SharedString::from(
@@ -305,10 +321,10 @@ pub fn setup(ui: &MainWindow) {
                                 )),
                             ])));
                         }
-    
+
                         let table_data = slint::ModelRc::new(slint::VecModel::from(rows));
                         b2f.set_table_data(table_data);
-    
+
                         let elapsed_sec = start_time.elapsed().as_secs_f64();
                         b2f.set_status_type("success".into());
                         b2f.set_status_message(
@@ -323,7 +339,7 @@ pub fn setup(ui: &MainWindow) {
             }
         }
     });
-    
+
     // ==========================================
     // CSV Export (Jetzt im Hintergrund-Thread!)
     // ==========================================
@@ -332,10 +348,10 @@ pub fn setup(ui: &MainWindow) {
         move || {
             if let Some(ui) = ui_handle.upgrade() {
                 let b2f = ui.global::<BudgetState>();
-                
+
                 // 1. Daten thread-sicher auf dem Haupt-Thread auslesen
                 let (headers, rows) = extract_table_data(&b2f);
-    
+
                 // 2. Datei-Dialog (muss auf dem Haupt-Thread laufen)
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("scan_ergebnis.csv")
@@ -350,7 +366,7 @@ pub fn setup(ui: &MainWindow) {
                     std::thread::spawn(move || {
                         // Aufruf der reinen Transformer-Funktion in utils.rs
                         let out = super::utils::generate_csv_string(&headers, &rows);
-                        
+
                         match std::fs::write(&path, &out) {
                             Ok(()) => {
                                 let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
@@ -365,7 +381,9 @@ pub fn setup(ui: &MainWindow) {
                                 let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                                     let b2f = ui.global::<BudgetState>();
                                     b2f.set_status_type("error".into());
-                                    b2f.set_status_message(format!("CSV-Export Fehler: {e}").into());
+                                    b2f.set_status_message(
+                                        format!("CSV-Export Fehler: {e}").into(),
+                                    );
                                 });
                             }
                         }
@@ -374,7 +392,7 @@ pub fn setup(ui: &MainWindow) {
             }
         }
     });
-    
+
     // ==========================================
     // Excel Export (Jetzt im Hintergrund-Thread!)
     // ==========================================
@@ -383,10 +401,10 @@ pub fn setup(ui: &MainWindow) {
         move || {
             if let Some(ui) = ui_handle.upgrade() {
                 let b2f = ui.global::<BudgetState>();
-                
+
                 // 1. Daten thread-sicher auf dem Haupt-Thread auslesen
                 let (headers, rows) = extract_table_data(&b2f);
-    
+
                 // 2. Datei-Dialog (muss auf dem Haupt-Thread laufen)
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("scan_ergebnis.xlsx")
@@ -401,28 +419,26 @@ pub fn setup(ui: &MainWindow) {
                     std::thread::spawn(move || {
                         // Aufruf der reinen Transformer-Funktion in utils.rs
                         match super::utils::create_excel_report(&headers, &rows) {
-                            Ok(mut workbook) => {
-                                match workbook.save(&path) {
-                                    Ok(()) => {
-                                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                                            let b2f = ui.global::<BudgetState>();
-                                            b2f.set_status_type("success".into());
-                                            b2f.set_status_message(
-                                                format!("Excel exportiert: {}", path.display()).into(),
-                                            );
-                                        });
-                                    }
-                                    Err(e) => {
-                                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                                            let b2f = ui.global::<BudgetState>();
-                                            b2f.set_status_type("error".into());
-                                            b2f.set_status_message(
-                                                format!("Excel-Speicher Fehler: {e}").into(),
-                                            );
-                                        });
-                                    }
+                            Ok(mut workbook) => match workbook.save(&path) {
+                                Ok(()) => {
+                                    let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                        let b2f = ui.global::<BudgetState>();
+                                        b2f.set_status_type("success".into());
+                                        b2f.set_status_message(
+                                            format!("Excel exportiert: {}", path.display()).into(),
+                                        );
+                                    });
                                 }
-                            }
+                                Err(e) => {
+                                    let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                        let b2f = ui.global::<BudgetState>();
+                                        b2f.set_status_type("error".into());
+                                        b2f.set_status_message(
+                                            format!("Excel-Speicher Fehler: {e}").into(),
+                                        );
+                                    });
+                                }
+                            },
                             Err(e) => {
                                 let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                                     let b2f = ui.global::<BudgetState>();
@@ -439,7 +455,6 @@ pub fn setup(ui: &MainWindow) {
         }
     });
 
-    
     ui.global::<BudgetState>().on_dismiss_status({
         let ui_handle = ui.as_weak();
         move || {
@@ -450,7 +465,7 @@ pub fn setup(ui: &MainWindow) {
             }
         }
     });
-    
+
     ui.global::<BudgetState>().on_do_reset({
         let ui_handle = ui.as_weak();
         move || {
@@ -463,7 +478,7 @@ pub fn setup(ui: &MainWindow) {
             }
         }
     });
-    
+
     ui.global::<BudgetState>().on_toggle_settings({
         let ui_handle = ui.as_weak();
         move || {
@@ -473,7 +488,7 @@ pub fn setup(ui: &MainWindow) {
             }
         }
     });
-    
+
     ui.global::<BudgetState>().on_save_settings({
         let ui_handle = ui.as_weak();
         move || {
