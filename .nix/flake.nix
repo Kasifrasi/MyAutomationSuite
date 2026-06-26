@@ -78,10 +78,10 @@
         # Usage: vorpruefung-budget [budget.json] [output.xlsx]
         script-vorpruefung-budget = pkgs.writeShellScriptBin "vorpruefung-budget" ''
           root="$(git rev-parse --show-toplevel)"
-          budget="''${1:-$root/testdata/fixtures/budget.example.json}"
-          out="''${2:-$root/tmp/vp_output.xlsx}"
+          budget="$(readlink -f "''${1:-$root/testdata/fixtures/budget.example.json}")"
+          out="$(readlink -f "''${2:-$root/tmp/vp_output.xlsx}")"
           mkdir -p "$(dirname "$out")"
-          go run "$root/sidecars/Vorpruefung" -budget "$budget" -o "$out"
+          go run -C "$root/sidecars/Vorpruefung" . -budget "$budget" -o "$out"
         '';
 
         # Voller Durchlauf: erst Vorlage mit Budget erzeugen, dann via testfill alle
@@ -89,12 +89,12 @@
         # Usage: vorpruefung-fill [budget.json] [template.xlsx] [output.xlsx]
         script-vorpruefung-fill = pkgs.writeShellScriptBin "vorpruefung-fill" ''
           root="$(git rev-parse --show-toplevel)"
-          budget="''${1:-$root/testdata/fixtures/budget.example.json}"
-          template="''${2:-$root/tmp/vp_template.xlsx}"
-          out="''${3:-$root/tmp/vp_befuellt.xlsx}"
+          budget="$(readlink -f "''${1:-$root/testdata/fixtures/budget.example.json}")"
+          template="$(readlink -f "''${2:-$root/tmp/vp_template.xlsx}")"
+          out="$(readlink -f "''${3:-$root/tmp/vp_befuellt.xlsx}")"
           mkdir -p "$(dirname "$template")"
-          go run "$root/sidecars/Vorpruefung" -budget "$budget" -o "$template" || exit 1
-          go run "$root/sidecars/Vorpruefung/testfill" -in "$template" -budget "$budget" -o "$out"
+          go run -C "$root/sidecars/Vorpruefung" . -budget "$budget" -o "$template" || exit 1
+          go run -C "$root/sidecars/Vorpruefung" ./testfill -in "$template" -budget "$budget" -o "$out"
         '';
 
         # Build-time tools and dependencies
