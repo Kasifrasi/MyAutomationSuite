@@ -8,8 +8,8 @@ use super::config::{apply_folder_defaults, load_folder_settings, save_folder_set
 use super::utils::{validate_project_name, get_subfolders_vec, sort_subfolders};
 
 pub fn setup(ui: &MainWindow) {
-    apply_folder_defaults(&ui);
-    load_folder_settings(&ui);
+    apply_folder_defaults(ui);
+    load_folder_settings(ui);
 
     // ==========================================
         // Folder-Creation Callbacks

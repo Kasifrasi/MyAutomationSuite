@@ -5,8 +5,8 @@ use crate::{BudgetState, MainWindow};
 use slint::{ComponentHandle, Model};
 
 pub fn setup(ui: &MainWindow) {
-    apply_b2f_defaults(&ui);
-    load_b2f_settings(&ui);
+    apply_b2f_defaults(ui);
+    load_b2f_settings(ui);
 
     // ==========================================
     // Budget-to-FB Callbacks
@@ -257,7 +257,7 @@ pub fn setup(ui: &MainWindow) {
                         if let Ok(entries) = std::fs::read_dir(&output_dir) {
                             let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
                             paths.into_par_iter().for_each(|p| {
-                                if p.extension().map_or(false, |ext| ext == "xlsx") {
+                                if p.extension().is_some_and(|ext| ext == "xlsx") {
                                     let _ = excel_protection::apply_protection_in_place(
                                         &p,
                                         wb_hash.as_ref(),
