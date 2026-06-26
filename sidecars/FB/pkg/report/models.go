@@ -85,10 +85,6 @@ type ExcelReport struct {
 	BankRow      int
 	KasseRow     int
 	SonstRow     int
-
-	// Cache für wiederverwendbare Styles, um das Excelize Style-Limit nicht zu sprengen
-	// Map-Key ist eine Kombination aus Basis-Style-ID und gewünschter Hex-Farbe (z.B. "15_#FFFFFF")
-	styleCache map[string]int
 }
 
 // ReportOptions enthält Einstellungen für den Blattschutz, Mappenschutz und das Ausblenden von Spalten

@@ -42,7 +42,6 @@ func NewExcelReport(path string) (*ExcelReport, error) {
 		sheet:        sheetName,
 		CatStartRows: make(map[int]int),
 		CatEndRows:   make(map[int]int),
-		styleCache:   make(map[string]int),
 	}
 
 	sheetRows, err := f.GetRows(sheetName)
@@ -293,202 +292,100 @@ func (r *ExcelReport) updateAllCategories(data ReportData) error {
 			continue // Kategorie nicht gefunden, überspringen
 		}
 
-		wasMode0 := (startRow == endRow)
-		items := data.Categories[catID]
+		if catID >= 6 && catID <= 8 {
+			// Kategorien 6-8 sind IMMER im Modus 0 (Kompakt)
+			// Wir ignorieren Unterpositionen und Pufferzeilen.
 
-		// WICHTIGER FIX:
-		// Wenn die Kategorie aktuell im Template im Modus 0 ist (startRow == endRow)
-		// und es kommt keine oder nur EINE Kostenposition rein (len(items) <= 1),
-		// dann bleiben wir in Modus 0 und wechseln nicht grundlos in Modus N.
-		var emptyCount int
-		if wasMode0 && len(items) <= 1 {
-			emptyCount = 0
-
-			// Falls es genau eine Unterposition gab, retten wir ihr Budget in den
-			// Header der Kategorie, damit es nicht verloren geht.
-			if len(items) == 1 {
-				currentHeader := data.HeaderBudgets[catID]
-				var currentVal float64
-				switch v := currentHeader.(type) {
-				case float64:
-					currentVal = v
-				case int:
-					currentVal = float64(v)
-				}
-				if currentVal == 0 {
-					if data.HeaderBudgets == nil {
-						data.HeaderBudgets = make(map[int]interface{})
+			// Falls im Template doch Zwischenzeilen waren (Modus N), löschen wir sie alle weg
+			if startRow != endRow {
+				for rIdx := endRow; rIdx > startRow; rIdx-- {
+					if err := r.file.RemoveRow(r.sheet, rIdx); err != nil {
+						return err
 					}
-					data.HeaderBudgets[catID] = items[0].Budget
+					r.shiftRows(-1, rIdx-1)
 				}
+				r.CatEndRows[catID] = startRow
 			}
-			// Liste explizit leeren, damit targetPos = 0 bleibt (Modus 0 Definition)
-			items = []CostItem{}
+
+			// Budget einfach in den Header eintragen
+			if budget, ok := data.HeaderBudgets[catID]; ok {
+				r.setIfObj(fmt.Sprintf("D%d", startRow), budget)
+			} else {
+				r.setIfObj(fmt.Sprintf("D%d", startRow), 0)
+			}
 		} else {
-			emptyCount = data.EmptyRows.Global
+			// Kategorien 1-5 sind IMMER im Modus N (Erweitert)
+			items := data.Categories[catID]
+
+			emptyCount := data.EmptyRows.Global
 			if override, ok := data.EmptyRows.CategoryOverrides[catID]; ok {
 				emptyCount = override
 			}
-			// Sicherstellen, dass niemals automatisch in den Modus 0 gewechselt wird,
-			// indem immer mindestens 2 leere Puffer-Zeilen am Ende verbleiben.
-			if emptyCount < 2 {
-				emptyCount = 2
+			if emptyCount < 0 {
+				emptyCount = 0
 			}
-		}
 
-		targetPos := len(items) + emptyCount
+			targetPos := len(items) + emptyCount
 
-		// Schutz der Raten-Tabelle: Kategorien, die mit der Raten-Tabelle überlappen,
-		// dürfen nicht so weit verkleinert werden, dass wir physikalisch Zeilen <= RatesEndRow löschen.
-		if startRow <= RatesEndRow {
-			minTarget := RatesEndRow - startRow
-			if targetPos < minTarget {
-				targetPos = minTarget
+			// Schutz der Raten-Tabelle: Kategorien, die mit der Raten-Tabelle überlappen,
+			// dürfen nicht so weit verkleinert werden, dass wir physikalisch Zeilen <= RatesEndRow löschen.
+			if startRow <= RatesEndRow {
+				minTarget := RatesEndRow - startRow
+				if targetPos < minTarget {
+					targetPos = minTarget
+				}
 			}
-		}
 
-		if err := r.processCategory(catID, items, targetPos, data); err != nil {
-			return fmt.Errorf("fehler in Kategorie %d: %w", catID, err)
+			if err := r.processCategory(catID, items, targetPos); err != nil {
+				return fmt.Errorf("fehler in Kategorie %d: %w", catID, err)
+			}
 		}
 	}
 	return nil
 }
 
-func (r *ExcelReport) processCategory(catID int, items []CostItem, targetPos int, data ReportData) error {
+func (r *ExcelReport) processCategory(catID int, items []CostItem, targetPos int) error {
 	startRow := r.CatStartRows[catID]
 	endRow := r.CatEndRows[catID]
 	f := r.file
 	s := r.sheet
 
-	wasMode0 := (startRow == endRow)
-	isMode0 := (targetPos == 0)
-
-	// 1. FAST PATH: Kein Modus-Wechsel und Ziel ist Modus 0.
-	if wasMode0 && isMode0 {
-		// Update den Budget-Wert für die Hauptkategorie
-		if budget, ok := data.HeaderBudgets[catID]; ok {
-			r.setIfObj(fmt.Sprintf("D%d", startRow), budget)
-		} else {
-			r.setIfObj(fmt.Sprintf("D%d", startRow), 0)
+	// Falls die Vorlage versehentlich Modus 0 ist (sollte bei 1-5 nie der Fall sein),
+	// duplizieren wir sicherheitshalber die Header-Zeile, um eine Subtotal-Zeile zu schaffen.
+	if startRow == endRow {
+		if err := f.DuplicateRow(s, startRow); err != nil {
+			return err
 		}
-		return nil
+		r.shiftRows(1, startRow)
+		endRow = startRow + 1
+		r.CatEndRows[catID] = endRow
 	}
 
-	// 2. MODUS N -> MODUS 0 Wechsel
-	if isMode0 {
-		if endRow > startRow {
-			for rIdx := endRow; rIdx > startRow; rIdx-- {
-				if err := f.RemoveRow(s, rIdx); err != nil {
-					return err
-				}
-				r.shiftRows(-1, rIdx-1)
-			}
-		}
-		// Styling für Modus 0 anwenden (Borders und Bold beibehalten!)
-		styleCWhite := r.getCachedStyle(fmt.Sprintf("C%d", startRow), ColorWhite, false)
-		styleDF2 := r.getCachedStyle(fmt.Sprintf("D%d", startRow), ColorLightGray, false)
-		styleEFFF := r.getCachedStyle(fmt.Sprintf("E%d", startRow), ColorLightYellow, false)
-		styleFFFF := r.getCachedStyle(fmt.Sprintf("F%d", startRow), ColorLightYellow, false)
-		styleHFFF := r.getCachedStyle(fmt.Sprintf("H%d", startRow), ColorLightYellow, false)
+	currentPos := endRow - startRow - 1
+	physicalEndRow := endRow
 
-		f.SetCellStyle(s, fmt.Sprintf("C%d", startRow), fmt.Sprintf("C%d", startRow), styleCWhite)
-		f.SetCellStyle(s, fmt.Sprintf("D%d", startRow), fmt.Sprintf("D%d", startRow), styleDF2)
-		f.SetCellStyle(s, fmt.Sprintf("E%d", startRow), fmt.Sprintf("E%d", startRow), styleEFFF)
-		f.SetCellStyle(s, fmt.Sprintf("F%d", startRow), fmt.Sprintf("F%d", startRow), styleFFFF)
-		f.SetCellStyle(s, fmt.Sprintf("H%d", startRow), fmt.Sprintf("H%d", startRow), styleHFFF)
-
-		f.SetCellValue(s, fmt.Sprintf("G%d", startRow), 0)
-		f.SetCellFormula(s, fmt.Sprintf("G%d", startRow), fmt.Sprintf("IFERROR(F%d/D%d,0)", startRow, startRow))
-
-		formulaB := r.generateCategoryFormula(startRow, catID)
-		f.SetCellDefault(s, fmt.Sprintf("B%d", startRow), "")
-		setGeneralFormat(f, s, fmt.Sprintf("B%d", startRow))
-		f.SetCellFormula(s, fmt.Sprintf("B%d", startRow), formulaB)
-
-		// Wert eintragen
-		if budget, ok := data.HeaderBudgets[catID]; ok {
-			r.setIfObj(fmt.Sprintf("D%d", startRow), budget)
-		} else {
-			r.setIfObj(fmt.Sprintf("D%d", startRow), 0)
-		}
-
-		r.CatEndRows[catID] = startRow // Subtotal existiert nicht mehr, wir referenzieren den Header
-		return nil
-	}
-
-	// 3. Ziel ist MODUS N (Zielzeilen > 0)
-	modeChanged := false
-	rowsChanged := false
-
-	if wasMode0 {
-		// Wechsel von Modus 0 auf Modus N
-		modeChanged = true
-		rowsChanged = true
-
-		for colName := 'D'; colName <= 'H'; colName++ {
-			cell := fmt.Sprintf("%c%d", colName, startRow)
-			whiteStyle := r.getCachedStyle(cell, ColorWhite, false)
-			f.SetCellStyle(s, cell, cell, whiteStyle)
-		}
-
-		f.SetCellValue(s, fmt.Sprintf("G%d", startRow), "") // Formel entfernen
-
-		for i := 0; i < targetPos+1; i++ {
-			if err := f.DuplicateRow(s, startRow); err != nil {
+	if currentPos < targetPos {
+		lastPos := endRow - 1
+		for i := 0; i < targetPos-currentPos; i++ {
+			if err := f.DuplicateRow(s, lastPos); err != nil {
 				return err
 			}
-			r.shiftRows(1, startRow)
+			r.shiftRows(1, lastPos)
+			physicalEndRow++
 		}
-
-		subtotalRow := startRow + targetPos + 1
-
-		formulaB := r.generateCategoryFormula(startRow, catID)
-		f.SetCellDefault(s, fmt.Sprintf("B%d", startRow), "")
-		setGeneralFormat(f, s, fmt.Sprintf("B%d", startRow))
-		f.SetCellFormula(s, fmt.Sprintf("B%d", startRow), formulaB)
-
-		for rowIdx := startRow + 1; rowIdx <= startRow+targetPos; rowIdx++ {
-			for colName := 'C'; colName <= 'H'; colName++ {
-				cell := fmt.Sprintf("%c%d", colName, rowIdx)
-				f.SetCellValue(s, cell, "")
+		endRow += (targetPos - currentPos)
+		r.CatEndRows[catID] = physicalEndRow
+	} else if currentPos > targetPos {
+		for i := 0; i < currentPos-targetPos; i++ {
+			rowIdx := endRow - 1
+			if err := f.RemoveRow(s, rowIdx); err != nil {
+				return err
 			}
-			f.SetCellDefault(s, fmt.Sprintf("B%d", rowIdx), "")
-			f.SetCellFormula(s, fmt.Sprintf("B%d", rowIdx), formulaB)
-			setGeneralFormat(f, s, fmt.Sprintf("B%d", rowIdx))
+			r.shiftRows(-1, rowIdx-1)
+			endRow--
+			physicalEndRow--
 		}
-		endRow = subtotalRow
-		r.CatEndRows[catID] = endRow
-	} else {
-		// Bereits in Modus N
-		currentPos := endRow - startRow - 1
-		physicalEndRow := endRow
-		if currentPos != targetPos {
-			rowsChanged = true
-		}
-
-		if currentPos < targetPos {
-			lastPos := endRow - 1
-			for i := 0; i < targetPos-currentPos; i++ {
-				if err := f.DuplicateRow(s, lastPos); err != nil {
-					return err
-				}
-				r.shiftRows(1, lastPos)
-				physicalEndRow++
-			}
-			endRow += (targetPos - currentPos)
-			r.CatEndRows[catID] = physicalEndRow
-		} else if currentPos > targetPos {
-			for i := 0; i < currentPos-targetPos; i++ {
-				rowIdx := endRow - 1
-				if err := f.RemoveRow(s, rowIdx); err != nil {
-					return err
-				}
-				r.shiftRows(-1, rowIdx-1)
-				endRow--
-				physicalEndRow--
-			}
-			r.CatEndRows[catID] = physicalEndRow
-		}
+		r.CatEndRows[catID] = physicalEndRow
 	}
 
 	// Daten in die Zielzeilen eintragen (Batch-Insert für C bis F)
@@ -510,122 +407,41 @@ func (r *ExcelReport) processCategory(catID int, items []CostItem, targetPos int
 		if err := f.SetSheetRow(s, fmt.Sprintf("C%d", rowIdx), &rowValues); err != nil {
 			return err
 		}
+
 		// H separat einfügen, um die Formel in G intakt zu lassen
 		if err := r.setIfObj(fmt.Sprintf("H%d", rowIdx), begruendung); err != nil {
 			return err
 		}
+
+		// Nummerierungs-Formel (1.1, 1.2) für Spalte B injizieren
+		formulaB := r.generateCategoryFormula(startRow, catID)
+		f.SetCellDefault(s, fmt.Sprintf("B%d", rowIdx), "")
+		f.SetCellFormula(s, fmt.Sprintf("B%d", rowIdx), formulaB)
 	}
 
-	// Wenn sich das Layout nicht geändert hat (modeChanged=false && rowsChanged=false),
-	// ist der komplette Style inkl. Formeln aus dem Template bereits perfekt.
-	// Wir können styleCategory drastisch abkürzen!
-	return r.styleCategory(startRow, endRow, catID, modeChanged, rowsChanged)
-}
-
-func (r *ExcelReport) getCachedStyle(cell, hexColor string, setBoldFalse bool) int {
-	f := r.file
-	s := r.sheet
-
-	// 1. Ursprüngliche Style-ID der Zelle auslesen
-	baseStyleID, err := f.GetCellStyle(s, cell)
-	if err != nil {
-		return 0
+	// SUM Formeln der Zwischensumme aktualisieren
+	sumStart := startRow + 1
+	sumEnd := endRow - 1
+	if sumEnd < sumStart {
+		// Fallback falls targetPos == 0 (Keine Zwischenzeilen, summiere leeren Bereich)
+		sumEnd = sumStart
 	}
 
-	// 2. Cache-Key bilden
-	cacheKey := fmt.Sprintf("%d_%s_%v", baseStyleID, hexColor, setBoldFalse)
-
-	// 3. Im Cache suchen
-	if cachedID, ok := r.styleCache[cacheKey]; ok {
-		return cachedID
+	f.SetCellValue(s, fmt.Sprintf("D%d", endRow), 0)
+	if err := f.SetCellFormula(s, fmt.Sprintf("D%d", endRow), fmt.Sprintf("SUM(D%d:D%d)", sumStart, sumEnd)); err != nil {
+		return err
 	}
-
-	// 4. Style generieren und cachen, falls nicht vorhanden
-	newID := modStyleHelperEx(f, s, cell, hexColor, setBoldFalse, "")
-	r.styleCache[cacheKey] = newID
-	return newID
-}
-
-func (r *ExcelReport) styleCategory(startRow, endRow, catID int, modeChanged, rowsChanged bool) error {
-	f := r.file
-	s := r.sheet
-
-	// Nur wenn wir von Modus 0 auf Modus N gewechselt sind, müssen wir die neu erstellten Zeilen
-	// komplett formatieren. Wenn wir Modus N beibehalten haben, hat `DuplicateRow` die Formate
-	// automatisch und perfekt für uns kopiert!
-	if modeChanged {
-		// Styling für die gesamte Kategorie sicherstellen
-		for rowIdx := startRow + 1; rowIdx < endRow; rowIdx++ {
-			styleB := r.getCachedStyle(fmt.Sprintf("B%d", rowIdx), ColorWhite, true)
-			f.SetCellStyle(s, fmt.Sprintf("B%d", rowIdx), fmt.Sprintf("B%d", rowIdx), styleB)
-
-			styleC := r.getCachedStyle(fmt.Sprintf("C%d", rowIdx), ColorLightYellow, true)
-			f.SetCellStyle(s, fmt.Sprintf("C%d", rowIdx), fmt.Sprintf("C%d", rowIdx), styleC)
-
-			styleD := r.getCachedStyle(fmt.Sprintf("D%d", rowIdx), ColorLightGray, true)
-			f.SetCellStyle(s, fmt.Sprintf("D%d", rowIdx), fmt.Sprintf("D%d", rowIdx), styleD)
-
-			styleEF := r.getCachedStyle(fmt.Sprintf("E%d", rowIdx), ColorLightYellow, true)
-			f.SetCellStyle(s, fmt.Sprintf("E%d", rowIdx), fmt.Sprintf("E%d", rowIdx), styleEF)
-			f.SetCellStyle(s, fmt.Sprintf("F%d", rowIdx), fmt.Sprintf("F%d", rowIdx), styleEF)
-
-			styleH := r.getCachedStyle(fmt.Sprintf("H%d", rowIdx), ColorLightYellow, true)
-			f.SetCellStyle(s, fmt.Sprintf("H%d", rowIdx), fmt.Sprintf("H%d", rowIdx), styleH)
-
-			styleG := r.getCachedStyle(fmt.Sprintf("G%d", rowIdx), ColorWhite, true)
-			f.SetCellStyle(s, fmt.Sprintf("G%d", rowIdx), fmt.Sprintf("G%d", rowIdx), styleG)
-		}
-
-		// Zwischensummen-Zeile formatieren
-		f.UnmergeCell(s, fmt.Sprintf("B%d", endRow), fmt.Sprintf("C%d", endRow))
-
-		f.SetCellDefault(s, fmt.Sprintf("B%d", endRow), "")
-		f.SetCellDefault(s, fmt.Sprintf("C%d", endRow), "")
-		f.SetCellFormula(s, fmt.Sprintf("B%d", endRow), "")
-		f.SetCellFormula(s, fmt.Sprintf("C%d", endRow), "")
-		f.SetCellValue(s, fmt.Sprintf("C%d", endRow), "")
-
-		// Dynamische Formel für Zwischensumme
-		vlookupIdx := VLookupBaseIdx + (catID * VLookupMult)
-		f.SetCellDefault(s, fmt.Sprintf("B%d", endRow), "")
-		if err := f.SetCellFormula(s, fmt.Sprintf("B%d", endRow), fmt.Sprintf(`IF($E$2="","",VLOOKUP($E$2,Sprachversionen!$B:$BN,%d,FALSE))`, vlookupIdx)); err != nil {
-			return err
-		}
-
-		f.MergeCell(s, fmt.Sprintf("B%d", endRow), fmt.Sprintf("C%d", endRow))
-
-		for colName := 'B'; colName <= 'H'; colName++ {
-			cell := fmt.Sprintf("%c%d", colName, endRow)
-			fontColor := ""
-			if colName >= 'D' && colName <= 'H' {
-				fontColor = ColorBlack
-			}
-
-			// Den ModHelper können wir hier nicht direkt mit getCachedStyle abdecken, weil fontColor noch dazu kommt.
-			grayStyle := modStyleHelperEx(f, s, cell, ColorDarkGray, false, fontColor)
-			f.SetCellStyle(s, cell, cell, grayStyle)
-		}
+	f.SetCellValue(s, fmt.Sprintf("E%d", endRow), 0)
+	if err := f.SetCellFormula(s, fmt.Sprintf("E%d", endRow), fmt.Sprintf("SUM(E%d:E%d)", sumStart, sumEnd)); err != nil {
+		return err
 	}
-
-	// SUM Formeln müssen wir aktualisieren, wenn sich die ANZAHL der Zeilen geändert hat
-	// oder wenn wir neu in Modus N gekommen sind.
-	if modeChanged || rowsChanged {
-		f.SetCellValue(s, fmt.Sprintf("D%d", endRow), 0)
-		if err := f.SetCellFormula(s, fmt.Sprintf("D%d", endRow), fmt.Sprintf("SUM(D%d:D%d)", startRow+1, endRow-1)); err != nil {
-			return err
-		}
-		f.SetCellValue(s, fmt.Sprintf("E%d", endRow), 0)
-		if err := f.SetCellFormula(s, fmt.Sprintf("E%d", endRow), fmt.Sprintf("SUM(E%d:E%d)", startRow+1, endRow-1)); err != nil {
-			return err
-		}
-		f.SetCellValue(s, fmt.Sprintf("F%d", endRow), 0)
-		if err := f.SetCellFormula(s, fmt.Sprintf("F%d", endRow), fmt.Sprintf("SUM(F%d:F%d)", startRow+1, endRow-1)); err != nil {
-			return err
-		}
-		f.SetCellValue(s, fmt.Sprintf("G%d", endRow), 0)
-		if err := f.SetCellFormula(s, fmt.Sprintf("G%d", endRow), fmt.Sprintf("IFERROR(F%d/D%d,0)", endRow, endRow)); err != nil {
-			return err
-		}
+	f.SetCellValue(s, fmt.Sprintf("F%d", endRow), 0)
+	if err := f.SetCellFormula(s, fmt.Sprintf("F%d", endRow), fmt.Sprintf("SUM(F%d:F%d)", sumStart, sumEnd)); err != nil {
+		return err
+	}
+	f.SetCellValue(s, fmt.Sprintf("G%d", endRow), 0)
+	if err := f.SetCellFormula(s, fmt.Sprintf("G%d", endRow), fmt.Sprintf("IFERROR(F%d/D%d,0)", endRow, endRow)); err != nil {
+		return err
 	}
 
 	return nil
