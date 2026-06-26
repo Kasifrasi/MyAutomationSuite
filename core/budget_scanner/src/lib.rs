@@ -41,6 +41,19 @@ const KMW_TERMS: &[&str] = &[
     "Subsídio solicitado KMW",
 ];
 
+/// Kostenkategorien in der Reihenfolge, die der Positions-Präfix (1..8) adressiert.
+/// Gemeinsame Domänen-Wahrheit für alle Consumer (FB- und VP-Sidecar).
+pub const CATEGORIES: [&str; 8] = [
+    "Bauausgaben",
+    "Investitionen",
+    "Personalkosten",
+    "Projektaktivitaeten",
+    "Projektverwaltung",
+    "Evaluierung",
+    "Audit",
+    "Reserve",
+];
+
 const MAX_EMPTY_ROWS: usize = 100;
 const DEFAULT_COL1: usize = 8; // Spalte I
 const DEFAULT_COL2: usize = 13; // Spalte N
@@ -75,30 +88,36 @@ pub struct BudgetData {
 pub struct BudgetPosition {
     pub number: String,
     pub label: String,
-    pub cost_col1: String,
-    pub cost_col2: String,
-    /// Kosten je Jahr/Phase (Spalten J/K/L, jeweils Lokalwährung).
-    pub cost_year1: String,
-    pub cost_year2: String,
-    pub cost_year3: String,
+    /// Aus `number` (Präfix 1..8) abgeleitete Kostenkategorie; "" falls keine Zuordnung.
+    /// Wird direkt beim Scan befüllt, sodass jeder Consumer die Kategorie frei Haus erhält.
+    pub kategorie: String,
+    /// Betrag in Lokalwährung (Spalte cost_col1). None ⇒ leere Zelle.
+    pub lc: Option<f64>,
+    /// Kosten je Jahr/Phase (Spalten cost_col1+1..3, Lokalwährung). None ⇒ leere Zelle.
+    pub y1: Option<f64>,
+    pub y2: Option<f64>,
+    pub y3: Option<f64>,
+    /// Betrag in EUR (Spalte cost_col2). None ⇒ leere Zelle bzw. keine EUR-Spalte.
+    pub eur: Option<f64>,
 }
 
-/// FinancingRow bündelt eine Finanzierungszeile (Eigenleistung/Drittmittel/KMW) mit
+/// FinancingRow bündelt eine Finanzierungszeile (Eigenmittel/Drittmittel/KMW) mit
 /// Gesamt-LC, den drei Jahres-/Phasenwerten (LC) und dem EUR-Gesamtwert.
+/// Beträge sind typisiert: None ⇒ leere Zelle.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct FinancingRow {
-    pub lc: String,
-    pub year1: String,
-    pub year2: String,
-    pub year3: String,
-    pub eur: String,
+    pub lc: Option<f64>,
+    pub y1: Option<f64>,
+    pub y2: Option<f64>,
+    pub y3: Option<f64>,
+    pub eur: Option<f64>,
 }
 
 /// FinancingDetail enthält die drei Finanzierungsquellen in voller Aufschlüsselung
 /// (LC-Gesamt, Jahre, EUR) und ist die kanonische Repräsentation der Finanzierung.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct FinancingDetail {
-    pub eigenleistung: FinancingRow,
+    pub eigenmittel: FinancingRow,
     pub drittmittel: FinancingRow,
     pub kmw_mittel: FinancingRow,
 }
@@ -224,6 +243,66 @@ fn cell_text_owned(cell: &Data) -> Option<String> {
     }
 }
 
+/// Wandelt eine Zelle in einen typisierten Betrag um. Numerische Zellen direkt,
+/// Text-Zellen über `parse_amount` (lokalisierte Tausender-/Dezimaltrenner).
+/// None ⇒ leere/unlesbare Zelle.
+#[inline]
+fn cell_amount(cell: &Data) -> Option<f64> {
+    match cell {
+        Data::Float(f) => Some(*f),
+        Data::Int(i) => Some(*i as f64),
+        Data::String(s) => parse_amount(s),
+        _ => None,
+    }
+}
+
+/// Parst einen Geldbetrag aus einem String und erkennt dabei robust deutsche
+/// ("1.234,56") wie englische ("1,234.56") Tausender-/Dezimaltrenner. None bei leer.
+fn parse_amount(raw: &str) -> Option<f64> {
+    let mut s: String = raw
+        .chars()
+        .filter(|c| c.is_ascii_digit() || *c == ',' || *c == '.' || *c == '-')
+        .collect();
+    if s.is_empty() || s == "-" {
+        return None;
+    }
+
+    let has_dot = s.contains('.');
+    let has_comma = s.contains(',');
+
+    if has_dot && has_comma {
+        // Der zuletzt auftretende Trenner ist der Dezimaltrenner.
+        let last_dot = s.rfind('.').unwrap();
+        let last_comma = s.rfind(',').unwrap();
+        if last_comma > last_dot {
+            s = s.replace('.', "").replace(',', ".");
+        } else {
+            s = s.replace(',', "");
+        }
+    } else if has_comma {
+        let after = s.rsplit(',').next().map(|p| p.len()).unwrap_or(0);
+        let commas = s.matches(',').count();
+        if commas == 1 && after != 3 {
+            // Einzelnes Komma, nicht im Tausenderformat ⇒ Dezimaltrenner.
+            s = s.replace(',', ".");
+        } else {
+            s = s.replace(',', "");
+        }
+    }
+
+    s.parse::<f64>().ok()
+}
+
+/// Leitet aus einer Positionsnummer ("n" / "n.m") die Kostenkategorie ab.
+/// Liefert "" für Nummern außerhalb 1..8.
+fn category_for(number: &str) -> String {
+    let head = number.split('.').next().unwrap_or("").trim();
+    match head.parse::<usize>() {
+        Ok(n) if (1..=8).contains(&n) => CATEGORIES[n - 1].to_string(),
+        _ => String::new(),
+    }
+}
+
 /// Schneller Vergleich: Ist der Zellinhalt exakt einer der Kostenbegriffe?
 #[inline]
 fn is_exact_cost_term(cell: &Data) -> bool {
@@ -299,13 +378,13 @@ fn find_financing_row(
     for row in range.rows() {
         if let Some(Data::String(s)) = row.get(3) {
             if terms.contains(&s.trim()) {
-                let get = |c: usize| row.get(c).and_then(cell_text_owned).unwrap_or_default();
+                let amount = |c: usize| row.get(c).and_then(cell_amount);
                 return FinancingRow {
-                    lc: get(col1),
-                    year1: get(col1 + 1),
-                    year2: get(col1 + 2),
-                    year3: get(col1 + 3),
-                    eur: col2.map(get).unwrap_or_default(),
+                    lc: amount(col1),
+                    y1: amount(col1 + 1),
+                    y2: amount(col1 + 2),
+                    y3: amount(col1 + 3),
+                    eur: col2.and_then(amount),
                 };
             }
         }
@@ -348,7 +427,7 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
 
     // Finanzierungsquellen in voller Aufschlüsselung (LC-Gesamt, Jahre, EUR).
     let financing = FinancingDetail {
-        eigenleistung: find_financing_row(&range, EIGENLEISTUNG_TERMS, col1, col2),
+        eigenmittel: find_financing_row(&range, EIGENLEISTUNG_TERMS, col1, col2),
         drittmittel: find_financing_row(&range, DRITTMITTEL_TERMS, col1, col2),
         kmw_mittel: find_financing_row(&range, KMW_TERMS, col1, col2),
     };
@@ -407,26 +486,16 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
             empty_streak = 0;
             let matched: &str = m.as_str();
 
+            let number = matched.to_string();
             positions.push(BudgetPosition {
-                number: matched.to_string(),
+                kategorie: category_for(&number),
+                number,
                 label: row.get(1).and_then(cell_text_owned).unwrap_or_default(),
-                cost_col1: row.get(col1).and_then(cell_text_owned).unwrap_or_default(),
-                cost_col2: col2
-                    .and_then(|c| row.get(c))
-                    .and_then(cell_text_owned)
-                    .unwrap_or_default(),
-                cost_year1: row
-                    .get(col1 + 1)
-                    .and_then(cell_text_owned)
-                    .unwrap_or_default(),
-                cost_year2: row
-                    .get(col1 + 2)
-                    .and_then(cell_text_owned)
-                    .unwrap_or_default(),
-                cost_year3: row
-                    .get(col1 + 3)
-                    .and_then(cell_text_owned)
-                    .unwrap_or_default(),
+                lc: row.get(col1).and_then(cell_amount),
+                y1: row.get(col1 + 1).and_then(cell_amount),
+                y2: row.get(col1 + 2).and_then(cell_amount),
+                y3: row.get(col1 + 3).and_then(cell_amount),
+                eur: col2.and_then(|c| row.get(c)).and_then(cell_amount),
             });
         }
     }

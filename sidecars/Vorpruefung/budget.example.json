@@ -1,25 +1,28 @@
 {
-  "kurs": 0.008,
-  "eigenmittel": { "lc": 1250000, "y1": 500000, "y2": 437500, "y3": 312500, "eur": 10000 },
-  "drittmittel": {
-    "y1": 1500000, "y2": 1250000, "y3": 1000000,
-    "geber": [
-      { "geber": "Projektpartner A", "lc": 2500000, "eur": 20000 },
-      { "geber": "Bank XY",          "lc": 1250000, "eur": 10000 }
-    ]
+  "file_path": "beispiel/de.xlsx",
+  "sheet_name": "Budget",
+  "version": "V2",
+  "project_title": "Beispielprojekt",
+  "project_number": "12345",
+  "language": "deutsch",
+  "local_currency": "USD",
+  "cost_col1": 8,
+  "cost_col2": 13,
+  "financing": {
+    "eigenmittel": { "lc": 1250000, "y1": 500000, "y2": 437500, "y3": 312500, "eur": 10000 },
+    "drittmittel": { "lc": 3750000, "y1": 1500000, "y2": 1250000, "y3": 1000000, "eur": 30000 },
+    "kmw_mittel":  { "lc": 7500000, "y1": 3000000, "y2": 2500000, "y3": 2000000, "eur": 60000 }
   },
-  "kmwMittel": { "lc": 7500000, "y1": 3000000, "y2": 2500000, "y3": 2000000, "eur": 60000 },
-  "ausgaben": [
-    { "kategorie": "Bauausgaben",         "id": "1.1", "position": "Rohbau",            "lc": 2500000, "y1": 1500000, "y2": 1000000, "y3": 0,       "eur": 20000 },
-    { "kategorie": "Bauausgaben",         "id": "1.2", "position": "Innenausbau",       "lc": 1250000, "y1": 0,       "y2": 750000,  "y3": 500000,  "eur": 10000 },
-    { "kategorie": "Investitionen",       "id": "2.1", "position": "Fahrzeuge",         "lc": 1000000, "y1": 1000000, "y2": 0,       "y3": 0,       "eur": 8000 },
-    { "kategorie": "Personalkosten",      "id": "3.1", "position": "Projektleitung",    "lc": 1875000, "y1": 625000,  "y2": 625000,  "y3": 625000,  "eur": 15000 },
-    { "kategorie": "Personalkosten",      "id": "3.2", "position": "Fachkraefte",       "lc": 1500000, "y1": 500000,  "y2": 500000,  "y3": 500000,  "eur": 12000 },
-    { "kategorie": "Projektaktivitaeten", "id": "4.1", "position": "Schulungen",        "lc": 1250000, "y1": 500000,  "y2": 375000,  "y3": 375000,  "eur": 10000 },
-    { "kategorie": "Projektverwaltung",   "id": "5.1", "position": "Buero",             "lc": 625000,  "y1": 250000,  "y2": 250000,  "y3": 125000,  "eur": 5000 },
-    { "kategorie": "Evaluierung",         "id": "6.1", "position": "Zwischenbewertung", "lc": 250000,  "y1": 0,       "y2": 250000,  "y3": 0,       "eur": 2000 },
-    { "kategorie": "Audit",               "id": "7.1", "position": "Jahresabschluss",   "lc": 250000,  "y1": 125000,  "y2": 62500,   "y3": 62500,   "eur": 2000 },
-    { "kategorie": "Reserve",             "id": "8.1", "position": "Reserve",           "lc": 2000000, "y1": 625000,  "y2": 625000,  "y3": 750000,  "eur": 16000 }
-  ],
-  "reserveFreigabe": false
+  "positions": [
+    { "number": "1.1", "label": "Rohbau",            "kategorie": "Bauausgaben",         "lc": 2500000, "y1": 1500000, "y2": 1000000, "y3": 0,      "eur": 20000 },
+    { "number": "1.2", "label": "Innenausbau",       "kategorie": "Bauausgaben",         "lc": 1250000, "y1": 0,       "y2": 750000,  "y3": 500000, "eur": 10000 },
+    { "number": "2.1", "label": "Fahrzeuge",         "kategorie": "Investitionen",       "lc": 1000000, "y1": 1000000, "y2": 0,       "y3": 0,      "eur": 8000 },
+    { "number": "3.1", "label": "Projektleitung",    "kategorie": "Personalkosten",      "lc": 1875000, "y1": 625000,  "y2": 625000,  "y3": 625000, "eur": 15000 },
+    { "number": "3.2", "label": "Fachkraefte",       "kategorie": "Personalkosten",      "lc": 1500000, "y1": 500000,  "y2": 500000,  "y3": 500000, "eur": 12000 },
+    { "number": "4.1", "label": "Schulungen",        "kategorie": "Projektaktivitaeten", "lc": 1250000, "y1": 500000,  "y2": 375000,  "y3": 375000, "eur": 10000 },
+    { "number": "5.1", "label": "Buero",             "kategorie": "Projektverwaltung",   "lc": 625000,  "y1": 250000,  "y2": 250000,  "y3": 125000, "eur": 5000 },
+    { "number": "6.1", "label": "Zwischenbewertung", "kategorie": "Evaluierung",         "lc": 250000,  "y1": 0,       "y2": 250000,  "y3": 0,      "eur": 2000 },
+    { "number": "7.1", "label": "Jahresabschluss",   "kategorie": "Audit",               "lc": 250000,  "y1": 125000,  "y2": 62500,   "y3": 62500,  "eur": 2000 },
+    { "number": "8.1", "label": "Reserve",           "kategorie": "Reserve",             "lc": 2000000, "y1": 625000,  "y2": 625000,  "y3": 750000, "eur": 16000 }
+  ]
 }

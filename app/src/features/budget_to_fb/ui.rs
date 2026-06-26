@@ -1,5 +1,4 @@
 use super::config::{apply_b2f_defaults, load_b2f_settings, save_b2f_settings};
-use super::models::FbExportModel;
 use crate::shared::models::{ExportOptions, ProgressMessage};
 use crate::shared::process::get_fb_path;
 use crate::{BudgetState, MainWindow};
@@ -135,13 +134,11 @@ pub fn setup(ui: &MainWindow) {
                         }
                     };
 
-                    // Generische BudgetData auf das flache FB-Sidecar-Schema abbilden.
-                    let fb_models: Vec<FbExportModel> =
-                        result.successes.iter().map(FbExportModel::from_budget).collect();
-
+                    // Volle kanonische BudgetData an das Sidecar geben — es liest nur die
+                    // Felder, die es braucht (neue Scanner-Felder sind automatisch verfügbar).
                     if let Err(e) = std::io::Write::write_all(
                         &mut tmp_json_file,
-                        serde_json::to_string(&fb_models)
+                        serde_json::to_string(&result.successes)
                             .unwrap_or_default()
                             .as_bytes(),
                     ) {

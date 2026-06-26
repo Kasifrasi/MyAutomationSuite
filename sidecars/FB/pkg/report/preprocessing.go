@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -103,21 +102,6 @@ func getTemplateBytes(path string) ([]byte, error) {
 	return data, nil
 }
 
-// parseAmount ist eine Hilfsfunktion zum Parsen von Geldbeträgen aus Strings
-func parseAmount(s string) float64 {
-	s = strings.TrimSpace(s)
-	if s == "" || s == "-" {
-		return 0
-	}
-	// Wenn es Tausender-Punkte und ein Komma gibt (deutsche Formatierung)
-	if strings.Contains(s, ",") {
-		s = strings.ReplaceAll(s, ".", "")
-		s = strings.ReplaceAll(s, ",", ".")
-	}
-	v, _ := strconv.ParseFloat(s, 64)
-	return v
-}
-
 // MapScannedToReportData übersetzt das Rust Scanner-Modell in das Go Report-Modell
 func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
 	sprache := strings.ToLower(scanned.Language)
@@ -147,9 +131,9 @@ func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
 			Global:            3, // Standardmäßig 3 leere Zeilen pro Kategorie beibehalten
 			CategoryOverrides: make(map[int]int),
 		},
-		Eigenleistung: FundingRecord{Budget: parseAmount(scanned.Eigenleistung)},
-		Drittmittel:   FundingRecord{Budget: parseAmount(scanned.Drittmittel)},
-		KMWMittel:     FundingRecord{Budget: parseAmount(scanned.KmwMittel)},
+		Eigenleistung: FundingRecord{Budget: amount(scanned.Financing.Eigenmittel.LC)},
+		Drittmittel:   FundingRecord{Budget: amount(scanned.Financing.Drittmittel.LC)},
+		KMWMittel:     FundingRecord{Budget: amount(scanned.Financing.KMWMittel.LC)},
 		Categories:    make(map[int][]CostItem),
 		HeaderBudgets: make(map[int]interface{}),
 	}
@@ -166,7 +150,7 @@ func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
 
 		if strings.HasSuffix(pos.Number, ".") {
 			// Es ist eine Hauptkategorie! Wir speichern uns ihren Wert.
-			budget := parseAmount(pos.CostCol1)
+			budget := amount(pos.LC)
 			if budget >= 0 {
 				data.HeaderBudgets[catID] = budget
 			}
@@ -192,7 +176,7 @@ func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
 		// ACHTUNG: pos.Number nicht mehr dem Namen voranstellen!
 		item := CostItem{
 			Name:   pos.Label,
-			Budget: parseAmount(pos.CostCol1),
+			Budget: amount(pos.LC),
 		}
 
 		data.Categories[catID] = append(data.Categories[catID], item)

@@ -18,9 +18,10 @@ fn print_budget(data: &BudgetData) {
         .map(|c| col_to_letter(c).to_string())
         .unwrap_or("-".into());
     println!("  Kostenspalten:   {} / {}", c1, c2);
-    println!("  Eigenleistung:   {}", data.financing.eigenleistung.lc);
-    println!("  Drittmittel:     {}", data.financing.drittmittel.lc);
-    println!("  KMW-Mittel:      {}", data.financing.kmw_mittel.lc);
+    let fmt_amt = |v: Option<f64>| v.map(|x| x.to_string()).unwrap_or_default();
+    println!("  Eigenmittel:     {}", fmt_amt(data.financing.eigenmittel.lc));
+    println!("  Drittmittel:     {}", fmt_amt(data.financing.drittmittel.lc));
+    println!("  KMW-Mittel:      {}", fmt_amt(data.financing.kmw_mittel.lc));
 
     let mut table = Table::new();
     table.set_content_arrangement(ContentArrangement::Dynamic);
@@ -35,8 +36,8 @@ fn print_budget(data: &BudgetData) {
         table.add_row(vec![
             Cell::new(&pos.number),
             Cell::new(&pos.label),
-            Cell::new(&pos.cost_col1),
-            Cell::new(&pos.cost_col2),
+            Cell::new(fmt_amt(pos.lc)),
+            Cell::new(fmt_amt(pos.eur)),
         ]);
     }
 

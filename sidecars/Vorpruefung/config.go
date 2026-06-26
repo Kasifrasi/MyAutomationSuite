@@ -1,33 +1,20 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
-// BudgetConfig hält die optional per JSON (-budget) übergebenen Budgetwerte. Ist
-// keine Datei angegeben, bleibt das Blatt "I. Budget" ein leeres Eingabe-Template
-// (g.budget == nil) und alle bisherigen Standardstrukturen greifen unverändert.
+// ─── Eingabe-Schema (Wire-Format) ──────────────────────────────────────────────
 //
-// Beträge sind durchweg *float64: nil ⇒ Zelle bleibt leer (Eingabefeld), 0 ⇒ es
-// wird ausdrücklich eine 0 eingetragen.
-type BudgetConfig struct {
-	// Kurs ist optional/informativ. Der Budget-Kurs der Tabelle wird weiterhin aus
-	// Gesamt-LC / Gesamt-EUR abgeleitet (Summe der Einnahmen), daher hier nicht
-	// zwingend nötig.
-	Kurs *float64 `json:"kurs"`
+// Die folgenden scanned*-Typen spiegeln die kanonische `budget_scanner::BudgetData`
+// (Rust). Das Sidecar bekommt IMMER die vollständige BudgetData übergeben und
+// deklariert nur die Felder, die es nutzt — `encoding/json` ignoriert den Rest.
+// Ein neues Scanner-Feld wird hier mit einer einzigen zusätzlichen Zeile nutzbar.
 
-	Eigenmittel     IncomeRow        `json:"eigenmittel"`
-	Drittmittel     DrittmittelBlock `json:"drittmittel"`
-	KMWMittel       IncomeRow        `json:"kmwMittel"`
-	Ausgaben        []ExpensePos     `json:"ausgaben"`
-	ReserveFreigabe bool             `json:"reserveFreigabe"`
-}
-
-// IncomeRow ist eine Finanzierungszeile mit Lokalwährung, drei Jahreswerten und EUR.
-type IncomeRow struct {
+type scannedFinancingRow struct {
 	LC  *float64 `json:"lc"`
 	Y1  *float64 `json:"y1"`
 	Y2  *float64 `json:"y2"`
@@ -35,38 +22,16 @@ type IncomeRow struct {
 	EUR *float64 `json:"eur"`
 }
 
-// DrittmittelBlock bündelt die Jahreswerte (Summenzeile) und die variable
-// Geber-Aufstellung (Tabelle rechts im Budget).
-type DrittmittelBlock struct {
-	Y1        *float64              `json:"y1"`
-	Y2        *float64              `json:"y2"`
-	Y3        *float64              `json:"y3"`
-	Geber     []DrittmittelGeber    `json:"geber"`
-	Sonstiges *DrittmittelSonstiges `json:"sonstiges,omitempty"`
+type scannedFinancing struct {
+	Eigenmittel scannedFinancingRow `json:"eigenmittel"`
+	Drittmittel scannedFinancingRow `json:"drittmittel"`
+	KMWMittel   scannedFinancingRow `json:"kmw_mittel"`
 }
 
-// DrittmittelGeber ist eine Zeile der Geber-Aufstellung (Name, LC, EUR).
-type DrittmittelGeber struct {
-	Geber string   `json:"geber"`
-	LC    *float64 `json:"lc"`
-	EUR   *float64 `json:"eur"`
-}
-
-// DrittmittelSonstiges hält die Beträge für die feste "Sonstiges"-Zeile, die immer
-// als letzte Zeile der Geber-Aufstellung erscheint. Wird in der JSON-Übergabe nicht
-// angegeben, bleiben LC und EUR leer (Eingabefeld). Die Allokationslogik — also wie
-// viel der Gesamtbetrag auf "Sonstiges" entfällt — liegt beim Aufrufer.
-type DrittmittelSonstiges struct {
-	LC  *float64 `json:"lc"`
-	EUR *float64 `json:"eur"`
-}
-
-// ExpensePos ist eine Kostenposition des Budgets. Kategorie muss einem Eintrag aus
-// BG_CATEGORIES entsprechen; ID wird als fester Wert (kein Formel) übernommen.
-type ExpensePos struct {
+type scannedPosition struct {
+	Number    string   `json:"number"`
+	Label     string   `json:"label"`
 	Kategorie string   `json:"kategorie"`
-	ID        string   `json:"id"`
-	Position  string   `json:"position"`
 	LC        *float64 `json:"lc"`
 	Y1        *float64 `json:"y1"`
 	Y2        *float64 `json:"y2"`
@@ -74,7 +39,152 @@ type ExpensePos struct {
 	EUR       *float64 `json:"eur"`
 }
 
-// loadBudgetConfig liest und validiert die Budget-JSON. Pfad leer ⇒ (nil, nil).
+type scannedBudgetData struct {
+	Financing scannedFinancing  `json:"financing"`
+	Positions []scannedPosition `json:"positions"`
+}
+
+// ─── Generator-Modell (intern) ─────────────────────────────────────────────────
+//
+// BudgetConfig hält die für das Blatt "I. Budget" aufbereiteten Werte. Ist keine
+// Budget-Datei angegeben, bleibt das Blatt ein leeres Eingabe-Template
+// (g.budget == nil). Diese Typen sind NICHT das JSON-Schema mehr — sie werden von
+// mapScannedToBudget aus der kanonischen BudgetData befüllt.
+//
+// Beträge sind durchweg *float64: nil ⇒ Zelle bleibt leer (Eingabefeld), 0 ⇒ es
+// wird ausdrücklich eine 0 eingetragen.
+type BudgetConfig struct {
+	Kurs            *float64
+	Eigenmittel     IncomeRow
+	Drittmittel     DrittmittelBlock
+	KMWMittel       IncomeRow
+	Ausgaben        []ExpensePos
+	ReserveFreigabe bool
+}
+
+// IncomeRow ist eine Finanzierungszeile mit Lokalwährung, drei Jahreswerten und EUR.
+type IncomeRow struct {
+	LC  *float64
+	Y1  *float64
+	Y2  *float64
+	Y3  *float64
+	EUR *float64
+}
+
+// DrittmittelBlock bündelt die Jahreswerte (Summenzeile) und die variable
+// Geber-Aufstellung (Tabelle rechts im Budget).
+type DrittmittelBlock struct {
+	Y1        *float64
+	Y2        *float64
+	Y3        *float64
+	Geber     []DrittmittelGeber
+	Sonstiges *DrittmittelSonstiges
+}
+
+// DrittmittelGeber ist eine Zeile der Geber-Aufstellung (Name, LC, EUR).
+type DrittmittelGeber struct {
+	Geber string
+	LC    *float64
+	EUR   *float64
+}
+
+// DrittmittelSonstiges hält die Beträge für die feste "Sonstiges"-Zeile, die immer
+// als letzte Zeile der Geber-Aufstellung erscheint.
+type DrittmittelSonstiges struct {
+	LC  *float64
+	EUR *float64
+}
+
+// ExpensePos ist eine Kostenposition des Budgets. Kategorie muss einem Eintrag aus
+// BG_CATEGORIES entsprechen; ID wird als fester Wert (keine Formel) übernommen.
+type ExpensePos struct {
+	Kategorie string
+	ID        string
+	Position  string
+	LC        *float64
+	Y1        *float64
+	Y2        *float64
+	Y3        *float64
+	EUR       *float64
+}
+
+// ─── Mapping & Laden ───────────────────────────────────────────────────────────
+
+func incomeFromRow(r scannedFinancingRow) IncomeRow {
+	return IncomeRow{LC: r.LC, Y1: r.Y1, Y2: r.Y2, Y3: r.Y3, EUR: r.EUR}
+}
+
+// isZeroAmount: nil oder 0 gilt als "wertlos".
+func isZeroAmount(v *float64) bool {
+	return v == nil || *v == 0
+}
+
+// mapScannedToBudget bildet die kanonische BudgetData auf das Generator-Modell ab.
+// Hier lebt die VP-spezifische Formung (vormals in Rust): leere Kategorie-Kopfzeilen
+// und namenlose 0-Platzhalter werden ausgelassen; Drittmittel ohne Geber-Aufstellung
+// landen gesammelt unter "Sonstige".
+func mapScannedToBudget(s *scannedBudgetData) *BudgetConfig {
+	cfg := &BudgetConfig{
+		Eigenmittel: incomeFromRow(s.Financing.Eigenmittel),
+		KMWMittel:   incomeFromRow(s.Financing.KMWMittel),
+		Drittmittel: DrittmittelBlock{
+			Y1:    s.Financing.Drittmittel.Y1,
+			Y2:    s.Financing.Drittmittel.Y2,
+			Y3:    s.Financing.Drittmittel.Y3,
+			Geber: nil,
+			Sonstiges: &DrittmittelSonstiges{
+				LC:  s.Financing.Drittmittel.LC,
+				EUR: s.Financing.Drittmittel.EUR,
+			},
+		},
+		ReserveFreigabe: false,
+	}
+
+	for _, p := range s.Positions {
+		// Kategorie wird vom Scanner aus der Nummer (1..8) abgeleitet; leer ⇒ keine
+		// gültige Budget-Kategorie ⇒ überspringen.
+		if p.Kategorie == "" {
+			continue
+		}
+
+		sub := ""
+		if idx := strings.IndexByte(p.Number, '.'); idx >= 0 {
+			sub = strings.TrimSpace(p.Number[idx+1:])
+		}
+		labelEmpty := strings.TrimSpace(p.Label) == ""
+		isHeader := sub == ""
+		valueless := isZeroAmount(p.LC) && isZeroAmount(p.Y1) && isZeroAmount(p.Y2) &&
+			isZeroAmount(p.Y3) && isZeroAmount(p.EUR)
+
+		// Wertlose reine Kopfzeilen oder namenlose Platzhalter auslassen. Benannte
+		// Positionen und die Sonderkategorien (Wert direkt auf der Kategoriezeile)
+		// bleiben erhalten; Lücken in der Nummerierung sind gewollt.
+		if valueless && (isHeader || labelEmpty) {
+			continue
+		}
+
+		position := p.Label
+		if labelEmpty {
+			position = p.Kategorie
+		}
+
+		cfg.Ausgaben = append(cfg.Ausgaben, ExpensePos{
+			Kategorie: p.Kategorie,
+			ID:        p.Number,
+			Position:  position,
+			LC:        p.LC,
+			Y1:        p.Y1,
+			Y2:        p.Y2,
+			Y3:        p.Y3,
+			EUR:       p.EUR,
+		})
+	}
+
+	return cfg
+}
+
+// loadBudgetConfig liest die kanonische BudgetData-JSON und formt sie für den
+// Generator auf. Pfad leer ⇒ (nil, nil) ⇒ leeres Eingabe-Template.
 func loadBudgetConfig(path string) (*BudgetConfig, error) {
 	if path == "" {
 		return nil, nil
@@ -83,16 +193,17 @@ func loadBudgetConfig(path string) (*BudgetConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("budget-datei konnte nicht gelesen werden: %w", err)
 	}
-	var cfg BudgetConfig
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&cfg); err != nil {
+	// Bewusst NICHT DisallowUnknownFields: das Sidecar erhält die volle BudgetData
+	// und nutzt nur sein Subset; weitere Felder werden ignoriert.
+	var scanned scannedBudgetData
+	if err := json.Unmarshal(data, &scanned); err != nil {
 		return nil, fmt.Errorf("budget-datei (%s) ist kein gültiges JSON: %w", path, err)
 	}
+	cfg := mapScannedToBudget(&scanned)
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("budget-datei (%s) ist ungültig: %w", path, err)
 	}
-	return &cfg, nil
+	return cfg, nil
 }
 
 func (c *BudgetConfig) validate() error {

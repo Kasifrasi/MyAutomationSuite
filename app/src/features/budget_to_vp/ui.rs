@@ -1,5 +1,5 @@
 use super::config::{apply_vp_defaults, load_vp_settings, save_vp_settings};
-use super::utils::{budget_to_vp_budget, vp_output_name};
+use super::utils::vp_output_name;
 use crate::shared::process::get_vorpruefung_path;
 use crate::{MainWindow, VorpruefungState};
 use slint::ComponentHandle;
@@ -157,9 +157,9 @@ pub fn setup(ui: &MainWindow) {
                             }
                         });
 
-                        // 3. Budget → Vorpruefung-JSON
-                        let vp_budget = budget_to_vp_budget(data);
-                        let json = match serde_json::to_string(&vp_budget) {
+                        // 3. Volle kanonische BudgetData an das Sidecar geben (es pickt
+                        //    sich die benötigten Felder selbst heraus).
+                        let json = match serde_json::to_string(data) {
                             Ok(j) => j,
                             Err(e) => {
                                 rows_info.push((

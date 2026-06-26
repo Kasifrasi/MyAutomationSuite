@@ -156,11 +156,18 @@ var kmwRows = []kmwRow{
 	{"Periode 2", "EUR", 9_000, date(2025, 7, 15)},
 }
 
-// ─── Budget-Teilstruktur (nur was zum Befüllen nötig ist) ─────────────────────
+// ─── Budget-Teilstruktur (kanonische BudgetData, nur Positionen zum Befüllen) ──
 type budgetCfg struct {
-	Ausgaben []struct {
-		ID string `json:"id"`
-	} `json:"ausgaben"`
+	Positions []struct {
+		Number    string   `json:"number"`
+		Label     string   `json:"label"`
+		Kategorie string   `json:"kategorie"`
+		LC        *float64 `json:"lc"`
+		Y1        *float64 `json:"y1"`
+		Y2        *float64 `json:"y2"`
+		Y3        *float64 `json:"y3"`
+		EUR       *float64 `json:"eur"`
+	} `json:"positions"`
 }
 
 func main() {
@@ -604,9 +611,24 @@ func loadAusgabenIDs(path string) ([]string, error) {
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("%s ist kein gültiges JSON: %w", path, err)
 	}
-	ids := make([]string, len(cfg.Ausgaben))
-	for i, a := range cfg.Ausgaben {
-		ids[i] = a.ID
+	// Gleiche Formung wie das Sidecar (config.go mapScannedToBudget): leere
+	// Kopfzeilen/Platzhalter auslassen, damit die IDs exakt den Sheet-Zeilen entsprechen.
+	zero := func(v *float64) bool { return v == nil || *v == 0 }
+	var ids []string
+	for _, p := range cfg.Positions {
+		if p.Kategorie == "" {
+			continue
+		}
+		sub := ""
+		if idx := strings.IndexByte(p.Number, '.'); idx >= 0 {
+			sub = strings.TrimSpace(p.Number[idx+1:])
+		}
+		labelEmpty := strings.TrimSpace(p.Label) == ""
+		valueless := zero(p.LC) && zero(p.Y1) && zero(p.Y2) && zero(p.Y3) && zero(p.EUR)
+		if valueless && (sub == "" || labelEmpty) {
+			continue
+		}
+		ids = append(ids, p.Number)
 	}
 	return ids, nil
 }
