@@ -40,8 +40,13 @@ type scannedPosition struct {
 }
 
 type scannedBudgetData struct {
-	Financing scannedFinancing  `json:"financing"`
-	Positions []scannedPosition `json:"positions"`
+	Version       string            `json:"version"`
+	ProjectTitle  string            `json:"project_title"`
+	ProjectNumber string            `json:"project_number"`
+	Language      string            `json:"language"`
+	LocalCurrency string            `json:"local_currency"`
+	Financing     scannedFinancing  `json:"financing"`
+	Positions     []scannedPosition `json:"positions"`
 }
 
 // ─── Generator-Modell (intern) ─────────────────────────────────────────────────

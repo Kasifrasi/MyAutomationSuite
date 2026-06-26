@@ -1,9 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
@@ -551,18 +556,39 @@ func (g *Generator) addConditionalFormat(sheet, cell, formula string, opts Style
 	})
 }
 
-func main() {
-	var outputPath string
-	var budgetPath string
-	flag.StringVar(&outputPath, "o", "vorpruefung_output.xlsx", "output file path")
-	flag.StringVar(&budgetPath, "budget", "", "optionale Budget-JSON, deren Werte in 'I. Budget' eingetragen werden")
-	flag.Parse()
+// UIProgress sendet Statusmeldungen im JSON-Format an die Standardausgabe,
+// die von deiner Slint/Python-GUI leicht geparst werden können.
+type UIProgress struct {
+	Status  string `json:"status"`            // "start", "progress", "success", "error", "done"
+	File    string `json:"file,omitempty"`    // Verarbeitete Datei (falls vorhanden)
+	Current int    `json:"current,omitempty"` // Aktuelle Datei (Nummer)
+	Total   int    `json:"total,omitempty"`   // Gesamtanzahl der Dateien
+	Message string `json:"message,omitempty"` // Optionale Nachricht
+}
 
-	budgetCfg, err := loadBudgetConfig(budgetPath)
-	if err != nil {
-		log.Fatalf("fehler beim Laden der Budget-Datei: %v", err)
-	}
+func printUI(status, file, msg string, current, total int) {
+	data, _ := json.Marshal(UIProgress{
+		Status:  status,
+		File:    file,
+		Current: current,
+		Total:   total,
+		Message: msg,
+	})
+	fmt.Println(string(data))
+}
 
+type ReportJob struct {
+	JobID      string
+	OutputPath string
+	Budget     *BudgetConfig
+}
+
+type ReportResult struct {
+	JobID string
+	Err   error
+}
+
+func generateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 	f := excelize.NewFile()
 
 	g := &Generator{
@@ -573,72 +599,247 @@ func main() {
 	}
 
 	// 1. Erstelle das Dashboard-Blatt
-	err = g.CreateDashboardSheet()
-	if err != nil {
-		log.Fatalf("fehler beim Erstellen des Dashboard-Blatts: %v", err)
+	if err := g.CreateDashboardSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des Dashboard-Blatts: %w", err)
+	}
+	if err := g.CreateBudgetSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des Budget-Blatts: %w", err)
+	}
+	if err := g.CreateKMWMittelSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des KMW-Mittel-Blatts: %w", err)
+	}
+	if err := g.CreateFinanzberichteSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des Finanzberichte-Blatts: %w", err)
+	}
+	if err := g.CreateMittelanforderungSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des Mittelanforderung-Blatts: %w", err)
+	}
+	if err := g.CreateAuswertungSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des Auswertungs-Blatts: %w", err)
+	}
+	if err := g.CreateDatenSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des Daten-Blatts: %w", err)
 	}
 
-	// 2. Erstelle das Budget-Blatt
-	err = g.CreateBudgetSheet()
-	if err != nil {
-		log.Fatalf("fehler beim Erstellen des Budget-Blatts: %v", err)
-	}
-
-	// 3. Erstelle das KMW-Mittel-Blatt
-	err = g.CreateKMWMittelSheet()
-	if err != nil {
-		log.Fatalf("fehler beim Erstellen des KMW-Mittel-Blatts: %v", err)
-	}
-
-	// 4. Erstelle das Finanzberichte-Blatt
-	err = g.CreateFinanzberichteSheet()
-	if err != nil {
-		log.Fatalf("fehler beim Erstellen des Finanzberichte-Blatts: %v", err)
-	}
-
-	// 5. Erstelle das Mittelanforderung-Blatt
-	err = g.CreateMittelanforderungSheet()
-	if err != nil {
-		log.Fatalf("fehler beim Erstellen des Mittelanforderung-Blatts: %v", err)
-	}
-
-	// 6. Erstelle das Auswertungs-Blatt (Vergleich Budget vs. MA/Finanzberichte)
-	err = g.CreateAuswertungSheet()
-	if err != nil {
-		log.Fatalf("fehler beim Erstellen des Auswertungs-Blatts: %v", err)
-	}
-
-	// 7. Erstelle das Daten-Blatt für Listen und VSTACKS
-	err = g.CreateDatenSheet()
-	if err != nil {
-		log.Fatalf("fehler beim Erstellen des Daten-Blatts: %v", err)
-	}
-
-	// Hier können in Zukunft weitere Blätter hinzugefügt werden:
-	// err = g.CreateMittelSheet()
-	// err = g.CreateFinanzberichtSheet()
-
-	// 2. Lösche das standardmäßig erstellte "Sheet1", damit nur unsere Blätter übrig bleiben
+	// 2. Lösche das standardmäßig erstellte "Sheet1"
 	_ = f.DeleteSheet("Sheet1")
 
-	// Excel beim Öffnen vollständig neu rechnen lassen, damit die dynamischen
-	// Array-Formeln (VSTACK/FILTER) sofort korrekt spillen.
+	// Excel beim Öffnen vollständig neu rechnen lassen
 	fullCalc := true
 	if err := f.SetCalcProps(&excelize.CalcPropsOptions{FullCalcOnLoad: &fullCalc}); err != nil {
-		log.Fatalf("fehler beim Setzen der Berechnungsoptionen: %v", err)
+		return fmt.Errorf("fehler beim Setzen der Berechnungsoptionen: %w", err)
 	}
 
 	// 3. Speichere das gesamte Dokument
-	err = f.SaveAs(outputPath)
-	if err != nil {
-		log.Fatalf("fehler beim Speichern des Dokuments: %v", err)
+	if err := f.SaveAs(outputPath); err != nil {
+		return fmt.Errorf("fehler beim Speichern des Dokuments: %w", err)
 	}
 
 	// 4. Dynamische Array-Formeln (VSTACK/FILTER) nachträglich als echte Spill-Formeln
-	//    markieren, damit Excel beim Öffnen keinen "@"-Operator einfügt.
+	// markieren
 	if err := applyDynamicArrayMetadata(outputPath, g.dynArrayCells); err != nil {
-		log.Fatalf("fehler beim Setzen der Dynamic-Array-Metadaten: %v", err)
+		return fmt.Errorf("fehler beim Setzen der Dynamic-Array-Metadaten: %w", err)
 	}
 
-	fmt.Printf("Vorpruefung erfolgreich generiert: %s\n", outputPath)
+	return nil
+}
+
+func uniqueOutputPath(basePath string) string {
+	if _, err := os.Stat(basePath); os.IsNotExist(err) {
+		return basePath
+	}
+	ext := filepath.Ext(basePath)
+	nameWithoutExt := strings.TrimSuffix(basePath, ext)
+	for i := 1; ; i++ {
+		newPath := fmt.Sprintf("%s(%d)%s", nameWithoutExt, i, ext)
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			return newPath
+		}
+	}
+}
+
+func main() {
+	inputFlag := flag.String("input", "", "Pfad zu einer JSON-Datei mit den verarbeiteten Scanner-Daten (scannedBudgetData Array) oder Einzel-JSON (-budget)")
+	outputFlag := flag.String("output", "test/output", "Ordner, in dem die finalen Dateien gespeichert werden")
+	filenameFlag := flag.String("filename", "Pruefvorlage_{pn}_{la}.xlsx", "Namensmuster")
+
+	// Backwards compatibility for single-file mode
+	var legacyOutputPath string
+	var legacyBudgetPath string
+	flag.StringVar(&legacyOutputPath, "o", "", "Legacy: output file path")
+	flag.StringVar(&legacyBudgetPath, "budget", "", "Legacy: optionale Budget-JSON")
+
+	flag.Parse()
+
+	if legacyBudgetPath != "" || legacyOutputPath != "" {
+		// Legacy Modus (Einzelfile)
+		cfg, err := loadBudgetConfig(legacyBudgetPath)
+		if err != nil {
+			log.Fatalf("fehler beim Laden der Budget-Datei: %v", err)
+		}
+		out := legacyOutputPath
+		if out == "" {
+			out = "vorpruefung_output.xlsx"
+		}
+		if err := generateVorpruefung(out, cfg); err != nil {
+			log.Fatalf("%v", err)
+		}
+		fmt.Printf("Vorpruefung erfolgreich generiert: %s\n", out)
+		return
+	}
+
+	// Neuer Modus: Batch-Verarbeitung via -input
+	if *inputFlag == "" || !strings.HasSuffix(strings.ToLower(*inputFlag), ".json") {
+		fmt.Println("Fehler: Bitte gib eine gültige JSON-Datei mit -input an (oder nutze -budget / -o für Legacy-Modus)")
+		os.Exit(1)
+	}
+
+	outputOrdner := *outputFlag
+	if err := os.MkdirAll(outputOrdner, 0755); err != nil {
+		printUI("error", "", fmt.Sprintf("Konnte Output-Ordner nicht erstellen: %v", err), 0, 0)
+		os.Exit(1)
+	}
+
+	printUI("start", "", "App gestartet", 0, 0)
+
+	bytesData, err := os.ReadFile(*inputFlag)
+	if err != nil {
+		printUI("error", "", fmt.Sprintf("Konnte JSON-Datei nicht lesen: %v", err), 0, 0)
+		os.Exit(1)
+	}
+
+	var scannedDaten []scannedBudgetData
+	if err := json.Unmarshal(bytesData, &scannedDaten); err != nil {
+		printUI("error", "", fmt.Sprintf("Konnte JSON-Daten nicht parsen (sollte ein Array sein): %v", err), 0, 0)
+		os.Exit(1)
+	}
+
+	totalFiles := len(scannedDaten)
+	if totalFiles == 0 {
+		printUI("done", "", "Keine Daten zum Verarbeiten gefunden", 0, 0)
+		return
+	}
+
+	nameCounts := make(map[string]int)
+	baseNames := make([]string, totalFiles)
+
+	for i, scanned := range scannedDaten {
+		jobID := scanned.ProjectNumber
+		if jobID == "" {
+			jobID = fmt.Sprintf("PROJ-%03d", i+1)
+		}
+		sprache := strings.ToLower(scanned.Language)
+
+		base := *filenameFlag
+		base = strings.ReplaceAll(base, "{i}", "")
+		base = strings.ReplaceAll(base, "{I}", "")
+		base = strings.ReplaceAll(base, "{pn}", jobID)
+		base = strings.ReplaceAll(base, "{PN}", jobID)
+		base = strings.ReplaceAll(base, "{la}", sprache)
+		base = strings.ReplaceAll(base, "{LA}", sprache)
+		base = strings.ReplaceAll(base, "{version}", scanned.Version)
+		base = strings.ReplaceAll(base, "{pt}", scanned.ProjectTitle)
+		base = strings.ReplaceAll(base, "{PT}", scanned.ProjectTitle)
+		base = strings.ReplaceAll(base, "{VERSION}", scanned.Version)
+
+		baseNames[i] = base
+		nameCounts[base]++
+	}
+
+	jobs := make(chan ReportJob, totalFiles)
+	results := make(chan ReportResult, totalFiles)
+
+	numWorkers := runtime.NumCPU() * 2
+	if numWorkers > 32 {
+		numWorkers = 32
+	}
+
+	for w := 0; w < numWorkers; w++ {
+		go func() {
+			for job := range jobs {
+				err := generateVorpruefung(job.OutputPath, job.Budget)
+				results <- ReportResult{JobID: job.JobID, Err: err}
+			}
+		}()
+	}
+
+	go func() {
+		duplicatesCounter := make(map[string]int)
+		for i, scanned := range scannedDaten {
+			cfg := mapScannedToBudget(&scanned)
+
+			jobID := scanned.ProjectNumber
+			if jobID == "" {
+				jobID = fmt.Sprintf("PROJ-%03d", i+1)
+			}
+			sprache := strings.ToLower(scanned.Language)
+			base := baseNames[i]
+			duplicatesCounter[base]++
+
+			dateiname := *filenameFlag
+			dateiname = strings.ReplaceAll(dateiname, "{pn}", jobID)
+			dateiname = strings.ReplaceAll(dateiname, "{PN}", jobID)
+			dateiname = strings.ReplaceAll(dateiname, "{la}", sprache)
+			dateiname = strings.ReplaceAll(dateiname, "{LA}", sprache)
+			dateiname = strings.ReplaceAll(dateiname, "{version}", scanned.Version)
+			dateiname = strings.ReplaceAll(dateiname, "{pt}", scanned.ProjectTitle)
+			dateiname = strings.ReplaceAll(dateiname, "{PT}", scanned.ProjectTitle)
+			dateiname = strings.ReplaceAll(dateiname, "{VERSION}", scanned.Version)
+
+			if nameCounts[base] > 1 {
+				countStr := strconv.Itoa(duplicatesCounter[base])
+				if strings.Contains(dateiname, "{i}") {
+					dateiname = strings.ReplaceAll(dateiname, "{i}", countStr)
+				} else if strings.Contains(dateiname, "{I}") {
+					dateiname = strings.ReplaceAll(dateiname, "{I}", countStr)
+				} else {
+					ext := filepath.Ext(dateiname)
+					if ext == "" {
+						ext = ".xlsx"
+						dateiname += ext
+					}
+					nameOhneExt := strings.TrimSuffix(dateiname, ext)
+					dateiname = fmt.Sprintf("%s_%s%s", nameOhneExt, countStr, ext)
+				}
+			} else {
+				dateiname = strings.ReplaceAll(dateiname, "{i}", "")
+				dateiname = strings.ReplaceAll(dateiname, "{I}", "")
+				dateiname = strings.ReplaceAll(dateiname, "__", "_")
+				dateiname = strings.ReplaceAll(dateiname, "_.xlsx", ".xlsx")
+				dateiname = strings.ReplaceAll(dateiname, "-.xlsx", ".xlsx")
+			}
+
+			if filepath.Ext(dateiname) == "" {
+				dateiname += ".xlsx"
+			}
+
+			outputPath := filepath.Join(outputOrdner, dateiname)
+			outputPath = uniqueOutputPath(outputPath)
+
+			jobs <- ReportJob{
+				JobID:      jobID,
+				OutputPath: outputPath,
+				Budget:     cfg,
+			}
+		}
+		close(jobs)
+	}()
+
+	successCount := 0
+	errorCount := 0
+	currentDone := 0
+
+	for i := 0; i < totalFiles; i++ {
+		res := <-results
+		currentDone++
+		if res.Err != nil {
+			printUI("error", res.JobID, fmt.Sprintf("Fehler beim Verarbeiten: %v", res.Err), currentDone, totalFiles)
+			errorCount++
+		} else {
+			printUI("progress", res.JobID, "Vorprüfung generiert", currentDone, totalFiles)
+			successCount++
+		}
+	}
+
+	printUI("done", "", fmt.Sprintf("Fertig! %d erfolgreich, %d fehlerhaft.", successCount, errorCount), totalFiles, totalFiles)
 }

@@ -1,6 +1,5 @@
 use crate::{MainWindow, VorpruefungState, APP_NAME};
 
-
 use slint::ComponentHandle;
 
 #[derive(serde::Serialize, serde::Deserialize)]

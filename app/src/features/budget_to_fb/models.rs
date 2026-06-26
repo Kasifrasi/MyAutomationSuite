@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::shared::models::SheetProtectionOptions;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct B2fSettings {

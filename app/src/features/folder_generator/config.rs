@@ -1,5 +1,5 @@
-use crate::{MainWindow, FolderState, Model};
 use super::super::super::APP_NAME;
+use crate::{FolderState, MainWindow, Model};
 
 use slint::ComponentHandle;
 

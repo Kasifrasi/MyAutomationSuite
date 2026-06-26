@@ -19,9 +19,18 @@ fn print_budget(data: &BudgetData) {
         .unwrap_or("-".into());
     println!("  Kostenspalten:   {} / {}", c1, c2);
     let fmt_amt = |v: Option<f64>| v.map(|x| x.to_string()).unwrap_or_default();
-    println!("  Eigenmittel:     {}", fmt_amt(data.financing.eigenmittel.lc));
-    println!("  Drittmittel:     {}", fmt_amt(data.financing.drittmittel.lc));
-    println!("  KMW-Mittel:      {}", fmt_amt(data.financing.kmw_mittel.lc));
+    println!(
+        "  Eigenmittel:     {}",
+        fmt_amt(data.financing.eigenmittel.lc)
+    );
+    println!(
+        "  Drittmittel:     {}",
+        fmt_amt(data.financing.drittmittel.lc)
+    );
+    println!(
+        "  KMW-Mittel:      {}",
+        fmt_amt(data.financing.kmw_mittel.lc)
+    );
 
     let mut table = Table::new();
     table.set_content_arrangement(ContentArrangement::Dynamic);

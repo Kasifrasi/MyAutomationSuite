@@ -1,5 +1,5 @@
 use super::config::{apply_vp_defaults, load_vp_settings, save_vp_settings};
-use super::utils::vp_output_name;
+
 use crate::shared::process::get_vorpruefung_path;
 use crate::{MainWindow, VorpruefungState};
 use slint::ComponentHandle;
@@ -134,121 +134,175 @@ pub fn setup(ui: &MainWindow) {
 
                     // (Quelldateiname, Status, Detail)
                     let mut rows_info: Vec<(String, String, String)> = Vec::new();
-                    let mut used_names: std::collections::HashSet<String> =
-                        std::collections::HashSet::new();
+
+                    // Alle Daten in EINEM Array zusammenfassen (Batch-Verarbeitung)
+                    let mut tmp_json_file = match tempfile::Builder::new()
+                        .prefix("vp_budgets_")
+                        .suffix(".json")
+                        .tempfile()
+                    {
+                        Ok(f) => f,
+                        Err(e) => {
+                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                let vp = ui.global::<VorpruefungState>();
+                                vp.set_status_type("error".into());
+                                vp.set_status_message(format!("Temp-JSON Fehler: {e}").into());
+                            });
+                            return;
+                        }
+                    };
+
+                    let json = match serde_json::to_string(&result.successes) {
+                        Ok(j) => j,
+                        Err(e) => {
+                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                let vp = ui.global::<VorpruefungState>();
+                                vp.set_status_type("error".into());
+                                vp.set_status_message(format!("JSON-Serialize Fehler: {e}").into());
+                            });
+                            return;
+                        }
+                    };
+
+                    if let Err(e) = std::io::Write::write_all(&mut tmp_json_file, json.as_bytes()) {
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let vp = ui.global::<VorpruefungState>();
+                            vp.set_status_type("error".into());
+                            vp.set_status_message(format!("Temp-JSON Schreibfehler: {e}").into());
+                        });
+                        return;
+                    }
+                    let _ = std::io::Write::flush(&mut tmp_json_file);
+                    let tmp_json_path = tmp_json_file.into_temp_path();
+
+                    let mut cmd = std::process::Command::new(&sidecar_exe);
+                    #[cfg(target_os = "windows")]
+                    {
+                        use std::os::windows::process::CommandExt;
+                        const CREATE_NO_WINDOW: u32 = 0x08000000;
+                        cmd.creation_flags(CREATE_NO_WINDOW);
+                    }
+
+                    cmd.arg("-input")
+                        .arg(&tmp_json_path)
+                        .arg("-output")
+                        .arg(&output_dir)
+                        .arg("-filename")
+                        .arg(&name);
+
+                    cmd.stdout(std::process::Stdio::piped());
+
+                    let mut child = match cmd.spawn() {
+                        Ok(c) => c,
+                        Err(e) => {
+                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                let vp = ui.global::<VorpruefungState>();
+                                vp.set_status_type("error".into());
+                                vp.set_status_message(
+                                    format!(
+                                        "Fehler beim Starten von {}: {e}",
+                                        sidecar_exe.display()
+                                    )
+                                    .into(),
+                                );
+                            });
+                            return;
+                        }
+                    };
+
+                    let Some(stdout) = child.stdout.take() else {
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let vp = ui.global::<VorpruefungState>();
+                            vp.set_status_type("error".into());
+                            vp.set_status_message("Konnte Ausgabe nicht lesen.".into());
+                        });
+                        return;
+                    };
+
+                    use std::io::BufRead;
+                    #[derive(serde::Deserialize)]
+                    struct ProgressMessage {
+                        status: String,
+                        message: String,
+                        current: Option<u32>,
+                        total: Option<u32>,
+                        file: Option<String>,
+                    }
+
+                    let reader = std::io::BufReader::new(stdout);
                     let mut ok_count = 0u32;
 
-                    for (i, data) in result.successes.iter().enumerate() {
-                        let current = (i + 1) as u32;
-                        let src_name = data
-                            .file_path
-                            .file_name()
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_default();
-
-                        let _ = ui_handle_clone.upgrade_in_event_loop({
-                            let label = src_name.clone();
-                            move |ui| {
-                                let vp = ui.global::<VorpruefungState>();
-                                vp.set_status_type("pending".into());
-                                vp.set_status_message(
-                                    format!("{current}/{total} – {label}").into(),
-                                );
+                    for line in reader.lines().map_while(Result::ok) {
+                        if let Ok(msg) = serde_json::from_str::<ProgressMessage>(&line) {
+                            if msg.status == "success" || msg.status == "progress" {
+                                ok_count += 1;
+                                if let Some(ref f) = msg.file {
+                                    rows_info.push((
+                                        f.clone(),
+                                        "OK".into(),
+                                        "Vorprüfung generiert".into(),
+                                    ));
+                                }
+                            } else if msg.status == "error" {
+                                if let Some(ref f) = msg.file {
+                                    rows_info.push((
+                                        f.clone(),
+                                        "Fehler".into(),
+                                        msg.message.clone(),
+                                    ));
+                                }
                             }
+
+                            let _ = ui_handle_clone.upgrade_in_event_loop({
+                                let msg_status = msg.status.clone();
+                                let msg_text = msg.message.clone();
+                                let current = msg.current.unwrap_or(0);
+                                let total = msg.total.unwrap_or(0);
+
+                                move |ui| {
+                                    let vp = ui.global::<VorpruefungState>();
+                                    if msg_status == "error" {
+                                        vp.set_status_type("error".into());
+                                    } else if msg_status == "done" {
+                                        vp.set_status_type("success".into());
+                                    } else {
+                                        vp.set_status_type("pending".into());
+                                    }
+
+                                    if total > 0 {
+                                        vp.set_status_message(
+                                            format!("{current}/{total} - {msg_text}").into(),
+                                        );
+                                    } else {
+                                        vp.set_status_message(msg_text.into());
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    let _ = child.wait();
+
+                    // --- RUST EXCEL PROTECTION ---
+                    if wb_hash.is_some() {
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let vp = ui.global::<VorpruefungState>();
+                            vp.set_status_message("Wende Schutz an...".into());
                         });
 
-                        // 3. Volle kanonische BudgetData an das Sidecar geben (es pickt
-                        //    sich die benötigten Felder selbst heraus).
-                        let json = match serde_json::to_string(data) {
-                            Ok(j) => j,
-                            Err(e) => {
-                                rows_info.push((
-                                    src_name,
-                                    "Fehler".into(),
-                                    format!("JSON-Fehler: {e}"),
-                                ));
-                                continue;
-                            }
-                        };
-
-                        let mut tmp_json_file = match tempfile::Builder::new()
-                            .prefix("vp_budget_")
-                            .suffix(".json")
-                            .tempfile()
-                        {
-                            Ok(f) => f,
-                            Err(e) => {
-                                rows_info.push((
-                                    src_name,
-                                    "Fehler".into(),
-                                    format!("Temp-JSON: {e}"),
-                                ));
-                                continue;
-                            }
-                        };
-
-                        if let Err(e) =
-                            std::io::Write::write_all(&mut tmp_json_file, json.as_bytes())
-                        {
-                            rows_info.push((src_name, "Fehler".into(), format!("Temp-JSON: {e}")));
-                            continue;
-                        }
-                        let _ = std::io::Write::flush(&mut tmp_json_file);
-
-                        // .into_temp_path() schließt den File-Handle für Windows,
-                        // räumt aber die Datei trotzdem am Ende des Schleifendurchlaufs (Scope) ab.
-                        let tmp_json_path = tmp_json_file.into_temp_path();
-
-                        // 4. Zieldateiname + Sidecar-Aufruf
-                        let out_name = vp_output_name(&name, data, &mut used_names);
-                        let out_path = output_dir.join(&out_name);
-
-                        let mut cmd = std::process::Command::new(&sidecar_exe);
-                        #[cfg(target_os = "windows")]
-                        {
-                            use std::os::windows::process::CommandExt;
-                            const CREATE_NO_WINDOW: u32 = 0x08000000;
-                            cmd.creation_flags(CREATE_NO_WINDOW);
-                        }
-                        cmd.arg("-budget")
-                            .arg(&tmp_json_path)
-                            .arg("-o")
-                            .arg(&out_path);
-
-                        let run = cmd.output();
-                        // Temp-JSON löscht sich am Ende des Blocks automatisch durch Drop von TempPath
-
-                        match run {
-                            Ok(o) if o.status.success() => {
-                                // 5. Optionaler Mappenschutz (sperrt keine Eingabezellen)
-                                if let Some(h) = wb_hash.as_ref() {
+                        use rayon::prelude::*;
+                        if let Ok(entries) = std::fs::read_dir(&output_dir) {
+                            let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+                            paths.into_par_iter().for_each(|p| {
+                                if p.extension().is_some_and(|ext| ext == "xlsx") {
                                     let _ = excel_protection::apply_protection_in_place(
-                                        &out_path,
-                                        Some(h),
+                                        &p,
+                                        wb_hash.as_ref(),
                                         None,
                                         None,
                                     );
                                 }
-                                ok_count += 1;
-                                rows_info.push((src_name, "OK".into(), out_name));
-                            }
-                            Ok(o) => {
-                                let err = String::from_utf8_lossy(&o.stderr);
-                                let detail = err
-                                    .lines()
-                                    .last()
-                                    .map(|s| s.to_string())
-                                    .filter(|s| !s.is_empty())
-                                    .unwrap_or_else(|| "Generierung fehlgeschlagen".into());
-                                rows_info.push((src_name, "Fehler".into(), detail));
-                            }
-                            Err(e) => {
-                                rows_info.push((
-                                    src_name,
-                                    "Fehler".into(),
-                                    format!("Sidecar-Start: {e}"),
-                                ));
-                            }
+                            });
                         }
                     }
 

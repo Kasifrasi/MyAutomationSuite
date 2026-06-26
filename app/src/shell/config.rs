@@ -1,5 +1,5 @@
-use crate::{MainWindow, Palette};
 use super::super::APP_NAME;
+use crate::{MainWindow, Palette};
 
 use slint::ComponentHandle;
 
@@ -15,7 +15,6 @@ impl Default for ThemeSettings {
         }
     }
 }
-
 
 pub fn load_theme_settings(ui: &MainWindow) {
     let s: ThemeSettings = confy::load(APP_NAME, "theme").unwrap_or_default();

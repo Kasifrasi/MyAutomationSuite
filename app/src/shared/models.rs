@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use crate::SheetPermissions;
 pub use excel_protection::SheetProtectionOptions;
+use serde::{Deserialize, Serialize};
 
 // 1. Umwandlung von Bibliothek-Optionen in Slint-UI Permissions
 impl From<SheetProtectionOptions> for SheetPermissions {

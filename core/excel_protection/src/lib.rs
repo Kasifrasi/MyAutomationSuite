@@ -12,12 +12,12 @@ use byteorder::{WriteBytesExt, LE};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use quick_xml::writer::Writer;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
 use std::fs::File;
 use std::io::{Cursor, Read, Write};
 use zip::write::FileOptions;
 use zip::{ZipArchive, ZipWriter};
-use serde::{Deserialize, Serialize};
 
 const DEFAULT_SPIN_COUNT: u32 = 100_000;
 
