@@ -11,6 +11,7 @@ pub struct B2fSettings {
     pub sheet_password: String,
     pub workbook_password: String,
     pub hide_columns: bool,
+    pub hide_lang_sheet: bool,
     pub empty_rows: i32,
     pub protection: SheetProtectionOptions,
 }

@@ -62,8 +62,7 @@ pub fn setup(ui: &MainWindow) {
                 b2f.set_status_type("pending".into());
                 b2f.set_status_message("Scannt...".into());
     
-                let name = b2f.get_name().to_string();
-                let name_clone = name.clone();
+                let filename = b2f.get_name().to_string();
     
                 let sp = b2f.get_sheet_permissions();
                 let options = ExportOptions {
@@ -158,13 +157,14 @@ pub fn setup(ui: &MainWindow) {
                         .arg("-options")
                         .arg(&options_json)
                         .arg("-filename")
-                        .arg(&name_clone);
+                        .arg(&filename);
     
                     cmd.stdout(std::process::Stdio::piped());
     
                     let mut child = match cmd.spawn() {
                         Ok(c) => c,
                         Err(e) => {
+                            let _ = std::fs::remove_file(&tmp_json_path);
                             let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                                 let b2f = ui.global::<BudgetState>();
                                 b2f.set_status_type("error".into());
@@ -180,7 +180,14 @@ pub fn setup(ui: &MainWindow) {
                         }
                     };
     
-                    let stdout = child.stdout.take().unwrap();
+                    let Some(stdout) = child.stdout.take() else {
+                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                            let b2f = ui.global::<BudgetState>();
+                            b2f.set_status_type("error".into());
+                            b2f.set_status_message("Konnte die Ausgabe des Hintergrund-Prozesses nicht lesen.".into());
+                        });
+                        return; // Thread sicher beenden
+                    };
                     let reader = std::io::BufReader::new(stdout);
     
                     use std::io::BufRead;
@@ -317,120 +324,121 @@ pub fn setup(ui: &MainWindow) {
         }
     });
     
+    // ==========================================
+    // CSV Export (Jetzt im Hintergrund-Thread!)
+    // ==========================================
     ui.global::<BudgetState>().on_do_export_txt({
         let ui_handle = ui.as_weak();
         move || {
             if let Some(ui) = ui_handle.upgrade() {
                 let b2f = ui.global::<BudgetState>();
-                let table_data = b2f.get_table_data();
-                let columns = b2f.get_table_columns();
+                
+                // 1. Daten thread-sicher auf dem Haupt-Thread auslesen
+                let (headers, rows) = extract_table_data(&b2f);
     
+                // 2. Datei-Dialog (muss auf dem Haupt-Thread laufen)
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("scan_ergebnis.csv")
                     .add_filter("CSV", &["csv"])
                     .save_file()
                 {
-                    let mut out = String::new();
-                    let col_count = columns.row_count();
-                    for c in 0..col_count {
-                        if c > 0 {
-                            out.push(';');
-                        }
-                        out.push_str(
-                            &columns
-                                .row_data(c)
-                                .map(|col| col.title.to_string())
-                                .unwrap_or_default(),
-                        );
-                    }
-                    out.push('\n');
-                    for r in 0..table_data.row_count() {
-                        if let Some(row) = table_data.row_data(r) {
-                            for c in 0..col_count {
-                                if c > 0 {
-                                    out.push(';');
-                                }
-                                out.push_str(
-                                    &row.row_data(c)
-                                        .map(|item| item.text.to_string())
-                                        .unwrap_or_default(),
-                                );
+                    b2f.set_status_type("pending".into());
+                    b2f.set_status_message("Exportiere CSV...".into());
+
+                    // 3. Thread spawnen für die Formatierung und das Schreiben auf die Festplatte
+                    let ui_handle_clone = ui_handle.clone();
+                    std::thread::spawn(move || {
+                        // Aufruf der reinen Transformer-Funktion in utils.rs
+                        let out = super::utils::generate_csv_string(&headers, &rows);
+                        
+                        match std::fs::write(&path, &out) {
+                            Ok(()) => {
+                                let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                    let b2f = ui.global::<BudgetState>();
+                                    b2f.set_status_type("success".into());
+                                    b2f.set_status_message(
+                                        format!("CSV exportiert: {}", path.display()).into(),
+                                    );
+                                });
                             }
-                            out.push('\n');
+                            Err(e) => {
+                                let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                    let b2f = ui.global::<BudgetState>();
+                                    b2f.set_status_type("error".into());
+                                    b2f.set_status_message(format!("CSV-Export Fehler: {e}").into());
+                                });
+                            }
                         }
-                    }
-                    match std::fs::write(&path, &out) {
-                        Ok(()) => {
-                            b2f.set_status_type("success".into());
-                            b2f.set_status_message(
-                                format!("CSV exportiert: {}", path.display()).into(),
-                            );
-                        }
-                        Err(e) => {
-                            b2f.set_status_type("error".into());
-                            b2f.set_status_message(format!("CSV-Export Fehler: {e}").into());
-                        }
-                    }
+                    });
                 }
             }
         }
     });
     
+    // ==========================================
+    // Excel Export (Jetzt im Hintergrund-Thread!)
+    // ==========================================
     ui.global::<BudgetState>().on_do_export_excel({
         let ui_handle = ui.as_weak();
         move || {
             if let Some(ui) = ui_handle.upgrade() {
                 let b2f = ui.global::<BudgetState>();
-                let table_data = b2f.get_table_data();
-                let columns = b2f.get_table_columns();
+                
+                // 1. Daten thread-sicher auf dem Haupt-Thread auslesen
+                let (headers, rows) = extract_table_data(&b2f);
     
+                // 2. Datei-Dialog (muss auf dem Haupt-Thread laufen)
                 if let Some(path) = rfd::FileDialog::new()
                     .set_file_name("scan_ergebnis.xlsx")
                     .add_filter("Excel", &["xlsx"])
                     .save_file()
                 {
-                    let col_count = columns.row_count();
-                    let mut workbook = rust_xlsxwriter::Workbook::new();
-                    let sheet = workbook.add_worksheet();
-    
-                    // Header
-                    for c in 0..col_count {
-                        let title = columns
-                            .row_data(c)
-                            .map(|col| col.title.to_string())
-                            .unwrap_or_default();
-                        let _ = sheet.write_string(0, c as u16, &title);
-                    }
-    
-                    // Rows
-                    for r in 0..table_data.row_count() {
-                        if let Some(row) = table_data.row_data(r) {
-                            for c in 0..col_count {
-                                let text = row
-                                    .row_data(c)
-                                    .map(|item| item.text.to_string())
-                                    .unwrap_or_default();
-                                let _ = sheet.write_string((r + 1) as u32, c as u16, &text);
+                    b2f.set_status_type("pending".into());
+                    b2f.set_status_message("Exportiere Excel...".into());
+
+                    // 3. Thread spawnen für das Erstellen und Speichern des Workbooks
+                    let ui_handle_clone = ui_handle.clone();
+                    std::thread::spawn(move || {
+                        // Aufruf der reinen Transformer-Funktion in utils.rs
+                        match super::utils::create_excel_report(&headers, &rows) {
+                            Ok(mut workbook) => {
+                                match workbook.save(&path) {
+                                    Ok(()) => {
+                                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                            let b2f = ui.global::<BudgetState>();
+                                            b2f.set_status_type("success".into());
+                                            b2f.set_status_message(
+                                                format!("Excel exportiert: {}", path.display()).into(),
+                                            );
+                                        });
+                                    }
+                                    Err(e) => {
+                                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                            let b2f = ui.global::<BudgetState>();
+                                            b2f.set_status_type("error".into());
+                                            b2f.set_status_message(
+                                                format!("Excel-Speicher Fehler: {e}").into(),
+                                            );
+                                        });
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                    let b2f = ui.global::<BudgetState>();
+                                    b2f.set_status_type("error".into());
+                                    b2f.set_status_message(
+                                        format!("Excel-Generierungs Fehler: {e}").into(),
+                                    );
+                                });
                             }
                         }
-                    }
-    
-                    match workbook.save(&path) {
-                        Ok(()) => {
-                            b2f.set_status_type("success".into());
-                            b2f.set_status_message(
-                                format!("Excel exportiert: {}", path.display()).into(),
-                            );
-                        }
-                        Err(e) => {
-                            b2f.set_status_type("error".into());
-                            b2f.set_status_message(format!("Excel-Export Fehler: {e}").into());
-                        }
-                    }
+                    });
                 }
             }
         }
     });
+
     
     ui.global::<BudgetState>().on_dismiss_status({
         let ui_handle = ui.as_weak();
@@ -474,4 +482,38 @@ pub fn setup(ui: &MainWindow) {
             }
         }
     });
+}
+
+// Hilfsfunktion zum thread-sicheren Auslesen der Slint-Tabelle auf dem Haupt-Thread
+fn extract_table_data(b2f: &BudgetState) -> (Vec<String>, Vec<Vec<String>>) {
+    let columns = b2f.get_table_columns();
+    let table_data = b2f.get_table_data();
+
+    let col_count = columns.row_count();
+    let mut headers = Vec::with_capacity(col_count);
+    for c in 0..col_count {
+        let title = columns
+            .row_data(c)
+            .map(|col| col.title.to_string())
+            .unwrap_or_default();
+        headers.push(title);
+    }
+
+    let row_count = table_data.row_count();
+    let mut rows = Vec::with_capacity(row_count);
+    for r in 0..row_count {
+        if let Some(row) = table_data.row_data(r) {
+            let mut row_vec = Vec::with_capacity(col_count);
+            for c in 0..col_count {
+                let text = row
+                    .row_data(c)
+                    .map(|item| item.text.to_string())
+                    .unwrap_or_default();
+                row_vec.push(text);
+            }
+            rows.push(row_vec);
+        }
+    }
+
+    (headers, rows)
 }

@@ -48,6 +48,7 @@ pub fn load_b2f_settings(ui: &MainWindow) {
     b2f.set_sheet_password(s.sheet_password.into());
     b2f.set_workbook_password(s.workbook_password.into());
     b2f.set_hide_columns(s.hide_columns);
+    b2f.set_hide_lang_sheet(s.hide_lang_sheet);
     b2f.set_empty_rows(s.empty_rows);
     if !s.src_folder.is_empty() {
         b2f.set_src_folder(s.src_folder.into());
@@ -69,6 +70,7 @@ pub fn save_b2f_settings(ui: &MainWindow) {
         sheet_password: b2f.get_sheet_password().to_string(),
         workbook_password: b2f.get_workbook_password().to_string(),
         hide_columns: b2f.get_hide_columns(),
+        hide_lang_sheet: b2f.get_hide_lang_sheet(),
         empty_rows: b2f.get_empty_rows(),
 
         protection: b2f.get_sheet_permissions().into(), 
