@@ -1,6 +1,5 @@
 use super::config::{apply_b2f_defaults, load_b2f_settings, save_b2f_settings};
-use crate::shared::models::{ExportOptions, ProgressMessage};
-use crate::shared::process::get_fb_path;
+use crate::shared::models::ExportOptions;
 use crate::{BudgetState, MainWindow};
 use slint::{ComponentHandle, Model};
 
@@ -114,107 +113,21 @@ pub fn setup(ui: &MainWindow) {
                     let output_dir = budget_scanner::resolve_output_dir(&out_base_path);
                     let _ = std::fs::create_dir_all(&output_dir);
 
-                    // 4. Temporäres JSON erstellen (wird automatisch gelöscht, wenn tmp_json_file out-of-scope geht)
-                    let mut tmp_json_file = match tempfile::Builder::new()
-                        .prefix("scan_")
-                        .suffix(".json")
-                        .tempfile()
-                    {
-                        Ok(f) => f,
-                        Err(e) => {
-                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                                let b2f = ui.global::<BudgetState>();
-                                b2f.set_status_type("error".into());
-                                b2f.set_status_message(
-                                    format!("Fehler beim Erstellen der temporären Datei: {e}")
-                                        .into(),
-                                );
-                            });
-                            return;
-                        }
-                    };
+                    // 4. Sidecar Runner
+                    let mut rows_info: Vec<(String, String, String)> = Vec::new();
 
-                    // Volle kanonische BudgetData an das Sidecar geben — es liest nur die
-                    // Felder, die es braucht (neue Scanner-Felder sind automatisch verfügbar).
-                    if let Err(e) = std::io::Write::write_all(
-                        &mut tmp_json_file,
-                        serde_json::to_string(&result.successes)
-                            .unwrap_or_default()
-                            .as_bytes(),
-                    ) {
-                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                            let b2f = ui.global::<BudgetState>();
-                            b2f.set_status_type("error".into());
-                            b2f.set_status_message(
-                                format!("Fehler beim Speichern der JSON: {e}").into(),
-                            );
-                        });
-                        return;
-                    }
-                    let _ = std::io::Write::flush(&mut tmp_json_file);
+                    let sidecar_exe = crate::shared::process::get_fb_path();
 
-                    // WICHTIG FÜR WINDOWS:
-                    // .into_temp_path() schließt den Dateihandle in Rust, aber die Datei bleibt auf
-                    // der Festplatte erhalten, bis tmp_json_path am Ende des Threads gelöscht wird.
-                    // Das verhindert "Access Denied" Fehler beim Go-Sidecar.
-                    let tmp_json_path = tmp_json_file.into_temp_path();
-
-                    // 5. Go Sidecar aufrufen
-                    let sidecar_exe = get_fb_path();
-
-                    let mut cmd = std::process::Command::new(&sidecar_exe);
-
-                    #[cfg(target_os = "windows")]
-                    {
-                        use std::os::windows::process::CommandExt;
-                        const CREATE_NO_WINDOW: u32 = 0x08000000;
-                        cmd.creation_flags(CREATE_NO_WINDOW);
-                    }
-
-                    cmd.arg("-input")
-                        .arg(&tmp_json_path)
-                        .arg("-output")
-                        .arg(&output_dir)
-                        .arg("-options")
-                        .arg(&options_json)
-                        .arg("-filename")
-                        .arg(&filename);
-
-                    cmd.stdout(std::process::Stdio::piped());
-
-                    let mut child = match cmd.spawn() {
-                        Ok(c) => c,
-                        Err(e) => {
-                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                                let b2f = ui.global::<BudgetState>();
-                                b2f.set_status_type("error".into());
-                                b2f.set_status_message(
-                                    format!(
-                                        "Fehler beim Starten von {}: {e}",
-                                        sidecar_exe.display()
-                                    )
-                                    .into(),
-                                );
-                            });
-                            return;
-                        }
-                    };
-
-                    let Some(stdout) = child.stdout.take() else {
-                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                            let b2f = ui.global::<BudgetState>();
-                            b2f.set_status_type("error".into());
-                            b2f.set_status_message(
-                                "Konnte die Ausgabe des Hintergrund-Prozesses nicht lesen.".into(),
-                            );
-                        });
-                        return; // Thread sicher beenden
-                    };
-                    let reader = std::io::BufReader::new(stdout);
-
-                    use std::io::BufRead;
-                    for line in reader.lines().map_while(Result::ok) {
-                        if let Ok(msg) = serde_json::from_str::<ProgressMessage>(&line) {
+                    let ok_count = match crate::shared::process::run_sidecar_batch(
+                        &sidecar_exe,
+                        &result.successes,
+                        &output_dir,
+                        &filename,
+                        Some(&options_json),
+                        wb_hash,
+                        sh_hash,
+                        sh_opts,
+                        |msg| {
                             let _ = ui_handle_clone.upgrade_in_event_loop({
                                 let msg_status = msg.status.clone();
                                 let msg_text = msg.message.clone();
@@ -223,7 +136,6 @@ pub fn setup(ui: &MainWindow) {
 
                                 move |ui| {
                                     let b2f = ui.global::<BudgetState>();
-
                                     if msg_status == "error" {
                                         b2f.set_status_type("error".into());
                                     } else if msg_status == "done" {
@@ -241,34 +153,26 @@ pub fn setup(ui: &MainWindow) {
                                     }
                                 }
                             });
-                        }
-                    }
-
-                    let _ = child.wait();
-                    // Tempfile löscht sich automatisch am Ende des Scopes von tmp_json_file
-
-                    // --- RUST EXCEL PROTECTION ---
-                    // Wir durchlaufen alle generierten XLSX Dateien und wenden den schnellen XML-Schutz an
-                    if wb_hash.is_some() || sh_hash.is_some() {
-                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                            let b2f = ui.global::<BudgetState>();
-                            b2f.set_status_message("Wende Schutz an...".into());
-                        });
-
-                        use rayon::prelude::*;
-                        if let Ok(entries) = std::fs::read_dir(&output_dir) {
-                            let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
-                            paths.into_par_iter().for_each(|p| {
-                                if p.extension().is_some_and(|ext| ext == "xlsx") {
-                                    let _ = excel_protection::apply_protection_in_place(
-                                        &p,
-                                        wb_hash.as_ref(),
-                                        sh_hash.as_ref(),
-                                        sh_opts.as_ref(),
-                                    );
-                                }
+                        },
+                    ) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                let b2f = ui.global::<BudgetState>();
+                                b2f.set_status_type("error".into());
+                                b2f.set_status_message(e.into());
                             });
+                            return;
                         }
+                    };
+
+                    for data in &result.successes {
+                        let src_name = data
+                            .file_path
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        rows_info.push((src_name, "OK".into(), "Generiert".into()));
                     }
 
                     // 6. Fehler-CSV schreiben
@@ -278,7 +182,7 @@ pub fn setup(ui: &MainWindow) {
                     }
 
                     // 7. Tabelle aktualisieren
-                    let success_count = result.successes.len();
+                    let success_count = ok_count;
                     let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                         let b2f = ui.global::<BudgetState>();
 

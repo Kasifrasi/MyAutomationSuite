@@ -72,3 +72,99 @@ pub fn get_vorpruefung_path() -> std::path::PathBuf {
 
     exe_path
 }
+
+pub fn run_sidecar_batch<T: serde::Serialize>(
+    sidecar_exe: &std::path::Path,
+    data: &[T],
+    out_dir: &std::path::Path,
+    filename_pattern: &str,
+    options_json: Option<&str>,
+    wb_hash: Option<excel_protection::PrecomputedHash>,
+    sh_hash: Option<excel_protection::PrecomputedHash>,
+    sh_opts: Option<excel_protection::SheetProtectionOptions>,
+    mut on_progress: impl FnMut(crate::shared::models::ProgressMessage),
+) -> Result<u32, String> {
+    // 1. Temp-JSON schreiben
+    let mut tmp_json_file = tempfile::Builder::new()
+        .prefix("sidecar_batch_")
+        .suffix(".json")
+        .tempfile()
+        .map_err(|e| format!("Temp-JSON Fehler: {e}"))?;
+
+    let json = serde_json::to_string(data).map_err(|e| format!("JSON-Serialize Fehler: {e}"))?;
+
+    std::io::Write::write_all(&mut tmp_json_file, json.as_bytes())
+        .map_err(|e| format!("Temp-JSON Schreibfehler: {e}"))?;
+    let _ = std::io::Write::flush(&mut tmp_json_file);
+    let tmp_json_path = tmp_json_file.into_temp_path();
+
+    // 2. Prozess starten
+    let mut cmd = std::process::Command::new(sidecar_exe);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    cmd.arg("-input")
+        .arg(&tmp_json_path)
+        .arg("-output")
+        .arg(out_dir)
+        .arg("-filename")
+        .arg(filename_pattern);
+
+    if let Some(opt) = options_json {
+        cmd.arg("-options").arg(opt);
+    }
+
+    cmd.stdout(std::process::Stdio::piped());
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("Fehler beim Starten von {}: {e}", sidecar_exe.display()))?;
+
+    let stdout = child.stdout.take().ok_or("Konnte Ausgabe nicht lesen")?;
+    let reader = std::io::BufReader::new(stdout);
+    let mut ok_count = 0u32;
+
+    use std::io::BufRead;
+    for line in reader.lines().map_while(Result::ok) {
+        if let Ok(msg) = serde_json::from_str::<crate::shared::models::ProgressMessage>(&line) {
+            if msg.status == "success" || msg.status == "progress" {
+                ok_count += 1;
+            }
+            on_progress(msg);
+        }
+    }
+
+    let _ = child.wait();
+
+    // 3. Optionaler Excel-Schutz anwenden
+    if wb_hash.is_some() || sh_hash.is_some() {
+        on_progress(crate::shared::models::ProgressMessage {
+            status: "pending".into(),
+            message: "Wende Schutz an...".into(),
+            current: None,
+            total: None,
+            file: None,
+        });
+
+        use rayon::prelude::*;
+        if let Ok(entries) = std::fs::read_dir(out_dir) {
+            let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+            paths.into_par_iter().for_each(|p| {
+                if p.extension().is_some_and(|ext| ext == "xlsx") {
+                    let _ = excel_protection::apply_protection_in_place(
+                        &p,
+                        wb_hash.as_ref(),
+                        sh_hash.as_ref(),
+                        sh_opts.as_ref(),
+                    );
+                }
+            });
+        }
+    }
+
+    Ok(ok_count)
+}

@@ -1,9 +1,4 @@
-package report
-
-// Die folgenden Typen spiegeln die kanonische `budget_scanner::BudgetData` (Rust).
-// Es werden bewusst NUR die Felder deklariert, die das FB-Sidecar verwendet —
-// `encoding/json` ignoriert alle weiteren Felder. Ein neues Scanner-Feld lässt sich
-// hier mit einer einzigen zusätzlichen Struct-Zeile nutzbar machen.
+package models
 
 // FinancingRow ist eine Finanzierungszeile (typisierte Beträge, nil = leere Zelle).
 type FinancingRow struct {
@@ -44,8 +39,8 @@ type ScannedBudgetData struct {
 	Positions     []BudgetPosition `json:"positions"`
 }
 
-// amount liefert den Betrag oder 0, falls die Zelle leer war (nil).
-func amount(v *float64) float64 {
+// Amount liefert den Betrag oder 0, falls die Zelle leer war (nil).
+func Amount(v *float64) float64 {
 	if v == nil {
 		return 0
 	}

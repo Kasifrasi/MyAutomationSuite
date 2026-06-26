@@ -667,4 +667,3 @@ func (g *Generator) dbUpsertNamedRange(sheet string, name string, col, row int) 
 		RefersTo: fmt.Sprintf("'%s'!%s", sheet, absName(col, row)),
 	})
 }
-

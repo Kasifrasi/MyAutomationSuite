@@ -31,7 +31,7 @@ func StartPipeline(numWorkers int, jobs <-chan ReportJob) <-chan ReportResult {
 		go func(workerID int) {
 			defer wg.Done()
 			for job := range jobs {
-				err := processSingleJob(job)
+				err := ProcessSingleJob(job)
 				results <- ReportResult{JobID: job.JobID, Err: err}
 			}
 		}(i)
@@ -46,7 +46,7 @@ func StartPipeline(numWorkers int, jobs <-chan ReportJob) <-chan ReportResult {
 	return results
 }
 
-func processSingleJob(job ReportJob) error {
+func ProcessSingleJob(job ReportJob) error {
 	sprache, ok := job.Data.Sprache.(string)
 	if !ok || sprache == "" {
 		return fmt.Errorf("sprache in ReportData ist nicht definiert oder kein string")

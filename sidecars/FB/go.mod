@@ -1,6 +1,6 @@
 module excelize-test
 
-go 1.26.3
+go 1.26.2
 
 require (
 	github.com/richardlehane/mscfb v1.0.6 // indirect
@@ -12,4 +12,7 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
+	shared v0.0.0
 )
+
+replace shared => ../shared

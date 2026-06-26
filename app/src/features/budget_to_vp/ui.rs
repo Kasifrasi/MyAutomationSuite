@@ -135,124 +135,16 @@ pub fn setup(ui: &MainWindow) {
                     // (Quelldateiname, Status, Detail)
                     let mut rows_info: Vec<(String, String, String)> = Vec::new();
 
-                    // Alle Daten in EINEM Array zusammenfassen (Batch-Verarbeitung)
-                    let mut tmp_json_file = match tempfile::Builder::new()
-                        .prefix("vp_budgets_")
-                        .suffix(".json")
-                        .tempfile()
-                    {
-                        Ok(f) => f,
-                        Err(e) => {
-                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                                let vp = ui.global::<VorpruefungState>();
-                                vp.set_status_type("error".into());
-                                vp.set_status_message(format!("Temp-JSON Fehler: {e}").into());
-                            });
-                            return;
-                        }
-                    };
-
-                    let json = match serde_json::to_string(&result.successes) {
-                        Ok(j) => j,
-                        Err(e) => {
-                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                                let vp = ui.global::<VorpruefungState>();
-                                vp.set_status_type("error".into());
-                                vp.set_status_message(format!("JSON-Serialize Fehler: {e}").into());
-                            });
-                            return;
-                        }
-                    };
-
-                    if let Err(e) = std::io::Write::write_all(&mut tmp_json_file, json.as_bytes()) {
-                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                            let vp = ui.global::<VorpruefungState>();
-                            vp.set_status_type("error".into());
-                            vp.set_status_message(format!("Temp-JSON Schreibfehler: {e}").into());
-                        });
-                        return;
-                    }
-                    let _ = std::io::Write::flush(&mut tmp_json_file);
-                    let tmp_json_path = tmp_json_file.into_temp_path();
-
-                    let mut cmd = std::process::Command::new(&sidecar_exe);
-                    #[cfg(target_os = "windows")]
-                    {
-                        use std::os::windows::process::CommandExt;
-                        const CREATE_NO_WINDOW: u32 = 0x08000000;
-                        cmd.creation_flags(CREATE_NO_WINDOW);
-                    }
-
-                    cmd.arg("-input")
-                        .arg(&tmp_json_path)
-                        .arg("-output")
-                        .arg(&output_dir)
-                        .arg("-filename")
-                        .arg(&name);
-
-                    cmd.stdout(std::process::Stdio::piped());
-
-                    let mut child = match cmd.spawn() {
-                        Ok(c) => c,
-                        Err(e) => {
-                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                                let vp = ui.global::<VorpruefungState>();
-                                vp.set_status_type("error".into());
-                                vp.set_status_message(
-                                    format!(
-                                        "Fehler beim Starten von {}: {e}",
-                                        sidecar_exe.display()
-                                    )
-                                    .into(),
-                                );
-                            });
-                            return;
-                        }
-                    };
-
-                    let Some(stdout) = child.stdout.take() else {
-                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                            let vp = ui.global::<VorpruefungState>();
-                            vp.set_status_type("error".into());
-                            vp.set_status_message("Konnte Ausgabe nicht lesen.".into());
-                        });
-                        return;
-                    };
-
-                    use std::io::BufRead;
-                    #[derive(serde::Deserialize)]
-                    struct ProgressMessage {
-                        status: String,
-                        message: String,
-                        current: Option<u32>,
-                        total: Option<u32>,
-                        file: Option<String>,
-                    }
-
-                    let reader = std::io::BufReader::new(stdout);
-                    let mut ok_count = 0u32;
-
-                    for line in reader.lines().map_while(Result::ok) {
-                        if let Ok(msg) = serde_json::from_str::<ProgressMessage>(&line) {
-                            if msg.status == "success" || msg.status == "progress" {
-                                ok_count += 1;
-                                if let Some(ref f) = msg.file {
-                                    rows_info.push((
-                                        f.clone(),
-                                        "OK".into(),
-                                        "Vorprüfung generiert".into(),
-                                    ));
-                                }
-                            } else if msg.status == "error" {
-                                if let Some(ref f) = msg.file {
-                                    rows_info.push((
-                                        f.clone(),
-                                        "Fehler".into(),
-                                        msg.message.clone(),
-                                    ));
-                                }
-                            }
-
+                    let ok_count = match crate::shared::process::run_sidecar_batch(
+                        &sidecar_exe,
+                        &result.successes,
+                        &output_dir,
+                        &name,
+                        None,
+                        wb_hash,
+                        None,
+                        None,
+                        |msg| {
                             let _ = ui_handle_clone.upgrade_in_event_loop({
                                 let msg_status = msg.status.clone();
                                 let msg_text = msg.message.clone();
@@ -278,32 +170,26 @@ pub fn setup(ui: &MainWindow) {
                                     }
                                 }
                             });
-                        }
-                    }
-
-                    let _ = child.wait();
-
-                    // --- RUST EXCEL PROTECTION ---
-                    if wb_hash.is_some() {
-                        let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
-                            let vp = ui.global::<VorpruefungState>();
-                            vp.set_status_message("Wende Schutz an...".into());
-                        });
-
-                        use rayon::prelude::*;
-                        if let Ok(entries) = std::fs::read_dir(&output_dir) {
-                            let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
-                            paths.into_par_iter().for_each(|p| {
-                                if p.extension().is_some_and(|ext| ext == "xlsx") {
-                                    let _ = excel_protection::apply_protection_in_place(
-                                        &p,
-                                        wb_hash.as_ref(),
-                                        None,
-                                        None,
-                                    );
-                                }
+                        },
+                    ) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
+                                let vp = ui.global::<VorpruefungState>();
+                                vp.set_status_type("error".into());
+                                vp.set_status_message(e.into());
                             });
+                            return;
                         }
+                    };
+
+                    for data in &result.successes {
+                        let src_name = data
+                            .file_path
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        rows_info.push((src_name, "OK".into(), "Generiert".into()));
                     }
 
                     // 6. Scan-Fehler ergänzen + CSV

@@ -68,4 +68,5 @@ pub struct ProgressMessage {
     pub current: Option<u32>,
     pub total: Option<u32>,
     pub message: String,
+    pub file: Option<String>,
 }

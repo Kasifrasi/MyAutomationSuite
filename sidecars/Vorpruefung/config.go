@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"shared/models"
 )
 
 // ─── Eingabe-Schema (Wire-Format) ──────────────────────────────────────────────
@@ -13,41 +15,6 @@ import (
 // (Rust). Das Sidecar bekommt IMMER die vollständige BudgetData übergeben und
 // deklariert nur die Felder, die es nutzt — `encoding/json` ignoriert den Rest.
 // Ein neues Scanner-Feld wird hier mit einer einzigen zusätzlichen Zeile nutzbar.
-
-type scannedFinancingRow struct {
-	LC  *float64 `json:"lc"`
-	Y1  *float64 `json:"y1"`
-	Y2  *float64 `json:"y2"`
-	Y3  *float64 `json:"y3"`
-	EUR *float64 `json:"eur"`
-}
-
-type scannedFinancing struct {
-	Eigenmittel scannedFinancingRow `json:"eigenmittel"`
-	Drittmittel scannedFinancingRow `json:"drittmittel"`
-	KMWMittel   scannedFinancingRow `json:"kmw_mittel"`
-}
-
-type scannedPosition struct {
-	Number    string   `json:"number"`
-	Label     string   `json:"label"`
-	Kategorie string   `json:"kategorie"`
-	LC        *float64 `json:"lc"`
-	Y1        *float64 `json:"y1"`
-	Y2        *float64 `json:"y2"`
-	Y3        *float64 `json:"y3"`
-	EUR       *float64 `json:"eur"`
-}
-
-type scannedBudgetData struct {
-	Version       string            `json:"version"`
-	ProjectTitle  string            `json:"project_title"`
-	ProjectNumber string            `json:"project_number"`
-	Language      string            `json:"language"`
-	LocalCurrency string            `json:"local_currency"`
-	Financing     scannedFinancing  `json:"financing"`
-	Positions     []scannedPosition `json:"positions"`
-}
 
 // ─── Generator-Modell (intern) ─────────────────────────────────────────────────
 //
@@ -115,7 +82,7 @@ type ExpensePos struct {
 
 // ─── Mapping & Laden ───────────────────────────────────────────────────────────
 
-func incomeFromRow(r scannedFinancingRow) IncomeRow {
+func incomeFromRow(r models.FinancingRow) IncomeRow {
 	return IncomeRow{LC: r.LC, Y1: r.Y1, Y2: r.Y2, Y3: r.Y3, EUR: r.EUR}
 }
 
@@ -128,7 +95,7 @@ func isZeroAmount(v *float64) bool {
 // Hier lebt die VP-spezifische Formung (vormals in Rust): leere Kategorie-Kopfzeilen
 // und namenlose 0-Platzhalter werden ausgelassen; Drittmittel ohne Geber-Aufstellung
 // landen gesammelt unter "Sonstige".
-func mapScannedToBudget(s *scannedBudgetData) *BudgetConfig {
+func mapScannedToBudget(s *models.ScannedBudgetData) *BudgetConfig {
 	cfg := &BudgetConfig{
 		Eigenmittel: incomeFromRow(s.Financing.Eigenmittel),
 		KMWMittel:   incomeFromRow(s.Financing.KMWMittel),
@@ -200,7 +167,7 @@ func loadBudgetConfig(path string) (*BudgetConfig, error) {
 	}
 	// Bewusst NICHT DisallowUnknownFields: das Sidecar erhält die volle BudgetData
 	// und nutzt nur sein Subset; weitere Felder werden ignoriert.
-	var scanned scannedBudgetData
+	var scanned models.ScannedBudgetData
 	if err := json.Unmarshal(data, &scanned); err != nil {
 		return nil, fmt.Errorf("budget-datei (%s) ist kein gültiges JSON: %w", path, err)
 	}

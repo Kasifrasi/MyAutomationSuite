@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"shared/models"
+
 	"github.com/xuri/excelize/v2"
 )
 
@@ -103,7 +105,7 @@ func getTemplateBytes(path string) ([]byte, error) {
 }
 
 // MapScannedToReportData übersetzt das Rust Scanner-Modell in das Go Report-Modell
-func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
+func MapScannedToReportData(scanned *models.ScannedBudgetData) ReportData {
 	sprache := strings.ToLower(scanned.Language)
 
 	// Falls die Sprache nicht direkt passt, mappen wir sie grob
@@ -131,9 +133,9 @@ func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
 			Global:            3, // Standardmäßig 3 leere Zeilen pro Kategorie beibehalten
 			CategoryOverrides: make(map[int]int),
 		},
-		Eigenleistung: FundingRecord{Budget: amount(scanned.Financing.Eigenmittel.LC)},
-		Drittmittel:   FundingRecord{Budget: amount(scanned.Financing.Drittmittel.LC)},
-		KMWMittel:     FundingRecord{Budget: amount(scanned.Financing.KMWMittel.LC)},
+		Eigenleistung: FundingRecord{Budget: models.Amount(scanned.Financing.Eigenmittel.LC)},
+		Drittmittel:   FundingRecord{Budget: models.Amount(scanned.Financing.Drittmittel.LC)},
+		KMWMittel:     FundingRecord{Budget: models.Amount(scanned.Financing.KMWMittel.LC)},
 		Categories:    make(map[int][]CostItem),
 		HeaderBudgets: make(map[int]interface{}),
 	}
@@ -150,7 +152,7 @@ func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
 
 		if strings.HasSuffix(pos.Number, ".") {
 			// Es ist eine Hauptkategorie! Wir speichern uns ihren Wert.
-			budget := amount(pos.LC)
+			budget := models.Amount(pos.LC)
 			if budget >= 0 {
 				data.HeaderBudgets[catID] = budget
 			}
@@ -176,7 +178,7 @@ func MapScannedToReportData(scanned *ScannedBudgetData) ReportData {
 		// ACHTUNG: pos.Number nicht mehr dem Namen voranstellen!
 		item := CostItem{
 			Name:   pos.Label,
-			Budget: amount(pos.LC),
+			Budget: models.Amount(pos.LC),
 		}
 
 		data.Categories[catID] = append(data.Categories[catID], item)
