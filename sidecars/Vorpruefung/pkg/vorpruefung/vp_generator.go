@@ -57,3 +57,33 @@ func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 
 	return nil
 }
+
+// budgetExpenseCount liefert die Anzahl der Ausgaben-Zeilen (Positionen bei Config,
+// sonst die Standard-Kategorien). Bestimmt die Zeilenanzahl der FB-Ausgabentabellen.
+func (g *Generator) budgetExpenseCount() int {
+	if g.budget != nil {
+		return len(g.budget.Ausgaben)
+	}
+	return len(EXPENSE_CATEGORIES)
+}
+
+// fbExpenseRowsForCategory liefert die FB-Ausgaben-Zeilennummern (auf dem Blatt
+// "III. Finanzberichte"), die zu einer Kostenkategorie gehören. Die erste
+// Ausgaben-Datenzeile liegt bei FB_AUSG_FIRST_ROW; Position i ⇒ Zeile +i.
+func (g *Generator) fbExpenseRowsForCategory(cat string) []int {
+	var rows []int
+	if g.budget != nil {
+		for i, p := range g.budget.Ausgaben {
+			if p.Kategorie == cat {
+				rows = append(rows, FB_AUSG_FIRST_ROW+i)
+			}
+		}
+		return rows
+	}
+	for i, c := range EXPENSE_CATEGORIES {
+		if c == cat {
+			rows = append(rows, FB_AUSG_FIRST_ROW+i)
+		}
+	}
+	return rows
+}
