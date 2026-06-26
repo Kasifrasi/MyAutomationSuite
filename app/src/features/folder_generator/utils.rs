@@ -1,11 +1,11 @@
-use crate::{MainWindow, FolderState, Model};
+use crate::{FolderState, MainWindow, Model};
 use std::path::PathBuf;
 
 use slint::ComponentHandle;
 
 /// Sortiert wie Windows Explorer: Zahlen numerisch, dann alphabetisch (case-insensitive).
 pub fn sort_subfolders(items: &mut [slint::SharedString]) {
-    items.sort_by(|a, b| natural_cmp(&a.to_string(), &b.to_string()));
+    items.sort_by(|a, b| natural_cmp(a.as_str(), b.as_str()));
 }
 
 /// Natural sort: "2. Vertrag" < "10. Berichte" (nicht lexikographisch).
