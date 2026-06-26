@@ -15,6 +15,10 @@ const APP_NAME: &str = "automation-tool";
 fn main() -> Result<(), slint::PlatformError> {
     let ui = MainWindow::new()?;
 
+    // Fenster unter Windows maximiert starten
+    #[cfg(target_os = "windows")]
+    ui.window().set_maximized(true);
+
     // 3. Setup-Aufrufe (delegieren die Arbeit an die ui.rs Dateien)
     shell::ui::setup(&ui); // Theme & Dark Mode (falls deine Datei shell/ui.rs heißt)
     shell::updater::setup(&ui); // Updater Callbacks
