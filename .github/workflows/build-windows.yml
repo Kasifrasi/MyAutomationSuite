@@ -20,7 +20,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.22.x"
+          go-version: "1.26.2"
           cache-dependency-path: |
             sidecars/FB/go.sum
             sidecars/Vorpruefung/go.sum
