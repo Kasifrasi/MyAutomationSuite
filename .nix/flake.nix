@@ -60,7 +60,7 @@
           go build -o fb_generator.exe ./cmd/report_generator
           echo "Go Sidecar erfolgreich kompiliert (sidecars/FB/fb_generator.exe)"
           cd "$root/sidecars/Vorpruefung" || exit 1
-          go build -o vp_generator.exe .
+          go build -o vp_generator.exe ./cmd/vp_generator
           echo "Go Sidecar erfolgreich kompiliert (sidecars/Vorpruefung/vp_generator.exe)"
         '';
 
