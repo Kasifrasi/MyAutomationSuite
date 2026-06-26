@@ -4,11 +4,11 @@
 //
 // Ablauf:
 //
-//  1. Vorlage erzeugen (aus sidecars/Vorpruefung):
-//     go run . -budget budget.example.json -o vorpruefung_output.xlsx
+//  1. Vorlage erzeugen (aus Repo-Root via devshell):
+//     vorpruefung-budget                          # nutzt testdata/fixtures/budget.example.json
+//     vorpruefung-budget testdata/fixtures/mein.json tmp/vp.xlsx
 //  2. Vorlage befüllen:
-//     go run ./testfill -in vorpruefung_output.xlsx -budget budget.example.json \
-//     -o vorpruefung_befuellt.xlsx
+//     vorpruefung-fill                            # nutzt Standard-Pfade in tmp/
 //
 // Wichtig: Die Eingabewerte werden NICHT über einen excelize-Round-Trip geschrieben,
 // sondern direkt in den Worksheet-XML-Parts des .xlsx-Zips gepatcht. Dadurch bleiben
@@ -27,7 +27,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -173,9 +175,17 @@ type budgetCfg struct {
 func main() {
 	var inPath, budgetPath, outPath string
 	flag.StringVar(&inPath, "in", "vorpruefung_output.xlsx", "mit -budget erzeugte Eingabe-Vorlage (.xlsx)")
-	flag.StringVar(&budgetPath, "budget", "budget.example.json", "Budget-JSON (für Ausgaben-IDs/Anzahl)")
+	flag.StringVar(&budgetPath, "budget", "", "Budget-JSON (für Ausgaben-IDs/Anzahl); Standard: testdata/fixtures/budget.example.json im Repo-Root")
 	flag.StringVar(&outPath, "o", "vorpruefung_befuellt.xlsx", "Zieldatei (.xlsx)")
 	flag.Parse()
+
+	if budgetPath == "" {
+		root, err := repoRoot()
+		if err != nil {
+			log.Fatalf("repo-root nicht gefunden: %v", err)
+		}
+		budgetPath = filepath.Join(root, "testdata", "fixtures", "budget.example.json")
+	}
 
 	ausgIDs, err := loadAusgabenIDs(budgetPath)
 	if err != nil {
@@ -656,4 +666,13 @@ func date(y int, m time.Month, d int) time.Time {
 func excelSerial(t time.Time) float64 {
 	epoch := time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC)
 	return float64(int(t.Sub(epoch).Hours() / 24))
+}
+
+// repoRoot gibt den absoluten Pfad zum Git-Repo-Root zurück.
+func repoRoot() (string, error) {
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Clean(strings.TrimSpace(string(out))), nil
 }

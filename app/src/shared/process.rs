@@ -1,15 +1,15 @@
 pub fn get_fb_path() -> std::path::PathBuf {
     // Hier binden wir die kompilierte Go-Exe direkt in die Rust-Anwendung ein!
-    let sidecar_bytes = include_bytes!("../../../sidecars/FB/generator.exe");
+    let sidecar_bytes = include_bytes!("../../../sidecars/FB/fb_generator.exe");
 
     // Wir entpacken sie in den Temp-Ordner
     let dir = std::env::temp_dir().join("MyAutomationSuite");
     let _ = std::fs::create_dir_all(&dir);
 
     let exe_name = if cfg!(windows) {
-        "generator.exe"
+        "fb_generator.exe"
     } else {
-        "generator"
+        "fb_generator"
     };
     let exe_path = dir.join(exe_name);
 
@@ -39,17 +39,17 @@ pub fn get_fb_path() -> std::path::PathBuf {
 
 pub fn get_vorpruefung_path() -> std::path::PathBuf {
     // Vorpruefung-Sidecar (Go) wird wie der FB-Generator direkt eingebettet.
-    // Vor `cargo build` muss er via `build-go` als sidecars/Vorpruefung/vorpruefung.exe
+    // Vor `cargo build` muss er via `build-go` als sidecars/Vorpruefung/vp_generator.exe
     // erzeugt worden sein.
-    let sidecar_bytes = include_bytes!("../../../sidecars/Vorpruefung/vorpruefung.exe");
+    let sidecar_bytes = include_bytes!("../../../sidecars/Vorpruefung/vp_generator.exe");
 
     let dir = std::env::temp_dir().join("MyAutomationSuite");
     let _ = std::fs::create_dir_all(&dir);
 
     let exe_name = if cfg!(windows) {
-        "vorpruefung.exe"
+        "vp_generator.exe"
     } else {
-        "vorpruefung"
+        "vp_generator"
     };
     let exe_path = dir.join(exe_name);
 

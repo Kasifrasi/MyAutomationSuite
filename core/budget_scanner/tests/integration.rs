@@ -1,7 +1,7 @@
 use budget_scanner::{scan_directory, scan_file, write_failure_report, ScanError};
 use std::path::Path;
 
-const ASSETS: &str = "assets";
+const ASSETS: &str = "../../testdata/budgets";
 
 fn asset(name: &str) -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

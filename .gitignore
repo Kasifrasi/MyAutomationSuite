@@ -12,6 +12,19 @@ target/
 /tmp/
 
 # =========================
+# Go Sidecar Binaries (build artifacts, erzeugt von build-go)
+# =========================
+sidecars/FB/fb_generator.exe
+sidecars/Vorpruefung/vp_generator.exe
+
+# =========================
+# Testdaten (Excel-Dateien nicht versionieren — können echte Projektdaten enthalten)
+# Ausnahme: testdata/fixtures/ ist vollständig versioniert (synthetische JSON-Fixtures)
+# =========================
+testdata/budgets/*.xlsx
+testdata/budgets/*.xlsm
+
+# =========================
 # Office & Temporary Lock Files
 # =========================
 .~lock.*#

@@ -57,38 +57,44 @@
         script-build-go = pkgs.writeShellScriptBin "build-go" ''
           root="$(git rev-parse --show-toplevel)"
           cd "$root/sidecars/FB" || exit 1
-          go build -o generator.exe ./cmd/report_generator
-          echo "Go Sidecar erfolgreich kompiliert (sidecars/FB/generator.exe)"
+          go build -o fb_generator.exe ./cmd/report_generator
+          echo "Go Sidecar erfolgreich kompiliert (sidecars/FB/fb_generator.exe)"
           cd "$root/sidecars/Vorpruefung" || exit 1
-          go build -o vorpruefung.exe .
-          echo "Go Sidecar erfolgreich kompiliert (sidecars/Vorpruefung/vorpruefung.exe)"
+          go build -o vp_generator.exe .
+          echo "Go Sidecar erfolgreich kompiliert (sidecars/Vorpruefung/vp_generator.exe)"
         '';
 
         script-run-vorpruefung = pkgs.writeShellScriptBin "run-vorpruefung" ''
-          cd "$(git rev-parse --show-toplevel)/sidecars/Vorpruefung" || exit 1
-          go build && ./vorpruefung
+          root="$(git rev-parse --show-toplevel)"
+          cd "$root/sidecars/Vorpruefung" || exit 1
+          go build -o vp_generator.exe . && ./vp_generator.exe
         '';
 
         # Erzeugt die Vorlage MIT eingetragenem Budget (Blatt "I. Budget").
         # Nur der Generator-Aufruf trägt das Budget ein – testfill tut das NICHT.
+        # Inputs:  testdata/budgets/*.xlsx   (Scanner-Inputs)
+        #          testdata/fixtures/*.json  (kanonische BudgetData-JSON)
+        # Outputs: tmp/
         # Usage: vorpruefung-budget [budget.json] [output.xlsx]
         script-vorpruefung-budget = pkgs.writeShellScriptBin "vorpruefung-budget" ''
-          cd "$(git rev-parse --show-toplevel)/sidecars/Vorpruefung" || exit 1
-          budget="''${1:-budget.example.json}"
-          out="''${2:-vorpruefung_output.xlsx}"
-          go run . -budget "$budget" -o "$out"
+          root="$(git rev-parse --show-toplevel)"
+          budget="''${1:-$root/testdata/fixtures/budget.example.json}"
+          out="''${2:-$root/tmp/vp_output.xlsx}"
+          mkdir -p "$(dirname "$out")"
+          go run "$root/sidecars/Vorpruefung" -budget "$budget" -o "$out"
         '';
 
         # Voller Durchlauf: erst Vorlage mit Budget erzeugen, dann via testfill alle
         # weiteren Daten (Dashboard, KMW, Finanzberichte, Mittelanforderung) befüllen.
         # Usage: vorpruefung-fill [budget.json] [template.xlsx] [output.xlsx]
         script-vorpruefung-fill = pkgs.writeShellScriptBin "vorpruefung-fill" ''
-          cd "$(git rev-parse --show-toplevel)/sidecars/Vorpruefung" || exit 1
-          budget="''${1:-budget.example.json}"
-          template="''${2:-vorpruefung_output.xlsx}"
-          out="''${3:-vorpruefung_befuellt.xlsx}"
-          go run . -budget "$budget" -o "$template" || exit 1
-          go run ./testfill -in "$template" -budget "$budget" -o "$out"
+          root="$(git rev-parse --show-toplevel)"
+          budget="''${1:-$root/testdata/fixtures/budget.example.json}"
+          template="''${2:-$root/tmp/vp_template.xlsx}"
+          out="''${3:-$root/tmp/vp_befuellt.xlsx}"
+          mkdir -p "$(dirname "$template")"
+          go run "$root/sidecars/Vorpruefung" -budget "$budget" -o "$template" || exit 1
+          go run "$root/sidecars/Vorpruefung/testfill" -in "$template" -budget "$budget" -o "$out"
         '';
 
         # Build-time tools and dependencies
