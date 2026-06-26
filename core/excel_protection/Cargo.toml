@@ -1,7 +1,9 @@
 [package]
 name = "excel_protection"
-version = "0.3.2"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 
 [dependencies]
 base64 = "0.22"
@@ -10,4 +12,4 @@ quick-xml = "0.36"
 sha2 = "0.10"
 zip = { version = "2.2", default-features = false, features = ["deflate"] }
 getrandom = "0.2"
-serde = { version = "1.0", features = ["derive"] }
+serde = { workspace = true }

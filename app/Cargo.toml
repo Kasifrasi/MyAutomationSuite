@@ -17,8 +17,8 @@ serde = { workspace = true }
 budget_scanner = { workspace = true }
 folder_generator = { workspace = true }
 excel_protection = { workspace = true }
-serde_json = "1.0"
-rayon = "1.11"
+serde_json = { workspace = true }
+rayon = { workspace = true }
 rust_xlsxwriter = { workspace = true }
 
 slint = { workspace = true, features = ["backend-winit", "renderer-winit-software", "compat-1-2", "std"] }
