@@ -124,6 +124,7 @@
           cargo-nextest
           sccache
           slint-lsp
+          prek
 
           # --- Custom Scripts ---
           script-dev
@@ -172,6 +173,7 @@
             echo '  run-vorpruefung - Baut und führt das Vorpruefung Go-Skript aus'
             echo '  vorpruefung-budget [budget.json] [out.xlsx] - Vorlage NUR mit Budget erzeugen'
             echo '  vorpruefung-fill [budget.json] [tmpl.xlsx] [out.xlsx] - Budget + alle Testdaten (testfill)'
+            echo '  prek         - Git pre-commit hooks ausführen'
           '';
         };
       });
