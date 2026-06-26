@@ -125,6 +125,7 @@ fn build_updater(
         .repo_owner(GITHUB_OWNER)
         .repo_name(GITHUB_REPO)
         .bin_name(ASSET_NAME)
+        .identifier(ASSET_NAME)
         .current_version(env!("CARGO_PKG_VERSION"))
         .no_confirm(true);
 
