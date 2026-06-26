@@ -58,6 +58,8 @@ pub struct ExportOptions {
     pub hide_columns: bool,
     pub hide_lang_sheet: bool,
     pub empty_rows: i32,
+    #[serde(default)]
+    pub is_template: bool,
     #[serde(flatten)]
     pub protection: SheetProtectionOptions,
 }

@@ -112,4 +112,5 @@ type ReportOptions struct {
 	UnhideAllColumns bool   `json:"unhide_all_columns"`
 	UnhideAllRows    bool   `json:"unhide_all_rows"`
 	EmptyRows        int    `json:"empty_rows"`
+	IsTemplate       bool   `json:"is_template"`
 }

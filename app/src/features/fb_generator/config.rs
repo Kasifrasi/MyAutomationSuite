@@ -20,14 +20,14 @@ pub fn apply_fb_defaults(ui: &MainWindow) {
     fb.set_folder("".into());
 
     fb.set_categories(Categories {
-        cat1: 20,
+        cat1: 30,
         cat2: 20,
         cat3: 30,
         cat4: 30,
         cat5: 20,
-        cat6: 0,
-        cat7: 0,
-        cat8: 0,
+        cat6: 1, // Fest auf 1
+        cat7: 1, // Fest auf 1
+        cat8: 1, // Fest auf 1
     });
 
     fb.set_protect_sheet(true);
@@ -78,9 +78,9 @@ pub fn load_fb_settings(ui: &MainWindow) {
         cat3: s.categories[2],
         cat4: s.categories[3],
         cat5: s.categories[4],
-        cat6: s.categories[5],
-        cat7: s.categories[6],
-        cat8: s.categories[7],
+        cat6: 1, // Fest auf 1 setzen
+        cat7: 1, // Fest auf 1 setzen
+        cat8: 1, // Fest auf 1 setzen
     });
     fb.set_name(s.name.into());
     fb.set_protect_sheet(s.protect_sheet);
@@ -88,7 +88,7 @@ pub fn load_fb_settings(ui: &MainWindow) {
     fb.set_sheet_password(s.sheet_password.into());
     fb.set_workbook_password(s.workbook_password.into());
     fb.set_hide_columns(s.hide_columns);
-    fb.set_empty_rows(s.empty_rows);
+    fb.set_empty_rows(0); // Fest auf 0 setzen
     fb.set_sheet_permissions(s.protection.into());
 }
 

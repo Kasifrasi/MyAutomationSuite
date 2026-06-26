@@ -133,6 +133,7 @@ pub fn setup(ui: &MainWindow) {
                     hide_columns: fb.get_hide_columns(),
                     hide_lang_sheet: fb.get_hide_lang_sheet(),
                     empty_rows: fb.get_empty_rows(),
+                    is_template: true,
                     protection: sp.into(),
                 };
                 let wb_hash = if options.protect_workbook {

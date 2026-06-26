@@ -105,7 +105,7 @@ func getTemplateBytes(path string) ([]byte, error) {
 }
 
 // MapScannedToReportData übersetzt das Rust Scanner-Modell in das Go Report-Modell
-func MapScannedToReportData(scanned *models.ScannedBudgetData) ReportData {
+func MapScannedToReportData(scanned *models.ScannedBudgetData, isTemplate bool) ReportData {
 	sprache := strings.ToLower(scanned.Language)
 
 	// Falls die Sprache nicht direkt passt, mappen wir sie grob
@@ -187,43 +187,47 @@ func MapScannedToReportData(scanned *models.ScannedBudgetData) ReportData {
 	// 2.5 Wir trimmen NUR abschließende Items mit Budget = 0 und leerem Namen.
 	// Führende leere Items MÜSSEN erhalten bleiben, damit die Nummerierung (z.B. 1.1, 1.2, etc.)
 	// nicht verschoben wird. Nur was am Ende "leer" dranhängt, wird weggeschnitten.
-	for catID := 1; catID <= 8; catID++ {
-		lastValid := -1
+	// HINWEIS: Wenn es sich um eine "Vorlage" handelt (FB-Generator), trimmen wir nicht,
+	// da die leeren Positionen hier explizit vom Benutzer vorgegeben/gewünscht sind!
+	if !isTemplate {
+		for catID := 1; catID <= 8; catID++ {
+			lastValid := -1
 
-		// Definiert, was eine "gültige" Kostenposition ausmacht:
-		// Entweder das Budget ist nicht 0 ODER der Name der Position ist nicht leer.
-		isValidItem := func(item CostItem) bool {
-			// Typischerweise ist Name ein string. Falls nicht, prüfen wir das hier.
-			nameStr, ok := item.Name.(string)
-			if !ok {
-				nameStr = ""
+			// Definiert, was eine "gültige" Kostenposition ausmacht:
+			// Entweder das Budget ist nicht 0 ODER der Name der Position ist nicht leer.
+			isValidItem := func(item CostItem) bool {
+				// Typischerweise ist Name ein string. Falls nicht, prüfen wir das hier.
+				nameStr, ok := item.Name.(string)
+				if !ok {
+					nameStr = ""
+				}
+
+				// Budget ist ein interface{}, wir müssen den Typ sicher asserten,
+				// da float64(0) != int(0) sonst in Go true ergibt.
+				var budget float64
+				switch v := item.Budget.(type) {
+				case float64:
+					budget = v
+				case int:
+					budget = float64(v)
+				}
+
+				return budget != 0 || strings.TrimSpace(nameStr) != ""
 			}
 
-			// Budget ist ein interface{}, wir müssen den Typ sicher asserten,
-			// da float64(0) != int(0) sonst in Go true ergibt.
-			var budget float64
-			switch v := item.Budget.(type) {
-			case float64:
-				budget = v
-			case int:
-				budget = float64(v)
+			for i, item := range data.Categories[catID] {
+				if isValidItem(item) {
+					lastValid = i
+				}
 			}
 
-			return budget != 0 || strings.TrimSpace(nameStr) != ""
-		}
-
-		for i, item := range data.Categories[catID] {
-			if isValidItem(item) {
-				lastValid = i
+			if lastValid != -1 {
+				// Wir fangen immer bei 0 an und schneiden nur hinten ab!
+				data.Categories[catID] = data.Categories[catID][0 : lastValid+1]
+			} else {
+				// Alles war ungültig (kein Name, kein Budget) -> Kategorie komplett leeren
+				data.Categories[catID] = []CostItem{}
 			}
-		}
-
-		if lastValid != -1 {
-			// Wir fangen immer bei 0 an und schneiden nur hinten ab!
-			data.Categories[catID] = data.Categories[catID][0 : lastValid+1]
-		} else {
-			// Alles war ungültig (kein Name, kein Budget) -> Kategorie komplett leeren
-			data.Categories[catID] = []CostItem{}
 		}
 	}
 

@@ -141,6 +141,7 @@ export component CategorySpinBox inherits HorizontalLayout {
     in-out property <int> value: 0;
     in property <int> minimum: 0;
     in property <int> maximum: 999;
+    in property <bool> enabled: true;
     callback changed();
 
     spacing: 2px;
@@ -151,6 +152,7 @@ export component CategorySpinBox inherits HorizontalLayout {
         input-type: InputType.number;
         horizontal-alignment: right;
         text: root.value;
+        enabled: root.enabled;
         edited(text) => {
             if (text == "") {
                 root.value = 0;
@@ -165,11 +167,12 @@ export component CategorySpinBox inherits HorizontalLayout {
     Rectangle {
         width: 26px;
         border-radius: 4px;
-        background: minus-ta.has-hover ? Palette.control-background.darker(0.1) : Palette.control-background;
+        background: root.enabled ? (minus-ta.has-hover ? Palette.control-background.darker(0.1) : Palette.control-background) : Palette.control-background.darker(0.3);
         border-width: 1px;
-        border-color: Palette.border;
+        border-color: root.enabled ? Palette.border : Palette.border.transparentize(0.5);
 
         minus-ta := TouchArea {
+            enabled: root.enabled;
             mouse-cursor: pointer;
             clicked => {
                 if root.value > root.minimum {
@@ -186,6 +189,7 @@ export component CategorySpinBox inherits HorizontalLayout {
             color: Palette.foreground;
             horizontal-alignment: center;
             vertical-alignment: center;
+            opacity: root.enabled ? 1.0 : 0.3;
         }
     }
 
@@ -193,11 +197,12 @@ export component CategorySpinBox inherits HorizontalLayout {
     Rectangle {
         width: 26px;
         border-radius: 4px;
-        background: plus-ta.has-hover ? Palette.control-background.darker(0.1) : Palette.control-background;
+        background: root.enabled ? (plus-ta.has-hover ? Palette.control-background.darker(0.1) : Palette.control-background) : Palette.control-background.darker(0.3);
         border-width: 1px;
-        border-color: Palette.border;
+        border-color: root.enabled ? Palette.border : Palette.border.transparentize(0.5);
 
         plus-ta := TouchArea {
+            enabled: root.enabled;
             mouse-cursor: pointer;
             clicked => {
                 if root.value < root.maximum {
@@ -214,6 +219,7 @@ export component CategorySpinBox inherits HorizontalLayout {
             color: Palette.foreground;
             horizontal-alignment: center;
             vertical-alignment: center;
+            opacity: root.enabled ? 1.0 : 0.3;
         }
     }
 }
@@ -222,18 +228,21 @@ export component CategorySpinBox inherits HorizontalLayout {
 export component CategoryField inherits HorizontalLayout {
     in property <string> label;
     in-out property <int> val;
+    in property <bool> is-enabled: true;
 
     alignment: space-between;
 
     Text {
         text: root.label;
         font-size: 13px;
-        opacity: 0.8;
+        opacity: root.is-enabled ? 0.8 : 0.4;
+        vertical-alignment: center;
     }
 
     CategorySpinBox {
         value <=> root.val;
         max-width: 120px;
+        enabled: root.is-enabled;
         changed => {
             FBState.save-settings();
         }

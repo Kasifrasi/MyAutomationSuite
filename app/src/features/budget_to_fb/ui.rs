@@ -71,6 +71,7 @@ pub fn setup(ui: &MainWindow) {
                     hide_columns: b2f.get_hide_columns(),
                     hide_lang_sheet: b2f.get_hide_lang_sheet(),
                     empty_rows: b2f.get_empty_rows(),
+                    is_template: false,
                     protection: sp.into(),
                 };
 

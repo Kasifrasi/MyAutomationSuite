@@ -32,7 +32,7 @@ func main() {
 			return fmt.Errorf("fehler beim Preload: %v", initErr)
 		}
 
-		reportData := report.MapScannedToReportData(&data)
+		reportData := report.MapScannedToReportData(&data, globalOptions.IsTemplate)
 		reportData.Options = globalOptions
 		reportData.EmptyRows.Global = globalOptions.EmptyRows
 
