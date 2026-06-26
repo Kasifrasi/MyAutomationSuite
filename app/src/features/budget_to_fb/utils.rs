@@ -1,25 +1,27 @@
 use rust_xlsxwriter::{Workbook, XlsxError};
+use std::path::Path;
 
-pub fn generate_csv_string(headers: &[String], rows: &[Vec<String>]) -> String {
-    let mut wtr = csv::WriterBuilder::new()
-        .delimiter(b';')
-        .from_writer(vec![]);
-
-    let _ = wtr.write_record(headers);
-    for row in rows {
-        let _ = wtr.write_record(row);
-    }
-
-    let data = wtr.into_inner().unwrap_or_default();
-    String::from_utf8(data).unwrap_or_default()
-}
-
-/// Erstellt ein Excel-Workbook aus flachen Tabellendaten.
-/// Komplett entkoppelt von der UI-Bibliothek.
-pub fn create_excel_report(
+pub fn export_csv_to_file(
     headers: &[String],
     rows: &[Vec<String>],
-) -> Result<Workbook, XlsxError> {
+    path: &Path,
+) -> Result<(), std::io::Error> {
+    let mut wtr = csv::WriterBuilder::new().delimiter(b';').from_path(path)?;
+
+    wtr.write_record(headers)?;
+    for row in rows {
+        wtr.write_record(row)?;
+    }
+
+    wtr.flush()?;
+    Ok(())
+}
+
+pub fn export_excel_to_file(
+    headers: &[String],
+    rows: &[Vec<String>],
+    path: &Path,
+) -> Result<(), XlsxError> {
     let mut workbook = Workbook::new();
     let sheet = workbook.add_worksheet();
 
@@ -35,5 +37,5 @@ pub fn create_excel_report(
         }
     }
 
-    Ok(workbook)
+    workbook.save(path)
 }
