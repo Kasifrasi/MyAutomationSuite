@@ -16,5 +16,6 @@ accepted = [
   "GPL-3.0-only",
   "Unlicense",
   "LicenseRef-Slint-Royalty-free-2.0",
-  "LicenseRef-Slint-Software-3.0"
+  "LicenseRef-Slint-Software-3.0",
+  "CDLA-Permissive-2.0"
 ]
