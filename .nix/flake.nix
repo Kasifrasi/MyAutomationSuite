@@ -67,7 +67,7 @@
         script-run-vorpruefung = pkgs.writeShellScriptBin "run-vorpruefung" ''
           root="$(git rev-parse --show-toplevel)"
           cd "$root/sidecars/Vorpruefung" || exit 1
-          go build -o vp_generator.exe . && ./vp_generator.exe
+          go build -o vp_generator.exe ./cmd/vp_generator && ./vp_generator.exe
         '';
 
         # Erzeugt die Vorlage MIT eingetragenem Budget (Blatt "I. Budget").
@@ -81,7 +81,7 @@
           budget="$(readlink -f "''${1:-$root/testdata/fixtures/budget.example.json}")"
           out="$(readlink -f "''${2:-$root/tmp/vp_output.xlsx}")"
           mkdir -p "$(dirname "$out")"
-          go run -C "$root/sidecars/Vorpruefung" . -budget "$budget" -o "$out"
+          go run -C "$root/sidecars/Vorpruefung" ./cmd/vp_generator -budget "$budget" -o "$out"
         '';
 
         # Voller Durchlauf: erst Vorlage mit Budget erzeugen, dann via testfill alle
@@ -93,7 +93,7 @@
           template="$(readlink -f "''${2:-$root/tmp/vp_template.xlsx}")"
           out="$(readlink -f "''${3:-$root/tmp/vp_befuellt.xlsx}")"
           mkdir -p "$(dirname "$template")"
-          go run -C "$root/sidecars/Vorpruefung" . -budget "$budget" -o "$template" || exit 1
+          go run -C "$root/sidecars/Vorpruefung" ./cmd/vp_generator -budget "$budget" -o "$template" || exit 1
           go run -C "$root/sidecars/Vorpruefung" ./testfill -in "$template" -budget "$budget" -o "$out"
         '';
 
