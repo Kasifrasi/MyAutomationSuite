@@ -125,6 +125,7 @@
           sccache
           slint-lsp
           prek
+          trivy
 
           # --- Custom Scripts ---
           script-dev
