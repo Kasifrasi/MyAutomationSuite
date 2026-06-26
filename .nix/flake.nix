@@ -135,7 +135,7 @@
           script-vorpruefung-budget
           script-vorpruefung-fill
 
-          git-git-filter-repo
+          git-filter-repo
         ] ++ runtimeLibs;
 
       in {
