@@ -15,12 +15,15 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: "1.22.x"
+          cache-dependency-path: |
+            sidecars/FB/go.sum
+            sidecars/Vorpruefung/go.sum
 
       - name: Build Go Sidecars
         run: |
@@ -47,13 +50,13 @@ jobs:
         run: Compress-Archive -Path target/release/app.exe -DestinationPath target/release/app-x86_64-pc-windows-msvc.zip
 
       - name: Upload Windows Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: windows-build
           path: target/release/app-x86_64-pc-windows-msvc.zip
           if-no-files-found: error
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: target/release/app-x86_64-pc-windows-msvc.zip

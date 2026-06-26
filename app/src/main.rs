@@ -17,7 +17,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     // Fenster unter Windows maximiert starten
     #[cfg(target_os = "windows")]
-    ui.window().set_maximized(true);
+    ui.window().set_fullscreen(true);
 
     // 3. Setup-Aufrufe (delegieren die Arbeit an die ui.rs Dateien)
     shell::ui::setup(&ui); // Theme & Dark Mode (falls deine Datei shell/ui.rs heißt)
