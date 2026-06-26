@@ -7,46 +7,6 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-type StyleOptions struct {
-	Bold         bool
-	Italic       bool
-	Size         float64
-	FontColor    string
-	FillColor    string
-	HAlign       string
-	VAlign       string
-	NumFormat    string
-	NumFmtID     int
-	BorderTop    int
-	BorderBottom int
-	BorderLeft   int
-	BorderRight  int
-	BorderColor  string
-	WrapText     bool
-	Strike       bool
-}
-
-type Generator struct {
-	file           *excelize.File
-	styleCache     map[string]int
-	condStyleCache map[string]int
-
-	rangesAusgaben   []string
-	rangesEinnahmen1 []string
-	rangesEinnahmen2 []string
-	rangesMA         []string
-
-	dynArrayCells []dynArrayCell
-	evalFBSelNumAddr string
-
-	budget *BudgetConfig
-}
-
-type dynArrayCell struct {
-	sheet string
-	cell  string
-}
-
 func colLetter(col int) string {
 	name, _ := excelize.ColumnNumberToName(col)
 	return name

@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"shared/models"
+
+	"github.com/xuri/excelize/v2"
 )
 
 // ─── Eingabe-Schema (Wire-Format) ──────────────────────────────────────────────
@@ -31,7 +33,47 @@ type BudgetConfig struct {
 	Drittmittel     DrittmittelBlock
 	KMWMittel       IncomeRow
 	Ausgaben        []ExpensePos
-	ReserveFreigabe bool
+	ReserveFreigabe bool // Checkbox "Reserve freigeben" (falls im Scanner-Output vorhanden)
+}
+
+type StyleOptions struct {
+	Bold         bool
+	Italic       bool
+	Size         float64
+	FontColor    string
+	FillColor    string
+	HAlign       string
+	VAlign       string
+	NumFormat    string
+	NumFmtID     int
+	BorderTop    int
+	BorderBottom int
+	BorderLeft   int
+	BorderRight  int
+	BorderColor  string
+	WrapText     bool
+	Strike       bool
+}
+
+type Generator struct {
+	file           *excelize.File
+	styleCache     map[string]int
+	condStyleCache map[string]int
+
+	rangesAusgaben   []string
+	rangesEinnahmen1 []string
+	rangesEinnahmen2 []string
+	rangesMA         []string
+
+	dynArrayCells    []dynArrayCell
+	evalFBSelNumAddr string
+
+	budget *BudgetConfig
+}
+
+type dynArrayCell struct {
+	sheet string
+	cell  string
 }
 
 // IncomeRow ist eine Finanzierungszeile mit Lokalwährung, drei Jahreswerten und EUR.
