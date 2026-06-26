@@ -146,8 +146,7 @@ pub fn run_sidecar_batch<T: serde::Serialize>(
             status: "pending".into(),
             message: "Wende Schutz an...".into(),
             current: None,
-            total: None,
-            file: None,
+            total: None
         });
 
         use rayon::prelude::*;
