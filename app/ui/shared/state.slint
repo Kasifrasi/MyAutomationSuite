@@ -140,8 +140,11 @@ export global VorpruefungState {
     // Settings (persistent via confy)
     in-out property <bool> show-settings: true;
     in-out property <string> name;
+    in-out property <bool> protect-sheet;
     in-out property <bool> protect-workbook;
+    in-out property <string> sheet-password;
     in-out property <string> workbook-password;
+    in-out property <SheetPermissions> sheet-permissions;
 
     in-out property <string> status-type: "idle";
     in-out property <string> status-message: "";

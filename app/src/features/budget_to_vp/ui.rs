@@ -110,6 +110,11 @@ pub fn setup(ui: &MainWindow) {
                 let protect_workbook = vp.get_protect_workbook();
                 let wb_password = vp.get_workbook_password().to_string();
 
+                let protect_sheet = vp.get_protect_sheet();
+                let sh_password = vp.get_sheet_password().to_string();
+                let sh_opts: crate::shared::models::SheetProtectionOptions =
+                    vp.get_sheet_permissions().into();
+
                 let ui_handle_clone = ui_handle.clone();
                 std::thread::spawn(move || {
                     let start_time = std::time::Instant::now();
@@ -129,6 +134,12 @@ pub fn setup(ui: &MainWindow) {
                         None
                     };
 
+                    let sh_hash = if protect_sheet {
+                        Some(excel_protection::precompute_hash(&sh_password))
+                    } else {
+                        None
+                    };
+
                     let sidecar_exe = get_vorpruefung_path();
                     let total = result.successes.len() as u32;
 
@@ -142,8 +153,8 @@ pub fn setup(ui: &MainWindow) {
                         &name,
                         None,
                         wb_hash,
-                        None,
-                        None,
+                        sh_hash,
+                        Some(sh_opts),
                         |msg| {
                             let _ = ui_handle_clone.upgrade_in_event_loop({
                                 let msg_status = msg.status.clone();

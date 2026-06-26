@@ -120,12 +120,20 @@ export component VorpruefungPage inherits VerticalLayout {
                         }
                     }
 
-                    // Schutz: nur Mappenschutz (sperrt keine Eingabezellen)
+                    // Sichtbarkeit & Schutz
                     GridBox {
                         spacing: 10px;
                         Row {
                             SettingCheckBox {
-                                text: "Mappenschutz (Struktur sperren)";
+                                text: "Blattschutz";
+                                value <=> VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Mappenschutz";
                                 value <=> VorpruefungState.protect-workbook;
                                 changed => {
                                     VorpruefungState.save-settings();
@@ -134,8 +142,18 @@ export component VorpruefungPage inherits VerticalLayout {
                         }
                     }
 
+                    // Passwörter
                     HorizontalLayout {
                         spacing: 8px;
+                        PasswordField {
+                            label: "Blatt-Passwort";
+                            password <=> VorpruefungState.sheet-password;
+                            is-enabled: VorpruefungState.protect-sheet;
+                            changed => {
+                                VorpruefungState.save-settings();
+                            }
+                        }
+
                         PasswordField {
                             label: "Mappen-Passwort";
                             password <=> VorpruefungState.workbook-password;
@@ -146,11 +164,175 @@ export component VorpruefungPage inherits VerticalLayout {
                         }
                     }
 
+                    // Berechtigungen
                     Text {
-                        text: "Hinweis: Blattschutz wird hier bewusst nicht angeboten – die Prüfvorlage enthält viele Eingabefelder, die editierbar bleiben müssen.";
-                        font-size: 12px;
-                        opacity: 0.6;
-                        wrap: word-wrap;
+                        text: "Erlaubte Aktionen bei Blattschutz";
+                        font-size: 13px;
+                        font-weight: 600;
+                        opacity: VorpruefungState.protect-sheet ? 0.6 : 0.3;
+                    }
+
+                    GridBox {
+                        spacing: 2px;
+                        Row {
+                            SettingCheckBox {
+                                text: "Gesperrte Zellen wählen";
+                                value <=> VorpruefungState.sheet-permissions.select-locked-cells;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Spalten löschen";
+                                value <=> VorpruefungState.sheet-permissions.delete-columns;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+
+                        Row {
+                            SettingCheckBox {
+                                text: "Freie Zellen wählen";
+                                value <=> VorpruefungState.sheet-permissions.select-unlocked-cells;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Zeilen löschen";
+                                value <=> VorpruefungState.sheet-permissions.delete-rows;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+
+                        Row {
+                            SettingCheckBox {
+                                text: "Zellen formatieren";
+                                value <=> VorpruefungState.sheet-permissions.format-cells;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Sortieren";
+                                value <=> VorpruefungState.sheet-permissions.sort;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+
+                        Row {
+                            SettingCheckBox {
+                                text: "Spalten formatieren";
+                                value <=> VorpruefungState.sheet-permissions.format-columns;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Autofilter";
+                                value <=> VorpruefungState.sheet-permissions.auto-filter;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+
+                        Row {
+                            SettingCheckBox {
+                                text: "Zeilen formatieren";
+                                value <=> VorpruefungState.sheet-permissions.format-rows;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Pivot-Tabellen";
+                                value <=> VorpruefungState.sheet-permissions.pivot-tables;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+
+                        Row {
+                            SettingCheckBox {
+                                text: "Spalten einfügen";
+                                value <=> VorpruefungState.sheet-permissions.insert-columns;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Objekte bearbeiten";
+                                value <=> VorpruefungState.sheet-permissions.edit-objects;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+
+                        Row {
+                            SettingCheckBox {
+                                text: "Zeilen einfügen";
+                                value <=> VorpruefungState.sheet-permissions.insert-rows;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Szenarien";
+                                value <=> VorpruefungState.sheet-permissions.edit-scenarios;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
+
+                        Row {
+                            SettingCheckBox {
+                                text: "Links einfügen";
+                                value <=> VorpruefungState.sheet-permissions.insert-hyperlinks;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+
+                            SettingCheckBox {
+                                text: "Inhalte schützen";
+                                value <=> VorpruefungState.sheet-permissions.contents;
+                                is-enabled: VorpruefungState.protect-sheet;
+                                changed => {
+                                    VorpruefungState.save-settings();
+                                }
+                            }
+                        }
                     }
                 }
             }
