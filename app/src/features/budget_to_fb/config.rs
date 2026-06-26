@@ -1,5 +1,6 @@
-use crate::{MainWindow, BudgetState, SheetPermissions, APP_NAME};
 use super::models::B2fSettings;
+use crate::shared::models::SheetProtectionOptions;
+use crate::{BudgetState, MainWindow, APP_NAME};
 
 use slint::ComponentHandle;
 
@@ -19,24 +20,26 @@ pub fn apply_b2f_defaults(ui: &MainWindow) {
     b2f.set_hide_lang_sheet(true);
     b2f.set_show_settings(true);
 
-    b2f.set_sheet_permissions(SheetPermissions {
-        select_locked_cells: true,
-        select_unlocked_cells: true,
-        format_cells: true,
-        format_columns: true,
-        format_rows: true,
-        insert_columns: false,
-        insert_rows: false,
-        insert_hyperlinks: true,
-        delete_columns: true,
-        delete_rows: true,
-        sort: true,
-        auto_filter: true,
-        pivot_tables: true,
-        edit_objects: false,
-        edit_scenarios: true,
-        contents: false,
-    });
+    b2f.set_sheet_permissions(
+        SheetProtectionOptions {
+            select_locked_cells: true,
+            select_unlocked_cells: true,
+            format_cells: true,
+            format_columns: true,
+            format_rows: true,
+            insert_columns: false,
+            insert_rows: false,
+            insert_hyperlinks: true,
+            delete_columns: true,
+            delete_rows: true,
+            sort: true,
+            auto_filter: true,
+            pivot_tables: true,
+            edit_objects: false,
+            edit_scenarios: true,
+        }
+        .into(),
+    );
 }
 
 pub fn load_b2f_settings(ui: &MainWindow) {
@@ -73,7 +76,7 @@ pub fn save_b2f_settings(ui: &MainWindow) {
         hide_lang_sheet: b2f.get_hide_lang_sheet(),
         empty_rows: b2f.get_empty_rows(),
 
-        protection: b2f.get_sheet_permissions().into(), 
+        protection: b2f.get_sheet_permissions().into(),
     };
     let _ = confy::store(APP_NAME, "b2f", &s);
 }
