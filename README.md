@@ -4,7 +4,7 @@
 
 **Desktop-Automatisierungstool für Budget-Verarbeitung, Ordnergenerierung und Excel-Workflows**
 
-[![CI](https://github.com/<OWNER>/MyAutomationSuite/actions/workflows/ci.yml/badge.svg)](https://github.com/<OWNER>/MyAutomationSuite/actions/workflows/ci.yml)
+[![CI](https://github.com/Kasifrasi/MyAutomationSuite/actions/workflows/ci.yml/badge.svg)](https://github.com/Kasifrasi/MyAutomationSuite/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE-APACHE)
 ![Version](https://img.shields.io/badge/version-0.4.5-blue)
@@ -21,16 +21,15 @@ MyAutomationSuite ist eine native Windows-Desktop-Anwendung zur Automatisierung 
 
 ## Features
 
-| Feature | Beschreibung |
-|---|---|
-| **FB-Generator** | Erstellt Fachberichte/Reports über einen Go-Sidecar-Prozess |
-| **Budget → FB** | Konvertiert Budgetdaten in das FB-Ausgabeformat |
-| **Budget → VP** | Überführt Budgetdaten in das Vorprüfungs-Format |
-| **Budget Scanner** | Durchsucht Excel-Dateien nach Budget-relevanten Einträgen (parallelisiert mit Rayon) |
-| **Ordner-Generator** | Generiert validierte Projektordnerstrukturen inkl. CSV-Batch-Import |
-| **Excel Protection** | Versieht Excel-Dateien programmgesteuert mit Blattschutz |
-| **Auto-Update** | Integrierte Selbstaktualisierung über GitHub Releases |
-| **Dark Mode** | Automatische Erkennung und Umschaltung zwischen Hell-/Dunkelmodus |
+| Feature              | Beschreibung                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| **FB-Generator**     | Erstellt Finanzberichte/Reports über einen Go-Sidecar-Prozess                        |
+| **Budget → FB**      | Konvertiert Budgetdaten in das FB-Ausgabeformat                                      |
+| **Budget → VP**      | Überführt Budgetdaten in das Vorprüfungs-Format                                      |
+| **Budget Scanner**   | Durchsucht Excel-Dateien nach Budget-relevanten Einträgen (parallelisiert mit Rayon) |
+| **Ordner-Generator** | Generiert validierte Projektordnerstrukturen inkl. CSV-Batch-Import                  |
+| **Excel Protection** | Versieht Excel-Dateien programmgesteuert mit Blattschutz                             |
+| **Auto-Update**      | Integrierte Selbstaktualisierung über GitHub Releases                                |
 
 ## Architektur
 
@@ -59,13 +58,12 @@ Das Projekt ist als **Rust Workspace** organisiert mit drei internen Crates unte
 
 ## Voraussetzungen
 
-| Abhängigkeit | Version | Zweck |
-|---|---|---|
-| [Rust](https://rustup.rs/) | ≥ 1.87 | Hauptcompiler & Toolchain |
-| [Go](https://go.dev/dl/) | ≥ 1.26 | Sidecar-Prozesse |
-| Windows SDK | x86_64-pc-windows-msvc | Zielplattform |
+| Abhängigkeit               | Version | Zweck                     |
+| -------------------------- | ------- | ------------------------- |
+| [Rust](https://rustup.rs/) | ≥ 1.87  | Hauptcompiler & Toolchain |
+| [Go](https://go.dev/dl/)   | ≥ 1.26  | Sidecar-Prozesse          |
 
-> **Hinweis:** Die Anwendung ist primär für Windows konzipiert. Unter anderen Betriebssystemen können Anpassungen notwendig sein.
+**Unterstützte Plattformen:** Windows (x86_64) und Linux
 
 ## Installation & Build
 
