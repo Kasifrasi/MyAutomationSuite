@@ -27,7 +27,7 @@ jobs:
           cd sidecars/FB
           go build -o fb_generator.exe ./cmd/report_generator
           cd ../Vorpruefung
-          go build -o vp_generator.exe .
+          go build -o vp_generator.exe ./cmd/vp_generator
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
