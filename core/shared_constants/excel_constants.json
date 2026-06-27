@@ -1,0 +1,31 @@
+{
+  "budgets": {
+    "sheet_names": {
+      "de": "Budget",
+      "en": "Budget",
+      "fr": "Budget",
+      "es": "Presupuesto",
+      "pt": "Plano de custos e financiamento"
+    }
+  },
+  "finanzberichte": {
+    "sheet_names": {
+      "de": "Finanzbericht",
+      "en": "Financial Report",
+      "fr": "Rapport financier",
+      "es": "Informe financiero",
+      "pt": "Relatório financeiro"
+    }
+  },
+  "vorpruefung": {
+    "sheet_names": {
+      "dashboard": "Dashboard",
+      "budget": "I. Budget",
+      "kmw_mittel": "II. KMW-Mittel",
+      "finanzberichte": "III. Finanzberichte",
+      "ma": "IV. MA",
+      "auswertung": "V. AUSWERTUNG",
+      "daten": "Daten"
+    }
+  }
+}

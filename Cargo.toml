@@ -4,6 +4,7 @@ members = [
     "core/budget_scanner",
     "core/folder_generator",
     "core/excel_protection",
+    "core/shared_constants",
     "app"
 ]
 
@@ -14,7 +15,7 @@ rust-version = "1.87"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-# Deine internen Crates
+shared_constants = { path = "core/shared_constants" }
 budget_scanner = { path = "core/budget_scanner" }
 folder_generator = { path = "core/folder_generator" }
 excel_protection = { path = "core/excel_protection" }
