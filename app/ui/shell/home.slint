@@ -24,12 +24,14 @@ component MenuCard inherits Rectangle {
         spacing: 10px;
         alignment: center;
 
-        Image {
-            source: root.icon;
-            width: 32px;
-            height: 32px;
-            colorize: Palette.accent-background;
-            horizontal-alignment: center;
+        HorizontalLayout {
+            alignment: center;
+            Image {
+                source: root.icon;
+                width: 32px;
+                height: 32px;
+                colorize: Palette.accent-background;
+            }
         }
 
         Text {
@@ -89,22 +91,22 @@ export component HomePage inherits VerticalLayout {
             alignment: center;
 
             MenuCard {
-                title: "FB-Generator";
-                description: "Finanzberichtsvorlagen erstellen";
-                icon: @image-url("../shared/icons/chart.svg");
+                title: "Budget zu FB";
+                description: "Budgets in Finanzberichte konvertieren";
+                icon: @image-url("../shared/icons/xlsx.svg");
                 width: 260px;
                 clicked => {
-                    root.navigate("fb");
+                    root.navigate("budget");
                 }
             }
 
             MenuCard {
-                title: "Budget zu FB";
-                description: "Budgets in Finanzberichte konvertieren";
-                icon: @image-url("../shared/icons/convert.svg");
+                title: "FB-Generator";
+                description: "Finanzberichtsvorlagen erstellen";
+                icon: @image-url("../shared/icons/xlsx.svg");
                 width: 260px;
                 clicked => {
-                    root.navigate("budget");
+                    root.navigate("fb");
                 }
             }
         }
@@ -116,7 +118,7 @@ export component HomePage inherits VerticalLayout {
             MenuCard {
                 title: "Budget zu Prüfvorlage";
                 description: "Budgets scannen & Prüfvorlagen erstellen";
-                icon: @image-url("../shared/icons/chart.svg");
+                icon: @image-url("../shared/icons/xlsx.svg");
                 width: 260px;
                 clicked => {
                     root.navigate("vorpruefung");
