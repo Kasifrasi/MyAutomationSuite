@@ -64,6 +64,11 @@ const FALLBACK_MAX_COLS: usize = 26;
 static POSITION_RE: LazyLock<regex::Regex> =
     LazyLock::new(|| regex::Regex::new(r"^[1-8]\.\d*").unwrap());
 
+// Projektnummer-Erkennung im Dateinamen (Fallback wenn Excel-Feld leer ist)
+// Formate: nnnn_nnnn_nnn (numerisch) | b nn nnnn nnn (alpha)
+static PROJECT_NUM_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"\d{4}_\d{4}_\d{3}|[A-Za-z] \d{2} \d{4} \d{3}").unwrap());
+
 // ── Public Types ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -505,7 +510,14 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
         sheet_name: sheet_name.to_string(),
         version,
         project_title: get_str(1, 2),
-        project_number: get_str(1, 8),
+        project_number: {
+            let num = get_str(1, 8);
+            if !num.is_empty() {
+                num
+            } else {
+                extract_project_number_from_filename(path).unwrap_or_default()
+            }
+        },
         language: get_str(2, 8),
         local_currency: get_str(3, 8),
         cost_col1: col1,
@@ -516,6 +528,15 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
 }
 
 // ── Output-Ordner Logik ──────────────────────────────────────────────────────
+
+/// Extrahiert eine gültige Projektnummer aus dem Dateinamen.
+/// Unterstützt beide Formate: `nnnn_nnnn_nnn` und `b nn nnnn nnn`.
+fn extract_project_number_from_filename(path: &Path) -> Option<String> {
+    let file_stem = path.file_stem()?.to_str()?;
+    PROJECT_NUM_RE
+        .find(file_stem)
+        .map(|m| m.as_str().to_string())
+}
 
 /// Findet einen freien Output-Ordner: `base/output`, `base/output_1`, `base/output_2`, etc.
 pub fn resolve_output_dir(base: &Path) -> PathBuf {
@@ -530,5 +551,89 @@ pub fn resolve_output_dir(base: &Path) -> PathBuf {
             return candidate;
         }
         counter += 1;
+    }
+}
+
+// ── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extract_numeric_from_filename() {
+        let path = Path::new("/data/Budget_2025_0004_003.xlsx");
+        assert_eq!(
+            extract_project_number_from_filename(path).as_deref(),
+            Some("2025_0004_003")
+        );
+    }
+
+    #[test]
+    fn extract_numeric_at_start() {
+        let path = Path::new("2025_0004_003_Budget.xlsx");
+        assert_eq!(
+            extract_project_number_from_filename(path).as_deref(),
+            Some("2025_0004_003")
+        );
+    }
+
+    #[test]
+    fn extract_numeric_after_hyphen() {
+        let path = Path::new("Report-2025_0004_003.xlsx");
+        assert_eq!(
+            extract_project_number_from_filename(path).as_deref(),
+            Some("2025_0004_003")
+        );
+    }
+
+    #[test]
+    fn extract_alpha_from_filename() {
+        let path = Path::new("Budget_a 12 3456 789.xlsx");
+        assert_eq!(
+            extract_project_number_from_filename(path).as_deref(),
+            Some("a 12 3456 789")
+        );
+    }
+
+    #[test]
+    fn extract_alpha_uppercase() {
+        let path = Path::new("Pruefung_Z 99 9999 999_Report.xlsx");
+        assert_eq!(
+            extract_project_number_from_filename(path).as_deref(),
+            Some("Z 99 9999 999")
+        );
+    }
+
+    #[test]
+    fn extract_returns_none_when_no_match() {
+        let path = Path::new("Kosten-_und_Finanzierungsplan_V2.xlsx");
+        assert_eq!(extract_project_number_from_filename(path), None);
+    }
+
+    #[test]
+    fn excel_number_has_priority() {
+        // Simuliert: Excel-Feld ist nicht leer → Dateiname wird ignoriert
+        let excel_num = "2025_0004_003";
+        let fallback = extract_project_number_from_filename(Path::new("Budget_9999_9999_999.xlsx"));
+        let result = if !excel_num.is_empty() {
+            excel_num.to_string()
+        } else {
+            fallback.unwrap_or_default()
+        };
+        assert_eq!(result, "2025_0004_003");
+    }
+
+    #[test]
+    fn fallback_when_excel_empty() {
+        // Simuliert: Excel-Feld ist leer → Dateiname wird verwendet
+        let excel_num = "";
+        let fallback = extract_project_number_from_filename(Path::new("Budget_2025_0004_003.xlsx"));
+        let result = if !excel_num.is_empty() {
+            excel_num.to_string()
+        } else {
+            fallback.unwrap_or_default()
+        };
+        assert_eq!(result, "2025_0004_003");
     }
 }
