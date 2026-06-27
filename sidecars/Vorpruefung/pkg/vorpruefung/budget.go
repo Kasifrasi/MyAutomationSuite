@@ -2,13 +2,14 @@ package vorpruefung
 
 import (
 	"fmt"
+	"shared/constants"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
 
 const (
-	BG_SHEET_NAME = "I. Budget"
+	BG_SHEET_NAME = constants.VPSheetBUDGET
 	BG_TAB_COLOR  = "5B9BD5" // Medium Blue
 
 	BG_COL_LABEL  = 2

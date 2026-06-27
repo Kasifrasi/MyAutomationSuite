@@ -135,7 +135,7 @@ pub fn setup(ui: &MainWindow) {
                 let sheet_configs = if fb.get_protect_sheet() {
                     vec![excel_protection::SheetConfig {
                         name: String::new(),
-                        index: Some(0),
+                        index: None, // None = alle Sheets schützen
                         options: fb.get_sheet_permissions().into(),
                         password: Some(fb.get_sheet_password().to_string()),
                     }]

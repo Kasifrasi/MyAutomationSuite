@@ -2,13 +2,13 @@ package vorpruefung
 
 import (
 	"fmt"
+	"shared/constants"
 
 	"github.com/xuri/excelize/v2"
 )
 
-// ─── Layout-Konstanten ────────────────────────────────────────────────────────
 const (
-	KMW_SHEET_NAME = "II. KMW-Mittel"
+	KMW_SHEET_NAME = constants.VPSheetKMW_MITTEL
 	KMW_TAB_COLOR  = "FFFF00" // Gelb
 
 	KMW_COL_PERIODE  = 2  // B

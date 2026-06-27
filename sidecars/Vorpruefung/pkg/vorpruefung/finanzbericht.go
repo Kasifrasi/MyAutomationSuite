@@ -2,14 +2,14 @@ package vorpruefung
 
 import (
 	"fmt"
+	"shared/constants"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
 
-// ─── Layout-Konstanten ────────────────────────────────────────────────────────
 const (
-	SHEET_NAME = "III. Finanzberichte"
+	SHEET_NAME = constants.VPSheetFINANZBERICHTE
 	TAB_COLOR  = "FFFF00" // Gelb
 
 	TABLE_SPACING = 2

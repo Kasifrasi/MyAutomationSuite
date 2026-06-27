@@ -3,6 +3,7 @@ package report
 import (
 	"bytes"
 	"fmt"
+	"shared/constants"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
@@ -30,12 +31,22 @@ func NewExcelReport(path string) (*ExcelReport, error) {
 		return nil, err
 	}
 
-	// Das erste Blatt ist immer der Hauptbericht (z.B. "Finanzbericht", "Financial Report", etc.)
+	// Wir suchen nach dem richtigen Finanzberichts-Sheet anhand der Konstanten.
+	// Fallback: Das erste Arbeitsblatt, falls es abweicht.
 	sheets := f.GetSheetList()
 	if len(sheets) == 0 {
 		return nil, fmt.Errorf("keine Arbeitsblätter in der Datei gefunden")
 	}
-	sheetName := sheets[0]
+
+	sheetName := sheets[0] // Fallback
+	for _, s := range sheets {
+		for _, validName := range constants.FBSheetNames {
+			if s == validName {
+				sheetName = s
+				break
+			}
+		}
+	}
 
 	report := &ExcelReport{
 		file:         f,

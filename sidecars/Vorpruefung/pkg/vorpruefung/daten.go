@@ -2,12 +2,13 @@ package vorpruefung
 
 import (
 	"fmt"
+	"shared/constants"
 	"strings"
 )
 
 // CreateDatenSheet erstellt ein verstecktes Blatt "Daten" für Dropdowns und VSTACK-Zusammenfassungen.
 func (g *Generator) CreateDatenSheet() error {
-	ws := "Daten"
+	ws := constants.VPSheetDATEN
 	f := g.file
 
 	_, err := f.NewSheet(ws)
@@ -77,8 +78,8 @@ func (g *Generator) CreateDatenSheet() error {
 //   - MA-Grid (je MA-Tabelle × Kategorie: Periode, Rang, Kategorie, LC, EUR)
 func (g *Generator) evalBuildDatenHelfer(ws string) {
 	f := g.file
-	maSheet := MA_SHEET_NAME
-	fbSheet := SHEET_NAME
+	maSheet := constants.VPSheetMA
+	fbSheet := constants.VPSheetFINANZBERICHTE
 
 	dc := func(col, row int) string { return cellName(col, row) }
 

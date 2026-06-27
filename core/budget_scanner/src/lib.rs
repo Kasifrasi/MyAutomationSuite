@@ -1,6 +1,7 @@
 use calamine::{open_workbook_auto, Data, Range, Reader};
 use rayon::prelude::*;
 use serde::Serialize;
+use shared_constants;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -9,7 +10,6 @@ use walkdir::WalkDir;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const SHEET_NAMES: &[&str] = &["Budget", "Presupuesto", "Plano de custos e financiamento"];
 const STOP_WORDS: &[&str] = &["Summe", "Total", "TOTAL"];
 const COST_TERMS: &[&str] = &[
     "Gesamtkosten",
@@ -402,7 +402,7 @@ fn scan_file_inner(path: &Path) -> Result<BudgetData, ScanError> {
 
     let sheet_names = wb.sheet_names();
 
-    let sheet_name = SHEET_NAMES
+    let sheet_name = shared_constants::BUDGET_SHEET_NAMES
         .iter()
         .find(|&&name| sheet_names.iter().any(|s| s == name))
         .copied()

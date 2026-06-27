@@ -2,12 +2,13 @@ package vorpruefung
 
 import (
 	"fmt"
+	"shared/constants"
 
 	"github.com/xuri/excelize/v2"
 )
 
 const (
-	MA_SHEET_NAME  = "IV. MA"
+	MA_SHEET_NAME  = constants.VPSheetMA
 	MA_TAB_COLOR   = "FFFF00" // Gelb
 	MA_TABLE_COLS  = 3
 	MA_TABLE_SPACE = 1
@@ -46,7 +47,7 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 	g.maEnsurePeriodList(ws)
 
 	fbExists := true
-	if idx, _ := f.GetSheetIndex("III. Finanzberichte"); idx == -1 {
+	if idx, _ := f.GetSheetIndex(constants.VPSheetFINANZBERICHTE); idx == -1 {
 		fbExists = false
 	}
 

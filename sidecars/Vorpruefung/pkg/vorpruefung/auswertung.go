@@ -2,6 +2,7 @@ package vorpruefung
 
 import (
 	"fmt"
+	"shared/constants"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
@@ -21,10 +22,10 @@ import (
 // ==================================================================================
 
 const (
-	EVAL_SHEET_NAME   = "V. AUSWERTUNG"
+	EVAL_SHEET_NAME   = constants.VPSheetAUSWERTUNG
 	EVAL_TAB_COLOR    = "FFFF00" // Gelb
-	EVAL_DATEN_SHEET  = "Daten"
-	EVAL_FB_SHEET     = "III. Finanzberichte"
+	EVAL_DATEN_SHEET  = constants.VPSheetDATEN
+	EVAL_FB_SHEET     = constants.VPSheetFINANZBERICHTE
 	EVAL_STACK_MAXROW = 500
 
 	// Spalten der Vergleichstabellen (B … J)
@@ -145,7 +146,7 @@ func (g *Generator) CreateAuswertungSheet() error {
 	}
 
 	r := 2
-	g.evalBanner(ws, r, "V. AUSWERTUNG", "Automatische Prüfung von Mittelanforderung und Finanzberichten")
+	g.evalBanner(ws, r, constants.VPSheetAUSWERTUNG, "Automatische Prüfung von Mittelanforderung und Finanzberichten")
 	r += 3
 
 	// ========================================================================

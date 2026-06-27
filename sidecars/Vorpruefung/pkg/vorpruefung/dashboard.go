@@ -2,13 +2,13 @@ package vorpruefung
 
 import (
 	"fmt"
+	"shared/constants"
 
 	"github.com/xuri/excelize/v2"
 )
 
-// --- Layout-Konstanten ---
 const (
-	DB_SHEET_NAME = "Dashboard"
+	DB_SHEET_NAME = constants.VPSheetDASHBOARD
 	DB_TAB_COLOR  = "D3D3D3" // hellgrau
 
 	DB_C_LBL1 = 2

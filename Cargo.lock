@@ -674,6 +674,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "shared_constants",
  "thiserror 2.0.18",
  "walkdir",
 ]
