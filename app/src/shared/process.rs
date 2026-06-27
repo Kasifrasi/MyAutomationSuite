@@ -153,12 +153,8 @@ pub fn run_sidecar_batch<T: serde::Serialize>(
             let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
             paths.into_par_iter().for_each(|p| {
                 if p.extension().is_some_and(|ext| ext == "xlsx") {
-                    let _ = excel_protection::apply_protection(
-                        &p,
-                        wb_config.as_ref(),
-                        &sheet_configs,
-                        sheet_configs.is_empty(),
-                    );
+                    let _ =
+                        excel_protection::apply_protection(&p, wb_config.as_ref(), &sheet_configs);
                 }
             });
         }

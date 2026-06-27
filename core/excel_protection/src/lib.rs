@@ -14,10 +14,14 @@ use quick_xml::reader::Reader;
 use quick_xml::writer::Writer;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Cursor, Read, Write};
+use std::sync::{Mutex, OnceLock};
 use zip::write::FileOptions;
 use zip::{ZipArchive, ZipWriter};
+
+static HASH_CACHE: OnceLock<Mutex<HashMap<String, PrecomputedHash>>> = OnceLock::new();
 
 const DEFAULT_SPIN_COUNT: u32 = 100_000;
 
@@ -157,118 +161,8 @@ pub struct SheetConfig {
 ///
 /// Parst `xl/workbook.xml` (Sheet-Name → rId) und `xl/_rels/workbook.xml.rels`
 /// (rId → Dateipfad). Nicht auflösbare Namen/Indizes werden stillschweigend übersprungen.
-fn resolve_sheet_files(
-    archive: &mut ZipArchive<File>,
-    sheet_names: &[String],
-    sheet_indices: &[u32],
-) -> Vec<String> {
-    if sheet_names.is_empty() && sheet_indices.is_empty() {
-        return Vec::new();
-    }
 
-    let mut sheet_to_rid: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-    let mut ordered_sheets: Vec<(String, String)> = Vec::new(); // (name, rid) in Workbook-Reihenfolge
-
-    if let Ok(mut wb_file) = archive.by_name("xl/workbook.xml") {
-        let mut content = Vec::new();
-        let _ = wb_file.read_to_end(&mut content);
-        let mut reader = Reader::from_reader(&content[..]);
-        let mut buf = Vec::new();
-        loop {
-            match reader.read_event_into(&mut buf) {
-                Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) => {
-                    if std::str::from_utf8(e.name().into_inner()).unwrap_or("") == "sheet" {
-                        let mut name = String::new();
-                        let mut rid = String::new();
-                        for attr in e.attributes().flatten() {
-                            match std::str::from_utf8(attr.key.into_inner()).unwrap_or("") {
-                                "name" => {
-                                    name =
-                                        std::str::from_utf8(&attr.value).unwrap_or("").to_string();
-                                }
-                                "r:id" | "id" => {
-                                    rid =
-                                        std::str::from_utf8(&attr.value).unwrap_or("").to_string();
-                                }
-                                _ => {}
-                            }
-                        }
-                        if !name.is_empty() && !rid.is_empty() {
-                            ordered_sheets.push((name.clone(), rid.clone()));
-                            sheet_to_rid.insert(name, rid);
-                        }
-                    }
-                }
-                Ok(Event::Eof) | Err(_) => break,
-                _ => {}
-            }
-            buf.clear();
-        }
-    }
-
-    let mut rid_to_file: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-
-    if let Ok(mut rels_file) = archive.by_name("xl/_rels/workbook.xml.rels") {
-        let mut content = Vec::new();
-        let _ = rels_file.read_to_end(&mut content);
-        let mut reader = Reader::from_reader(&content[..]);
-        let mut buf = Vec::new();
-        loop {
-            match reader.read_event_into(&mut buf) {
-                Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) => {
-                    if std::str::from_utf8(e.name().into_inner()).unwrap_or("") == "Relationship" {
-                        let mut id = String::new();
-                        let mut target = String::new();
-                        for attr in e.attributes().flatten() {
-                            match std::str::from_utf8(attr.key.into_inner()).unwrap_or("") {
-                                "Id" => {
-                                    id = std::str::from_utf8(&attr.value).unwrap_or("").to_string();
-                                }
-                                "Target" => {
-                                    target =
-                                        std::str::from_utf8(&attr.value).unwrap_or("").to_string();
-                                }
-                                _ => {}
-                            }
-                        }
-                        if !id.is_empty() && !target.is_empty() {
-                            rid_to_file.insert(id, format!("xl/{}", target));
-                        }
-                    }
-                }
-                Ok(Event::Eof) | Err(_) => break,
-                _ => {}
-            }
-            buf.clear();
-        }
-    }
-
-    let mut result = Vec::new();
-
-    // Nach Name auflösen
-    for name in sheet_names {
-        if let Some(rid) = sheet_to_rid.get(name) {
-            if let Some(file) = rid_to_file.get(rid) {
-                result.push(file.clone());
-            }
-        }
-    }
-
-    // Nach Index auflösen (0-basiert, entspricht der Reihenfolge im Workbook)
-    for &idx in sheet_indices {
-        if let Some((_, rid)) = ordered_sheets.get(idx as usize) {
-            if let Some(file) = rid_to_file.get(rid) {
-                result.push(file.clone());
-            }
-        }
-    }
-
-    result
-}
-
-/// 1. Hash-Berechnung (wird nur 1x pro Batch aufgerufen)
+/// 1. Hash-Berechnung (wird nun global gecacht)
 pub fn precompute_hash(password: &str) -> PrecomputedHash {
     if password.is_empty() {
         return PrecomputedHash {
@@ -277,6 +171,13 @@ pub fn precompute_hash(password: &str) -> PrecomputedHash {
             spin_count: DEFAULT_SPIN_COUNT,
             password_empty: true,
         };
+    }
+
+    let cache = HASH_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(guard) = cache.lock() {
+        if let Some(cached) = guard.get(password) {
+            return cached.clone();
+        }
     }
 
     let pw_utf16: Vec<u8> = password
@@ -297,12 +198,18 @@ pub fn precompute_hash(password: &str) -> PrecomputedHash {
         hash = next_hasher.finalize();
     }
 
-    PrecomputedHash {
+    let result = PrecomputedHash {
         salt_b64: general_purpose::STANDARD.encode(FIXED_SALT),
         hash_b64: general_purpose::STANDARD.encode(hash),
         spin_count: DEFAULT_SPIN_COUNT,
         password_empty: false,
+    };
+
+    if let Ok(mut guard) = cache.lock() {
+        guard.insert(password.to_string(), result.clone());
     }
+
+    result
 }
 
 // ============================================================================
@@ -553,123 +460,122 @@ pub fn apply_protection(
     path: &std::path::Path,
     wb_config: Option<&WorkbookConfig>,
     sheet_configs: &[SheetConfig],
-    protect_all_sheets: bool,
 ) -> Result<(), ProtectionError> {
     // 1. Workbook-Hash precomputen
     let wb_hash = wb_config
         .and_then(|c| c.password.as_deref())
         .map(precompute_hash);
 
-    // 2. Per-Sheet-Hashes precomputen (gleiche Passwörter werden nur 1x gehasht)
-    let mut hash_cache: std::collections::HashMap<String, PrecomputedHash> =
-        std::collections::HashMap::new();
     let empty_hash = PrecomputedHash {
         salt_b64: String::new(),
         hash_b64: String::new(),
         spin_count: DEFAULT_SPIN_COUNT,
         password_empty: true,
     };
-    for config in sheet_configs {
-        if let Some(pw) = config.password.as_deref() {
-            hash_cache
-                .entry(pw.to_string())
-                .or_insert_with(|| precompute_hash(pw));
-        }
-    }
 
-    let mut sheet_hashes: std::collections::HashMap<
-        String,
-        (PrecomputedHash, &SheetProtectionOptions),
-    > = std::collections::HashMap::new();
-    for config in sheet_configs {
-        let hash = config
-            .password
-            .as_deref()
-            .and_then(|pw| hash_cache.get(pw))
-            .cloned()
-            .unwrap_or_else(|| empty_hash.clone());
-        sheet_hashes.insert(config.name.clone(), (hash, &config.options));
-    }
-
-    // 3. Geschützte Sheet-Dateien auflösen
-    let protected_files: std::collections::HashSet<String> = if protect_all_sheets {
-        std::collections::HashSet::new() // leer = alle schützen (wird unten geprüft)
-    } else {
-        let names: Vec<String> = sheet_configs
-            .iter()
-            .filter(|c| !c.name.is_empty())
-            .map(|c| c.name.clone())
-            .collect();
-        let indices: Vec<u32> = sheet_configs.iter().filter_map(|c| c.index).collect();
-        let file = File::open(path)?;
-        let mut archive = ZipArchive::new(file)?;
-        resolve_sheet_files(&mut archive, &names, &indices)
-            .into_iter()
-            .collect()
-    };
-
-    // Index → Name aus workbook.xml auflösen
-    let mut index_to_name: std::collections::HashMap<u32, String> =
+    // 2. File -> (Name, Index) Mapping aufbauen (aus workbook.xml und workbook.xml.rels)
+    let mut file_to_sheet: std::collections::HashMap<String, (String, u32)> =
         std::collections::HashMap::new();
-    let mut resolved_sheet_configs: Vec<SheetConfig> = Vec::new();
 
-    if !protect_all_sheets {
-        let file = File::open(path)?;
-        let mut archive = ZipArchive::new(file)?;
-        if let Ok(mut wb_file) = archive.by_name("xl/workbook.xml") {
-            let mut content = Vec::new();
-            let _ = wb_file.read_to_end(&mut content);
-            let mut reader = Reader::from_reader(&content[..]);
-            let mut buf = Vec::new();
-            let mut idx = 0u32;
-            loop {
-                match reader.read_event_into(&mut buf) {
-                    Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) => {
-                        if std::str::from_utf8(e.name().into_inner()).unwrap_or("") == "sheet" {
-                            let mut sname = String::new();
-                            for attr in e.attributes().flatten() {
-                                if std::str::from_utf8(attr.key.into_inner()).unwrap_or("")
-                                    == "name"
-                                {
-                                    sname =
+    let mut ordered_sheets: Vec<(String, String)> = Vec::new();
+    let file = File::open(path)?;
+    let mut archive = ZipArchive::new(file)?;
+
+    if let Ok(mut wb_file) = archive.by_name("xl/workbook.xml") {
+        let mut content = Vec::new();
+        let _ = wb_file.read_to_end(&mut content);
+        let mut reader = Reader::from_reader(&content[..]);
+        let mut buf = Vec::new();
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) => {
+                    if std::str::from_utf8(e.name().into_inner()).unwrap_or("") == "sheet" {
+                        let mut name = String::new();
+                        let mut rid = String::new();
+                        for attr in e.attributes().flatten() {
+                            match std::str::from_utf8(attr.key.into_inner()).unwrap_or("") {
+                                "name" => {
+                                    name =
                                         std::str::from_utf8(&attr.value).unwrap_or("").to_string();
                                 }
+                                "r:id" | "id" => {
+                                    rid =
+                                        std::str::from_utf8(&attr.value).unwrap_or("").to_string();
+                                }
+                                _ => {}
                             }
-                            index_to_name.insert(idx, sname);
-                            idx += 1;
+                        }
+                        if !name.is_empty() && !rid.is_empty() {
+                            ordered_sheets.push((name, rid));
                         }
                     }
-                    Ok(Event::Eof) | Err(_) => break,
-                    _ => {}
                 }
-                buf.clear();
+                Ok(Event::Eof) | Err(_) => break,
+                _ => {}
             }
-        }
-
-        // Index-basierte Configs auf aufgelöste Namen mappen
-        for config in sheet_configs {
-            if config.name.is_empty() {
-                if let Some(sheet_idx) = config.index {
-                    if let Some(resolved_name) = index_to_name.get(&sheet_idx) {
-                        resolved_sheet_configs.push(SheetConfig {
-                            name: resolved_name.clone(),
-                            index: config.index,
-                            options: config.options.clone(),
-                            password: config.password.clone(),
-                        });
-                    }
-                }
-            } else {
-                resolved_sheet_configs.push(config.clone());
-            }
+            buf.clear();
         }
     }
 
-    let sheet_configs = if !protect_all_sheets && !resolved_sheet_configs.is_empty() {
-        resolved_sheet_configs.as_slice()
-    } else {
-        sheet_configs
-    };
+    let mut rid_to_file: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+    if let Ok(mut rels_file) = archive.by_name("xl/_rels/workbook.xml.rels") {
+        let mut content = Vec::new();
+        let _ = rels_file.read_to_end(&mut content);
+        let mut reader = Reader::from_reader(&content[..]);
+        let mut buf = Vec::new();
+        loop {
+            match reader.read_event_into(&mut buf) {
+                Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) => {
+                    if std::str::from_utf8(e.name().into_inner()).unwrap_or("") == "Relationship" {
+                        let mut id = String::new();
+                        let mut target = String::new();
+                        for attr in e.attributes().flatten() {
+                            match std::str::from_utf8(attr.key.into_inner()).unwrap_or("") {
+                                "Id" => {
+                                    id = std::str::from_utf8(&attr.value).unwrap_or("").to_string();
+                                }
+                                "Target" => {
+                                    target =
+                                        std::str::from_utf8(&attr.value).unwrap_or("").to_string();
+                                }
+                                _ => {}
+                            }
+                        }
+                        if !id.is_empty() && !target.is_empty() {
+                            rid_to_file.insert(id, format!("xl/{}", target));
+                        }
+                    }
+                }
+                Ok(Event::Eof) | Err(_) => break,
+                _ => {}
+            }
+            buf.clear();
+        }
+    }
+
+    for (idx, (name, rid)) in ordered_sheets.into_iter().enumerate() {
+        if let Some(file_path) = rid_to_file.get(&rid) {
+            file_to_sheet.insert(file_path.clone(), (name, idx as u32));
+        }
+    }
+
+    // 3. Konfigurationen mappen
+    let mut default_config: Option<&SheetConfig> = None;
+    let mut name_to_config: std::collections::HashMap<String, &SheetConfig> =
+        std::collections::HashMap::new();
+    let mut index_to_config: std::collections::HashMap<u32, &SheetConfig> =
+        std::collections::HashMap::new();
+
+    for config in sheet_configs {
+        if config.name.is_empty() && config.index.is_none() {
+            default_config = Some(config);
+        } else if !config.name.is_empty() {
+            name_to_config.insert(config.name.clone(), config);
+        } else if let Some(idx) = config.index {
+            index_to_config.insert(idx, config);
+        }
+    }
 
     // 4. ZIP einmal durchlaufen und Schutz injizieren
     let file = File::open(path)?;
@@ -694,59 +600,34 @@ pub fn apply_protection(
                 .unix_permissions(unix_mode.unwrap_or(0o644));
             zip_writer.start_file(&name, options)?;
             zip_writer.write_all(&new_xml)?;
-        } else if name.starts_with("xl/worksheets/sheet") && name.ends_with(".xml") {
-            // Sheet-Index aus Dateiname ableiten (sheet1.xml → Index 0)
-            let file_index = name
-                .trim_start_matches("xl/worksheets/sheet")
-                .trim_end_matches(".xml")
-                .parse::<u32>()
-                .ok()
-                .map(|i| i.saturating_sub(1));
-            let resolved_name = file_index.and_then(|i| index_to_name.get(&i).cloned());
+        } else if name.starts_with("xl/worksheets/") && name.ends_with(".xml") {
+            let sheet_info = file_to_sheet.get(&name);
 
-            let should_protect = protect_all_sheets
-                || protected_files.contains(&name)
-                || resolved_name
-                    .as_ref()
-                    .is_some_and(|rn| sheet_hashes.contains_key(rn));
+            let sheet_config = sheet_info
+                .and_then(|(sname, sidx)| {
+                    name_to_config
+                        .get(sname)
+                        .copied()
+                        .or_else(|| index_to_config.get(sidx).copied())
+                })
+                .or(default_config);
 
-            if should_protect {
-                // Per-Sheet-Konfiguration suchen
-                let sheet_config = if protect_all_sheets {
-                    // "Alle schützen": Erster Config gilt als Template für jedes Sheet
-                    sheet_configs.first()
-                } else {
-                    sheet_configs.iter().find(|c| {
-                        protected_files.contains(&name)
-                            || (!c.name.is_empty()
-                                && resolved_name.as_ref().is_some_and(|rn| rn == &c.name))
-                    })
-                };
+            if let Some(config) = sheet_config {
+                let hash = config
+                    .password
+                    .as_deref()
+                    .map(precompute_hash)
+                    .unwrap_or_else(|| empty_hash.clone());
 
-                match sheet_config {
-                    Some(config) => {
-                        let (hash, opts) = sheet_hashes.get(&config.name).unwrap();
-                        let mut content = Vec::new();
-                        entry.read_to_end(&mut content)?;
-                        let new_xml = inject_sheet_protection(&content, Some(hash), Some(*opts))?;
-                        let options = FileOptions::<()>::default()
-                            .compression_method(compression)
-                            .unix_permissions(unix_mode.unwrap_or(0o644));
-                        zip_writer.start_file(&name, options)?;
-                        zip_writer.write_all(&new_xml)?;
-                    }
-                    None => {
-                        // Kein spezifisches Config: Schutz ohne Optionen (nur Passwort oder leer)
-                        let mut content = Vec::new();
-                        entry.read_to_end(&mut content)?;
-                        let new_xml = inject_sheet_protection(&content, None, None)?;
-                        let options = FileOptions::<()>::default()
-                            .compression_method(compression)
-                            .unix_permissions(unix_mode.unwrap_or(0o644));
-                        zip_writer.start_file(&name, options)?;
-                        zip_writer.write_all(&new_xml)?;
-                    }
-                }
+                let mut content = Vec::new();
+                entry.read_to_end(&mut content)?;
+                let new_xml =
+                    inject_sheet_protection(&content, Some(&hash), Some(&config.options))?;
+                let options = FileOptions::<()>::default()
+                    .compression_method(compression)
+                    .unix_permissions(unix_mode.unwrap_or(0o644));
+                zip_writer.start_file(&name, options)?;
+                zip_writer.write_all(&new_xml)?;
             } else {
                 zip_writer.raw_copy_file(entry)?;
             }
