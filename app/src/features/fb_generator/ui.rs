@@ -124,41 +124,37 @@ pub fn setup(ui: &MainWindow) {
 
                 let name_clone = name.clone();
 
-                let sp = fb.get_sheet_permissions();
+                let wb_config = if fb.get_protect_workbook() {
+                    Some(excel_protection::WorkbookConfig {
+                        password: Some(fb.get_workbook_password().to_string()),
+                    })
+                } else {
+                    None
+                };
+
+                let sheet_configs = if fb.get_protect_sheet() {
+                    vec![excel_protection::SheetConfig {
+                        name: String::new(),
+                        index: Some(0),
+                        options: fb.get_sheet_permissions().into(),
+                        password: Some(fb.get_sheet_password().to_string()),
+                    }]
+                } else {
+                    vec![]
+                };
+
                 let options = ExportOptions {
-                    protect_sheet: fb.get_protect_sheet(),
-                    protect_workbook: fb.get_protect_workbook(),
-                    sheet_password: fb.get_sheet_password().to_string(),
-                    workbook_password: fb.get_workbook_password().to_string(),
                     hide_columns: fb.get_hide_columns(),
                     hide_lang_sheet: fb.get_hide_lang_sheet(),
                     empty_rows: fb.get_empty_rows(),
                     is_template: true,
-                    protection: sp.into(),
-                };
-                let wb_hash = if options.protect_workbook {
-                    Some(excel_protection::precompute_hash(
-                        &options.workbook_password,
-                    ))
-                } else {
-                    None
-                };
-
-                let sh_hash = if options.protect_sheet {
-                    Some(excel_protection::precompute_hash(&options.sheet_password))
-                } else {
-                    None
-                };
-
-                let sh_opts = if options.protect_sheet {
-                    Some(options.protection.clone()) // Nutzt direkt das fertige Protection-Objekt
-                } else {
-                    None
+                    workbook: wb_config.clone().unwrap_or_default(),
+                    sheet_configs: sheet_configs.clone(),
                 };
 
                 let mut sidecar_options = options.clone();
-                sidecar_options.protect_sheet = false;
-                sidecar_options.protect_workbook = false;
+                sidecar_options.workbook = excel_protection::WorkbookConfig::default();
+                sidecar_options.sheet_configs = vec![];
                 let options_json = serde_json::to_string(&sidecar_options).unwrap_or_default();
 
                 let ui_handle_clone = ui_handle.clone();
@@ -330,7 +326,7 @@ pub fn setup(ui: &MainWindow) {
                     let _ = child.wait();
                     // Tempfile wird am Ende des Scopes automatisch gelöscht
 
-                    if wb_hash.is_some() || sh_hash.is_some() {
+                    if wb_config.is_some() || !sheet_configs.is_empty() {
                         let _ = ui_handle_clone.upgrade_in_event_loop(move |ui| {
                             let fb = ui.global::<FBState>();
                             fb.set_status_message("Wende Schutz an...".into());
@@ -341,11 +337,11 @@ pub fn setup(ui: &MainWindow) {
                             let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
                             paths.into_par_iter().for_each(|p| {
                                 if p.extension().is_some_and(|ext| ext == "xlsx") {
-                                    let _ = excel_protection::apply_protection_in_place(
+                                    let _ = excel_protection::apply_protection(
                                         &p,
-                                        wb_hash.as_ref(),
-                                        sh_hash.as_ref(),
-                                        sh_opts.as_ref(),
+                                        wb_config.as_ref(),
+                                        &sheet_configs,
+                                        true,
                                     );
                                 }
                             });

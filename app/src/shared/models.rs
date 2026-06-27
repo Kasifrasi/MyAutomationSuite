@@ -51,17 +51,17 @@ impl From<SheetPermissions> for SheetProtectionOptions {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ExportOptions {
-    pub protect_sheet: bool,
-    pub protect_workbook: bool,
-    pub sheet_password: String,
-    pub workbook_password: String,
     pub hide_columns: bool,
     pub hide_lang_sheet: bool,
     pub empty_rows: i32,
     #[serde(default)]
     pub is_template: bool,
-    #[serde(flatten)]
-    pub protection: SheetProtectionOptions,
+    /// Mappenschutz: None = kein Schutz, Some = Schutz mit/ohne Passwort
+    #[serde(default)]
+    pub workbook: excel_protection::WorkbookConfig,
+    /// Blattschutz: pro Sheet individuelle Optionen und Passwort
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sheet_configs: Vec<excel_protection::SheetConfig>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -69,5 +69,5 @@ pub struct ProgressMessage {
     pub status: String,
     pub current: Option<u32>,
     pub total: Option<u32>,
-    pub message: String
+    pub message: String,
 }

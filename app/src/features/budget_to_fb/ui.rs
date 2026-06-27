@@ -62,43 +62,37 @@ pub fn setup(ui: &MainWindow) {
 
                 let filename = b2f.get_name().to_string();
 
-                let sp = b2f.get_sheet_permissions();
+                let wb_config = if b2f.get_protect_workbook() {
+                    Some(excel_protection::WorkbookConfig {
+                        password: Some(b2f.get_workbook_password().to_string()),
+                    })
+                } else {
+                    None
+                };
+
+                let sheet_configs = if b2f.get_protect_sheet() {
+                    vec![excel_protection::SheetConfig {
+                        name: String::new(),
+                        index: Some(0),
+                        options: b2f.get_sheet_permissions().into(),
+                        password: Some(b2f.get_sheet_password().to_string()),
+                    }]
+                } else {
+                    vec![]
+                };
+
                 let options = ExportOptions {
-                    protect_sheet: b2f.get_protect_sheet(),
-                    protect_workbook: b2f.get_protect_workbook(),
-                    sheet_password: b2f.get_sheet_password().to_string(),
-                    workbook_password: b2f.get_workbook_password().to_string(),
                     hide_columns: b2f.get_hide_columns(),
                     hide_lang_sheet: b2f.get_hide_lang_sheet(),
                     empty_rows: b2f.get_empty_rows(),
                     is_template: false,
-                    protection: sp.into(),
+                    workbook: wb_config.clone().unwrap_or_default(),
+                    sheet_configs: sheet_configs.clone(),
                 };
 
-                let wb_hash = if options.protect_workbook {
-                    Some(excel_protection::precompute_hash(
-                        &options.workbook_password,
-                    ))
-                } else {
-                    None
-                };
-
-                let sh_hash = if options.protect_sheet {
-                    Some(excel_protection::precompute_hash(&options.sheet_password))
-                } else {
-                    None
-                };
-
-                let sh_opts = if options.protect_sheet {
-                    Some(options.protection.clone()) // 2. Einfach das fertige Objekt klonen!
-                } else {
-                    None
-                };
-
-                // Dem Sidecar geben wir protect=false mit, damit es das XML nicht verschlüsselt
                 let mut sidecar_options = options.clone();
-                sidecar_options.protect_sheet = false;
-                sidecar_options.protect_workbook = false;
+                sidecar_options.workbook = excel_protection::WorkbookConfig::default();
+                sidecar_options.sheet_configs = vec![];
                 let options_json = serde_json::to_string(&sidecar_options).unwrap_or_default();
 
                 let ui_handle_clone = ui_handle.clone();
@@ -125,9 +119,8 @@ pub fn setup(ui: &MainWindow) {
                         &output_dir,
                         &filename,
                         Some(&options_json),
-                        wb_hash,
-                        sh_hash,
-                        sh_opts,
+                        wb_config.clone(),
+                        sheet_configs.clone(),
                         |msg| {
                             let _ = ui_handle_clone.upgrade_in_event_loop({
                                 let msg_status = msg.status.clone();

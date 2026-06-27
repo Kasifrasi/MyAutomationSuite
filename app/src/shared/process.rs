@@ -79,9 +79,8 @@ pub fn run_sidecar_batch<T: serde::Serialize>(
     out_dir: &std::path::Path,
     filename_pattern: &str,
     options_json: Option<&str>,
-    wb_hash: Option<excel_protection::PrecomputedHash>,
-    sh_hash: Option<excel_protection::PrecomputedHash>,
-    sh_opts: Option<excel_protection::SheetProtectionOptions>,
+    wb_config: Option<excel_protection::WorkbookConfig>,
+    sheet_configs: Vec<excel_protection::SheetConfig>,
     mut on_progress: impl FnMut(crate::shared::models::ProgressMessage),
 ) -> Result<u32, String> {
     // 1. Temp-JSON schreiben
@@ -141,12 +140,12 @@ pub fn run_sidecar_batch<T: serde::Serialize>(
     let _ = child.wait();
 
     // 3. Optionaler Excel-Schutz anwenden
-    if wb_hash.is_some() || sh_hash.is_some() {
+    if wb_config.is_some() || !sheet_configs.is_empty() {
         on_progress(crate::shared::models::ProgressMessage {
             status: "pending".into(),
             message: "Wende Schutz an...".into(),
             current: None,
-            total: None
+            total: None,
         });
 
         use rayon::prelude::*;
@@ -154,11 +153,11 @@ pub fn run_sidecar_batch<T: serde::Serialize>(
             let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
             paths.into_par_iter().for_each(|p| {
                 if p.extension().is_some_and(|ext| ext == "xlsx") {
-                    let _ = excel_protection::apply_protection_in_place(
+                    let _ = excel_protection::apply_protection(
                         &p,
-                        wb_hash.as_ref(),
-                        sh_hash.as_ref(),
-                        sh_opts.as_ref(),
+                        wb_config.as_ref(),
+                        &sheet_configs,
+                        sheet_configs.is_empty(),
                     );
                 }
             });

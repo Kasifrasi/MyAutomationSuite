@@ -107,13 +107,24 @@ pub fn setup(ui: &MainWindow) {
                 vp.set_status_type("pending".into());
                 vp.set_status_message("Scannt Budgets...".into());
 
-                let protect_workbook = vp.get_protect_workbook();
-                let wb_password = vp.get_workbook_password().to_string();
+                let wb_config = if vp.get_protect_workbook() {
+                    Some(excel_protection::WorkbookConfig {
+                        password: Some(vp.get_workbook_password().to_string()),
+                    })
+                } else {
+                    None
+                };
 
-                let protect_sheet = vp.get_protect_sheet();
-                let sh_password = vp.get_sheet_password().to_string();
-                let sh_opts: crate::shared::models::SheetProtectionOptions =
-                    vp.get_sheet_permissions().into();
+                let sheet_configs = if vp.get_protect_sheet() {
+                    vec![excel_protection::SheetConfig {
+                        name: String::new(),
+                        index: Some(0),
+                        options: vp.get_sheet_permissions().into(),
+                        password: Some(vp.get_sheet_password().to_string()),
+                    }]
+                } else {
+                    vec![]
+                };
 
                 let ui_handle_clone = ui_handle.clone();
                 std::thread::spawn(move || {
@@ -128,18 +139,6 @@ pub fn setup(ui: &MainWindow) {
                     let output_dir = budget_scanner::resolve_output_dir(&out_base_path);
                     let _ = std::fs::create_dir_all(&output_dir);
 
-                    let wb_hash = if protect_workbook {
-                        Some(excel_protection::precompute_hash(&wb_password))
-                    } else {
-                        None
-                    };
-
-                    let sh_hash = if protect_sheet {
-                        Some(excel_protection::precompute_hash(&sh_password))
-                    } else {
-                        None
-                    };
-
                     let sidecar_exe = get_vorpruefung_path();
                     let total = result.successes.len() as u32;
 
@@ -152,9 +151,8 @@ pub fn setup(ui: &MainWindow) {
                         &output_dir,
                         &name,
                         None,
-                        wb_hash,
-                        sh_hash,
-                        Some(sh_opts),
+                        wb_config.clone(),
+                        sheet_configs.clone(),
                         |msg| {
                             let _ = ui_handle_clone.upgrade_in_event_loop({
                                 let msg_status = msg.status.clone();
