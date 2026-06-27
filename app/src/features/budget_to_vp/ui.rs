@@ -151,6 +151,7 @@ pub fn setup(ui: &MainWindow) {
                         &output_dir,
                         &name,
                         None,
+                        Some("FFFAE5".to_string()),
                         wb_config.clone(),
                         sheet_configs.clone(),
                         |msg| {

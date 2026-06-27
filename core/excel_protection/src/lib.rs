@@ -460,6 +460,7 @@ pub fn apply_protection(
     path: &std::path::Path,
     wb_config: Option<&WorkbookConfig>,
     sheet_configs: &[SheetConfig],
+    color_routing_hex: Option<&str>,
 ) -> Result<(), ProtectionError> {
     // 1. Workbook-Hash precomputen
     let wb_hash = wb_config
@@ -560,6 +561,33 @@ pub fn apply_protection(
         }
     }
 
+    // Color Routing pre-pass
+    let mut target_fill_id = None;
+    let mut yellow_style_ids = std::collections::HashSet::new();
+    let mut unlocked_style_ids = std::collections::HashSet::new();
+    let mut modified_styles_xml = None;
+    let mut explicit_lock_id = 0;
+
+    if let Some(hex) = color_routing_hex {
+        if let Ok(mut styles_file) = archive.by_name("xl/styles.xml") {
+            let mut content = String::new();
+            if styles_file.read_to_string(&mut content).is_ok() {
+                if let Some(fill_id) = crate::color_routing::find_fill_id_by_color(&content, hex) {
+                    target_fill_id = Some(fill_id);
+                    if let Ok((rewritten, lock_id)) = crate::color_routing::rewrite_styles_xml(
+                        &content,
+                        fill_id,
+                        &mut yellow_style_ids,
+                        &mut unlocked_style_ids,
+                    ) {
+                        modified_styles_xml = Some(rewritten);
+                        explicit_lock_id = lock_id;
+                    }
+                }
+            }
+        }
+    }
+
     // 3. Konfigurationen mappen
     let mut default_config: Option<&SheetConfig> = None;
     let mut name_to_config: std::collections::HashMap<String, &SheetConfig> =
@@ -600,6 +628,12 @@ pub fn apply_protection(
                 .unix_permissions(unix_mode.unwrap_or(0o644));
             zip_writer.start_file(&name, options)?;
             zip_writer.write_all(&new_xml)?;
+        } else if name == "xl/styles.xml" && modified_styles_xml.is_some() {
+            let options = FileOptions::<()>::default()
+                .compression_method(compression)
+                .unix_permissions(unix_mode.unwrap_or(0o644));
+            zip_writer.start_file(&name, options)?;
+            zip_writer.write_all(modified_styles_xml.as_ref().unwrap().as_bytes())?;
         } else if name.starts_with("xl/worksheets/") && name.ends_with(".xml") {
             let sheet_info = file_to_sheet.get(&name);
 
@@ -612,6 +646,21 @@ pub fn apply_protection(
                 })
                 .or(default_config);
 
+            let mut content = Vec::new();
+            entry.read_to_end(&mut content)?;
+
+            let mut worksheet_xml = content;
+            if target_fill_id.is_some() {
+                if let Ok(rewritten) = crate::color_routing::rewrite_worksheet_xml(
+                    &worksheet_xml,
+                    &yellow_style_ids,
+                    &unlocked_style_ids,
+                    explicit_lock_id,
+                ) {
+                    worksheet_xml = rewritten;
+                }
+            }
+
             if let Some(config) = sheet_config {
                 let hash = config
                     .password
@@ -619,17 +668,19 @@ pub fn apply_protection(
                     .map(precompute_hash)
                     .unwrap_or_else(|| empty_hash.clone());
 
-                let mut content = Vec::new();
-                entry.read_to_end(&mut content)?;
-                let new_xml =
-                    inject_sheet_protection(&content, Some(&hash), Some(&config.options))?;
+                let final_xml =
+                    inject_sheet_protection(&worksheet_xml, Some(&hash), Some(&config.options))?;
                 let options = FileOptions::<()>::default()
                     .compression_method(compression)
                     .unix_permissions(unix_mode.unwrap_or(0o644));
                 zip_writer.start_file(&name, options)?;
-                zip_writer.write_all(&new_xml)?;
+                zip_writer.write_all(&final_xml)?;
             } else {
-                zip_writer.raw_copy_file(entry)?;
+                let options = FileOptions::<()>::default()
+                    .compression_method(compression)
+                    .unix_permissions(unix_mode.unwrap_or(0o644));
+                zip_writer.start_file(&name, options)?;
+                zip_writer.write_all(&worksheet_xml)?;
             }
         } else {
             zip_writer.raw_copy_file(entry)?;
@@ -640,3 +691,6 @@ pub fn apply_protection(
     std::fs::rename(&temp_path, path)?;
     Ok(())
 }
+
+pub mod color_routing;
+pub use color_routing::apply_color_routing_protection;

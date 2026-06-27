@@ -119,6 +119,7 @@ pub fn setup(ui: &MainWindow) {
                         &output_dir,
                         &filename,
                         Some(&options_json),
+                        None,
                         wb_config.clone(),
                         sheet_configs.clone(),
                         |msg| {

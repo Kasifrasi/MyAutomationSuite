@@ -3,6 +3,8 @@ package vorpruefung
 import (
 	"fmt"
 	"github.com/xuri/excelize/v2"
+	"shared/constants"
+	"shared/excel"
 )
 
 // UIProgress sendet Statusmeldungen im JSON-Format an die Standardausgabe,
@@ -10,6 +12,24 @@ import (
 
 func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 	f := excelize.NewFile()
+
+	orderedSheets := []string{
+		constants.VPSheetDASHBOARD,
+		constants.VPSheetBUDGET,
+		constants.VPSheetKMW_MITTEL,
+		constants.VPSheetFINANZBERICHTE,
+		constants.VPSheetMA,
+		constants.VPSheetAUSWERTUNG,
+		constants.VPSheetDATEN,
+	}
+
+	for _, sheet := range orderedSheets {
+		f.NewSheet(sheet)
+	}
+
+	if err := excel.UnlockSheetsArea(f, orderedSheets); err != nil {
+		return fmt.Errorf("fehler beim Entsperren der Arbeitsbereiche: %w", err)
+	}
 
 	g := &Generator{
 		file:           f,

@@ -341,6 +341,7 @@ pub fn setup(ui: &MainWindow) {
                                         &p,
                                         wb_config.as_ref(),
                                         &sheet_configs,
+                                        None,
                                     );
                                 }
                             });
