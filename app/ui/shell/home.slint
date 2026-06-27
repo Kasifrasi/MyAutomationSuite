@@ -55,6 +55,9 @@ component MenuCard inherits Rectangle {
 
 export component HomePage inherits VerticalLayout {
     callback navigate(string);
+    in-out property <bool> color-a: true;
+    in-out property <bool> color-b: false;
+    in-out property <bool> color-c: false;
 
     spacing: 20px;
 
@@ -82,56 +85,93 @@ export component HomePage inherits VerticalLayout {
         }
     }
 
-    // Kacheln (2×2-Raster)
-    VerticalLayout {
-        spacing: 16px;
+    // Kacheln (2×2-Raster) mit Farbwechsel-Rahmen
+    HorizontalLayout {
+        alignment: center;
+        Rectangle {
+            horizontal-stretch: 0;
+            border-radius: 20px;
+            border-width: 2px;
+            border-color: color-a ? #6366f1 : color-b ? #ec4899 : color-c ? #14b8a6 : #f59e0b;
+            background: color-a ? #6366f110 : color-b ? #ec489910 : color-c ? #14b8a610 : #f59e0b10;
+            animate border-color {
+                duration: 3s;
+                easing: ease-in-out;
+            }
+            animate background {
+                duration: 3s;
+                easing: ease-in-out;
+            }
 
-        HorizontalLayout {
-            spacing: 16px;
-            alignment: center;
-
-            MenuCard {
-                title: "Budget zu FB";
-                description: "Budgets in Finanzberichte konvertieren";
-                icon: @image-url("../shared/icons/xlsx.svg");
-                width: 260px;
-                clicked => {
-                    root.navigate("budget");
+            Timer {
+                interval: 3s;
+                running: true;
+                triggered => {
+                    if (color-a) {
+                        color-a = false;
+                        color-b = true;
+                    } else if (color-b) {
+                        color-b = false;
+                        color-c = true;
+                    } else if (color-c) {
+                        color-c = false;
+                        color-a = true;
+                    }
                 }
             }
 
-            MenuCard {
-                title: "FB-Generator";
-                description: "Finanzberichtsvorlagen erstellen";
-                icon: @image-url("../shared/icons/xlsx.svg");
-                width: 260px;
-                clicked => {
-                    root.navigate("fb");
+            VerticalLayout {
+                padding: 20px;
+                spacing: 16px;
+
+                HorizontalLayout {
+                    spacing: 16px;
+                    alignment: center;
+
+                    MenuCard {
+                        title: "Budget zu FB";
+                        description: "Budgets in Finanzberichte konvertieren";
+                        icon: @image-url("../shared/icons/xlsx.svg");
+                        width: 260px;
+                        clicked => {
+                            root.navigate("budget");
+                        }
+                    }
+
+                    MenuCard {
+                        title: "FB-Generator";
+                        description: "Finanzberichtsvorlagen erstellen";
+                        icon: @image-url("../shared/icons/xlsx.svg");
+                        width: 260px;
+                        clicked => {
+                            root.navigate("fb");
+                        }
+                    }
                 }
-            }
-        }
 
-        HorizontalLayout {
-            spacing: 16px;
-            alignment: center;
+                HorizontalLayout {
+                    spacing: 16px;
+                    alignment: center;
 
-            MenuCard {
-                title: "Budget zu Prüfvorlage";
-                description: "Budgets scannen & Prüfvorlagen erstellen";
-                icon: @image-url("../shared/icons/xlsx.svg");
-                width: 260px;
-                clicked => {
-                    root.navigate("vorpruefung");
-                }
-            }
+                    MenuCard {
+                        title: "Budget zu Prüfvorlage";
+                        description: "Budgets scannen & Prüfvorlagen erstellen";
+                        icon: @image-url("../shared/icons/xlsx.svg");
+                        width: 260px;
+                        clicked => {
+                            root.navigate("vorpruefung");
+                        }
+                    }
 
-            MenuCard {
-                title: "Ordner erstellen";
-                description: "Erstellt Ordner mit Prüfvorlage";
-                icon: @image-url("../shared/icons/folder.svg");
-                width: 260px;
-                clicked => {
-                    root.navigate("folder");
+                    MenuCard {
+                        title: "Ordner erstellen";
+                        description: "Erstellt Ordner mit Prüfvorlage";
+                        icon: @image-url("../shared/icons/folder.svg");
+                        width: 260px;
+                        clicked => {
+                            root.navigate("folder");
+                        }
+                    }
                 }
             }
         }
