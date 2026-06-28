@@ -83,17 +83,27 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 
 	dc := func(col, row int) string { return cellName(col, row) }
 
-	// ─── MA-Meta (Zeilen 1..18) ───────────────────────────────────────────────
-	for j := 1; j <= MA_PERIOD_COUNT; j++ {
-		colS := 2 + (j-1)*4
+	// ─── MA-Meta (Zeilen 1..54) ───────────────────────────────────────────────
+	for j := 1; j <= MA_TABLE_COUNT; j++ {
+		p := ((j - 1) % MA_PERIOD_COUNT) + 1
+		level := ((j - 1) / MA_PERIOD_COUNT) + 1
+		offsetR := (level - 1) * 30 // MA_START_ROW_2 - MA_START_ROW = 30
+
+		colS := 2 + (p-1)*4
 		maName := fmt.Sprintf("MA_%d", j)
-		perCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 4)) // Periode-Kopf liegt auf Zeile 4
+		perCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 4+offsetR)) // Periode-Kopf
 
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_J, j), j)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_PER, j),
 			fmt.Sprintf(`=IFERROR(VALUE(TRIM(MID(%s,9,5))),0)`, perCell))
+
+		perCol := colLetter(EV_DTN_MA_META_PER)
+		kmwCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 25+offsetR))
+
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_FILL, j),
-			fmt.Sprintf(`=IF(IFERROR(SUBTOTAL(109,%s[Angefordert (LC)]),0)<>0,1,0)`, maName))
+			fmt.Sprintf(`=IF(OR(IFERROR(SUBTOTAL(109,%s[Angefordert (LC)]),0)<>0, AND(IFERROR(%s,0)>0, COUNTIF($%s$1:$%s%d,$%s%d)=1)),1,0)`,
+				maName, kmwCell, perCol, perCol, j, perCol, j))
+
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_RANK, j),
 			fmt.Sprintf(`=IF(%s=1,SUMPRODUCT(($%s$1:$%s%d=%s)*($%s$1:$%s%d=1)),0)`,
 				dc(EV_DTN_MA_META_FILL, j),
@@ -108,7 +118,7 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 			fmt.Sprintf(`=IFERROR(ROUND(SUBTOTAL(109,%s[Angefordert (EUR)]),2),0)`, maName))
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_EIGDR, j),
 			fmt.Sprintf(`=IFERROR(ROUND('%s'!%s+'%s'!%s,2),0)`,
-				maSheet, cellName(colS+2, 21), maSheet, cellName(colS+2, 22)))
+				maSheet, cellName(colS+2, 21+offsetR), maSheet, cellName(colS+2, 22+offsetR)))
 	}
 
 	// ─── FB-Meta (Zeilen 1..18) ───────────────────────────────────────────────
@@ -139,9 +149,9 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 			ws, absName(EV_DTN_FB_LISTE, 1), ws, colLetter(EV_DTN_FB_LISTE), colLetter(EV_DTN_FB_LISTE)))
 
 	// ─── MA-Auswahlliste (FILTER auf Periode == FB-Auswahl+1 & befüllt) ───────
-	maLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_LABEL), colLetter(EV_DTN_MA_META_LABEL), MA_PERIOD_COUNT)
-	maPerRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), MA_PERIOD_COUNT)
-	maFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_FILL), colLetter(EV_DTN_MA_META_FILL), MA_PERIOD_COUNT)
+	maLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_LABEL), colLetter(EV_DTN_MA_META_LABEL), MA_TABLE_COUNT)
+	maPerRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), MA_TABLE_COUNT)
+	maFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_FILL), colLetter(EV_DTN_MA_META_FILL), MA_TABLE_COUNT)
 	maCond := fmt.Sprintf(`(%s=%s+1)*(%s=1)`, maPerRng, g.evalFBSelNumAddr, maFillRng)
 	// Perioden aufsteigend zuerst, der Auto-Eintrag "Neuste MA" ganz unten (= jüngste
 	// MA für die gewählte Folgeperiode, Standard).
@@ -171,15 +181,18 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		maGridEntry{"Drittmittel", 22},
 		maGridEntry{"KMW-Mittel", 25},
 	)
-	for j := 1; j <= MA_PERIOD_COUNT; j++ {
-		colS := 2 + (j-1)*4
+	for j := 1; j <= MA_TABLE_COUNT; j++ {
+		p := ((j - 1) % MA_PERIOD_COUNT) + 1
+		level := ((j - 1) / MA_PERIOD_COUNT) + 1
+		offsetR := (level - 1) * 30
+		colS := 2 + (p-1)*4
 		for idx, e := range gridEntries {
 			row := (j-1)*EV_DTN_MAG_BLOCK + idx + 1
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_PER, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_PER), j))
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_RANK, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_RANK), j))
 			_ = f.SetCellValue(ws, dc(EV_DTN_MAG_CAT, row), e.cat)
-			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+1, e.maRow)))
-			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_EUR, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+2, e.maRow)))
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+1, e.maRow+offsetR)))
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_EUR, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+2, e.maRow+offsetR)))
 		}
 	}
 

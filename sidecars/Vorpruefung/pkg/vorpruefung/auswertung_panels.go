@@ -33,17 +33,20 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	jAddr := absName(EV_HELP_COL, top)
 	_ = g.file.SetCellFormula(ws, cellName(EV_HELP_COL, top), fmt.Sprintf(
 		`=IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_PERIOD_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT), sel.maSelK))
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK))
 	_ = g.file.SetColVisible(ws, colLetter(EV_HELP_COL), false)
 
 	// mirror liefert eine CHOOSE-Formel über alle 18 MA-Tabellen, gewählt per j.
 	mirror := func(colOffset, srcRow int) string {
-		parts := make([]string, 0, MA_PERIOD_COUNT)
-		for t := 1; t <= MA_PERIOD_COUNT; t++ {
-			colS := MA_START_COL + (t-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
-			parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+colOffset, srcRow)))
+		parts := make([]string, 0, MA_TABLE_COUNT)
+		for t := 1; t <= MA_TABLE_COUNT; t++ {
+			p := ((t - 1) % MA_PERIOD_COUNT) + 1
+			level := ((t - 1) / MA_PERIOD_COUNT) + 1
+			offsetR := (level - 1) * 30
+			colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
+			parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+colOffset, srcRow+offsetR)))
 		}
 		return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),"")`, jAddr, strings.Join(parts, ","))
 	}

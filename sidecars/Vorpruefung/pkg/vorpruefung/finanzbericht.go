@@ -321,8 +321,8 @@ func (g *Generator) drawReportTable(
 			_ = f.SetCellFormula(ws, cellName(cLabel, row), fmt.Sprintf(`=IFERROR(INDEX(%s, ROW() - %d), "")`, FB_NAME_ID_LIST, ausgHdrRow))
 		}
 
-		// EUR Formula
-		_ = f.SetCellFormula(ws, cellName(cLabel+2, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(cLabel+1, row), fbKursName))
+		// EUR Formula (direct absolute cell address is used here to avoid named range resolution issues with formulas in Excel)
+		_ = f.SetCellFormula(ws, cellName(cLabel+2, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(cLabel+1, row), rateAddr))
 
 		// Kum LC and EUR formulas
 		if periodenNr > 1 {

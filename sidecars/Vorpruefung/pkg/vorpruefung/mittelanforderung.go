@@ -14,8 +14,11 @@ const (
 	MA_TABLE_SPACE = 1
 	MA_START_COL   = 2 // Spalte B
 	MA_START_ROW   = 5 // Zeile 5
+	MA_START_ROW_2 = 35
+	MA_START_ROW_3 = 65
 
 	MA_PERIOD_COUNT = 18
+	MA_TABLE_COUNT  = 54
 
 	MA_CLR_GRAY  = "F2F2F2"
 	MA_CLR_INPUT = "FFFAE5"
@@ -59,9 +62,37 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 			_ = g.drawSeparatorArrow(ws, MA_START_ROW-2, colS-1)
 		}
 
-		err = g.drawMATable(ws, colS, MA_START_ROW, p, fbExists)
+		err = g.drawMATable(ws, colS, MA_START_ROW, p, p, fbExists, true)
 		if err != nil {
 			return fmt.Errorf("fehler beim Zeichnen von MA Periode %d: %w", p, err)
+		}
+	}
+
+	startRowL2 := MA_START_ROW_2
+	_ = f.SetCellValue(ws, cellName(MA_START_COL, startRowL2-2), "Zusätzliche Mittelanforderungen (Ausnahme 1)")
+	_ = g.setStyle(ws, cellName(MA_START_COL, startRowL2-2), cellName(MA_START_COL+2, startRowL2-2), StyleOptions{Bold: true})
+
+	for p := 1; p <= MA_PERIOD_COUNT; p++ {
+		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
+		tableId := p + MA_PERIOD_COUNT
+
+		err = g.drawMATable(ws, colS, startRowL2, tableId, p, fbExists, false)
+		if err != nil {
+			return fmt.Errorf("fehler beim Zeichnen von MA (Zusatz 1) %d: %w", tableId, err)
+		}
+	}
+
+	startRowL3 := MA_START_ROW_3
+	_ = f.SetCellValue(ws, cellName(MA_START_COL, startRowL3-2), "Zusätzliche Mittelanforderungen (Ausnahme 2)")
+	_ = g.setStyle(ws, cellName(MA_START_COL, startRowL3-2), cellName(MA_START_COL+2, startRowL3-2), StyleOptions{Bold: true})
+
+	for p := 1; p <= MA_PERIOD_COUNT; p++ {
+		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
+		tableId := p + MA_PERIOD_COUNT*2
+
+		err = g.drawMATable(ws, colS, startRowL3, tableId, p, fbExists, false)
+		if err != nil {
+			return fmt.Errorf("fehler beim Zeichnen von MA (Zusatz 2) %d: %w", tableId, err)
 		}
 	}
 
@@ -77,6 +108,17 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 		}
 	}
 
+	// Zeilen-Gruppierungen für Ebene 2 und 3 (jeweils mit 1 ungruppierten Abstandzeile dazwischen)
+	for r := startRowL2 - 2; r <= startRowL2+25; r++ {
+		_ = f.SetRowOutlineLevel(ws, r, 1)
+		_ = f.SetRowVisible(ws, r, false)
+	}
+
+	for r := startRowL3 - 2; r <= startRowL3+25; r++ {
+		_ = f.SetRowOutlineLevel(ws, r, 1)
+		_ = f.SetRowVisible(ws, r, false)
+	}
+
 	return nil
 }
 
@@ -88,12 +130,12 @@ func (g *Generator) maEnsurePeriodList(ws string) {
 }
 
 func (g *Generator) maSetupColumnWidths(ws string, colS int) {
-	g.setColWidth(ws, colS, 32.00)
+	g.setColWidth(ws, colS, 36.80) // 15% breiter als vorher (32.00)
 	g.setColWidth(ws, colS+1, 24.71)
 	g.setColWidth(ws, colS+2, 24.71)
 }
 
-func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists bool) error {
+func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, fbExists, isStandard bool) error {
 	f := g.file
 	cLbl := colS
 	cLC := colS + 1
@@ -111,15 +153,11 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	rngPerStart := cellName(cLC, r)
 	rngPerEnd := cellName(cEUR, r)
 	_ = f.MergeCell(ws, rngPerStart, rngPerEnd)
+
 	_ = f.SetCellValue(ws, rngPerStart, fmt.Sprintf("Periode %d", periodNr))
 	_ = g.setStyle(ws, rngPerStart, rngPerEnd, StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3",
+		HAlign: "center", VAlign: "center", FillColor: MA_CLR_GRAY, BorderBottom: 1, BorderColor: "D3D3D3",
 	})
-
-	dvPer := excelize.NewDataValidation(true)
-	dvPer.Sqref = rngPerStart
-	dvPer.SetSqrefDropList(fmt.Sprintf("'Daten'!$A$1:$A$%d", MA_PERIOD_COUNT))
-	_ = f.AddDataValidation(ws, dvPer)
 	r++
 
 	// ─── Zeile 2/3: Zeitraum (Von / Bis) ──────────────────────────────────────
@@ -156,7 +194,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 
 	// ─── Zeile 5: OANDA-Kurs-Eingabe (benannt MA_Kurs_<p>) ────────────────────
 	rateAddr := absName(cLC, r)
-	maKursName := fmt.Sprintf("MA_Kurs_%d", periodNr)
+	maKursName := fmt.Sprintf("MA_Kurs_%d", tableId)
 
 	lblRate := cellName(cLbl, r)
 	_ = f.SetCellValue(ws, lblRate, "OANDA-Kurs:")
@@ -172,7 +210,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	r++ // Tabellenkopf folgt direkt (Periode/Von/Bis/Kurs belegen Zeilen 5–8)
 
 	// ─── Zeile 9: Tabelle MA_<p> (Kostenkategorie | LC | EUR) ──────────────────
-	maName := fmt.Sprintf("MA_%d", periodNr)
+	maName := fmt.Sprintf("MA_%d", tableId)
 	maHdrRow := r
 
 	_ = f.SetCellValue(ws, cellName(cLbl, maHdrRow), "Kostenkategorie")
@@ -285,22 +323,27 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	saldoLblCell := cellName(cLbl, r)
 	saldoLCCell := cellName(cLC, r)
 
-	if fbExists {
-		safeSaldoVortrag := fmt.Sprintf(`IF(%s="",0,%s)`, DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW)
-		if periodNr == 1 {
-			_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorprojekt:")
-			_ = f.SetCellFormula(ws, saldoLCCell, fmt.Sprintf(`=ROUND(%s,2)`, safeSaldoVortrag))
+	if isStandard {
+		if fbExists {
+			safeSaldoVortrag := fmt.Sprintf(`IF(%s="",0,%s)`, DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW)
+			if tableId == 1 {
+				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorprojekt:")
+				_ = f.SetCellFormula(ws, saldoLCCell, fmt.Sprintf(`=ROUND(%s,2)`, safeSaldoVortrag))
+			} else {
+				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (FB):")
+				_ = f.SetCellFormula(ws, saldoLCCell, fmt.Sprintf(`=ROUND(IFERROR(FB_SaldoLC_%d,0),2)`, tableId-1))
+			}
+			_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{Italic: true, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
 		} else {
-			_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (FB):")
-			_ = f.SetCellFormula(ws, saldoLCCell, fmt.Sprintf(`=ROUND(IFERROR(FB_SaldoLC_%d,0),2)`, periodNr-1))
+			if tableId == 1 {
+				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorprojekt:")
+			} else {
+				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (FB):")
+			}
+			_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
 		}
-		_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{Italic: true, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
 	} else {
-		if periodNr == 1 {
-			_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorprojekt:")
-		} else {
-			_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (FB):")
-		}
+		_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (manuell):")
 		_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
 	}
 
@@ -329,7 +372,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	_ = f.SetCellValue(ws, cellName(cLbl, r), "Manueller Betrag (EUR):")
 	_ = g.setStyle(ws, cellName(cLbl, r), cellName(cLC, r), StyleOptions{HAlign: "left", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
 	_ = g.setStyle(ws, cellName(cEUR, r), cellName(cEUR, r), StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	g.dbUpsertNamedRange(ws, fmt.Sprintf("MA_ManBetrag_%d", periodNr), cEUR, r)
+	g.dbUpsertNamedRange(ws, fmt.Sprintf("MA_ManBetrag_%d", tableId), cEUR, r)
 
 	return nil
 }

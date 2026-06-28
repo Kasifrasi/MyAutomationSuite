@@ -73,7 +73,7 @@ const (
 	// Finanzierungsarten (Eigenmittel/Drittmittel/KMW-Mittel) für die Prognose
 	// der Finanzierungsanteile. Muss zu gridEntries in daten.go passen.
 	EV_DTN_MAG_BLOCK = 8 + 3
-	EV_DTN_MAG_ROWS  = MA_PERIOD_COUNT * EV_DTN_MAG_BLOCK
+	EV_DTN_MAG_ROWS  = MA_TABLE_COUNT * EV_DTN_MAG_BLOCK
 
 	EVAL_NAME_MA_LISTE = "MA_Auswahl_Liste"
 	EVAL_NAME_FB_LISTE = "FB_Auswahl_Liste"
@@ -218,10 +218,10 @@ func (g *Generator) CreateAuswertungSheet() error {
 		realBud := fmt.Sprintf("(SUM(%s)-%s)", resFBInc.budEURRange, resFBInc.kmwBudEUR)
 		maEig := fmt.Sprintf(
 			`SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1")`,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_EIGDR, 1, MA_PERIOD_COUNT),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), maSelPCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT), maSelKCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT))
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_EIGDR, 1, MA_TABLE_COUNT),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), maSelPCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), maSelKCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT))
 		prognFormula := fmt.Sprintf(
 			`=ROUND(MAX(0,MAX(0,%s+%s-%s)-%s),2)`, realAct, maEig, realBud, fbKMW.mehrCell)
 		g.evalDeduct(ws, maKMW.prognCell, prognFormula)
@@ -576,9 +576,9 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	// das SUMPRODUCT(MAX(...))-Idiom nutzt nur Legacy-Funktionen und erzwingt die
 	// Array-Auswertung – identisch zum Vorgehen der Spiegel-Panels.
 	maxMAK := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=%s)*('%s'!%s=1)*'%s'!%s)),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), pCell,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_PERIOD_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT))
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), pCell,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT))
 	kFormula := fmt.Sprintf(
 		`=IF(%s="Neuste MA",%s,IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0))`,
 		labelCell, maxMAK, labelCell, labelCell, labelCell, labelCell)
@@ -592,10 +592,10 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	r++
 
 	// Slots: bei Bedarf (s ≤ k) eingeblendet, sonst leer (Struktur im Hintergrund).
-	metaPer := evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT)
-	metaRank := evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT)
-	metaSumLC := evalAbsCol(EV_DTN_MA_META_SUMLC, 1, MA_PERIOD_COUNT)
-	metaSumEU := evalAbsCol(EV_DTN_MA_META_SUMEU, 1, MA_PERIOD_COUNT)
+	metaPer := evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT)
+	metaRank := evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT)
+	metaSumLC := evalAbsCol(EV_DTN_MA_META_SUMLC, 1, MA_TABLE_COUNT)
+	metaSumEU := evalAbsCol(EV_DTN_MA_META_SUMEU, 1, MA_TABLE_COUNT)
 	firstSlot := r
 	lblSt := StyleOptions{Size: 9.0, HAlign: "left", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
@@ -731,10 +731,10 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	anfSum := func(sumCol int) string {
 		return fmt.Sprintf(
 			`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1"),2),0)`,
-			EVAL_DATEN_SHEET, evalAbsCol(sumCol, 1, MA_PERIOD_COUNT),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), sel.maSelP,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT), sel.maSelK,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT))
+			EVAL_DATEN_SHEET, evalAbsCol(sumCol, 1, MA_TABLE_COUNT),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT))
 	}
 
 	// ─── Spalten-Unterüberschrift: LC links, Monatsanteil mittig, Euro rechts ──
@@ -1124,7 +1124,7 @@ func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
 // evalMAChooseManBetrag liefert einen CHOOSE-Ausdruck über die MA_ManBetrag_<n>-Namen
 // aller 18 Perioden, gewählt per maSelP – analog zu evalMAChooseKurs.
 func evalMAChooseManBetrag(maSelP string) string {
-	parts := make([]string, MA_PERIOD_COUNT)
+	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
 		parts[i] = fmt.Sprintf("MA_ManBetrag_%d", i+1)
 	}
@@ -1135,7 +1135,7 @@ func evalMAChooseManBetrag(maSelP string) string {
 // MA_Kurs_<n>-Namen. Ersatz für INDIRECT("MA_Kurs_"&maSelP), das Excel 365 mit
 // dem @-Operator (implizite Schnittmenge) versieht und dadurch falsch rendert.
 func evalMAChooseKurs(maSelP string) string {
-	parts := make([]string, MA_PERIOD_COUNT)
+	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
 		parts[i] = fmt.Sprintf("MA_Kurs_%d", i+1)
 	}
@@ -1161,13 +1161,16 @@ func evalMACurrentKMWRequest(sel evalSelRefs) string {
 // Wertspalte = colS+1) per CHOOSE über alle 18 MA-Tabellen ausgelesen.
 func evalMASelectedZeitraum(sel evalSelRefs) string {
 	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_PERIOD_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_PERIOD_COUNT), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_PERIOD_COUNT), sel.maSelK)
-	parts := make([]string, 0, MA_PERIOD_COUNT)
-	for t := 1; t <= MA_PERIOD_COUNT; t++ {
-		colS := MA_START_COL + (t-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
-		parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+1, 7)))
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
+	parts := make([]string, 0, MA_TABLE_COUNT)
+	for t := 1; t <= MA_TABLE_COUNT; t++ {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		offsetR := (level - 1) * 30
+		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
+		parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+1, 7+offsetR)))
 	}
 	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }
