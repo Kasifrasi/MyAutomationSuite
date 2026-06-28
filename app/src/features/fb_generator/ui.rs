@@ -342,6 +342,7 @@ pub fn setup(ui: &MainWindow) {
                                         wb_config.as_ref(),
                                         &sheet_configs,
                                         None,
+                                        &[],
                                     );
                                 }
                             });

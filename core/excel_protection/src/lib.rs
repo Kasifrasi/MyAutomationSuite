@@ -460,7 +460,8 @@ pub fn apply_protection(
     path: &std::path::Path,
     wb_config: Option<&WorkbookConfig>,
     sheet_configs: &[SheetConfig],
-    color_routing_hex: Option<&str>,
+    dynamic_unlock_hex: Option<&str>,
+    columns_to_unlock: &[u32],
 ) -> Result<(), ProtectionError> {
     // 1. Workbook-Hash precomputen
     let wb_hash = wb_config
@@ -567,22 +568,21 @@ pub fn apply_protection(
     let mut unlocked_style_ids = std::collections::HashSet::new();
     let mut modified_styles_xml = None;
     let mut explicit_lock_id = 0;
+    let mut unlocked_col_id_global = 0;
 
-    if let Some(hex) = color_routing_hex {
+    if let Some(hex) = dynamic_unlock_hex {
         if let Ok(mut styles_file) = archive.by_name("xl/styles.xml") {
-            let mut content = String::new();
-            if styles_file.read_to_string(&mut content).is_ok() {
-                if let Some(fill_id) = crate::color_routing::find_fill_id_by_color(&content, hex) {
-                    target_fill_id = Some(fill_id);
-                    if let Ok((rewritten, lock_id)) = crate::color_routing::rewrite_styles_xml(
-                        &content,
-                        fill_id,
-                        &mut yellow_style_ids,
-                        &mut unlocked_style_ids,
-                    ) {
-                        modified_styles_xml = Some(rewritten);
-                        explicit_lock_id = lock_id;
-                    }
+            let mut content = Vec::new();
+            if styles_file.read_to_end(&mut content).is_ok() {
+                if let Ok((rewritten, unlocked_col_id, lock_id, yellow_ids, unlocked_ids)) =
+                    crate::dynamic_unlock::rewrite_styles_xml(&content, hex)
+                {
+                    target_fill_id = Some(999); // Dummy value to indicate we have color routing enabled
+                    modified_styles_xml = Some(rewritten);
+                    explicit_lock_id = lock_id;
+                    yellow_style_ids = yellow_ids;
+                    unlocked_style_ids = unlocked_ids;
+                    unlocked_col_id_global = unlocked_col_id;
                 }
             }
         }
@@ -633,7 +633,7 @@ pub fn apply_protection(
                 .compression_method(compression)
                 .unix_permissions(unix_mode.unwrap_or(0o644));
             zip_writer.start_file(&name, options)?;
-            zip_writer.write_all(modified_styles_xml.as_ref().unwrap().as_bytes())?;
+            zip_writer.write_all(modified_styles_xml.as_ref().unwrap())?;
         } else if name.starts_with("xl/worksheets/") && name.ends_with(".xml") {
             let sheet_info = file_to_sheet.get(&name);
 
@@ -651,11 +651,13 @@ pub fn apply_protection(
 
             let mut worksheet_xml = content;
             if target_fill_id.is_some() {
-                if let Ok(rewritten) = crate::color_routing::rewrite_worksheet_xml(
+                if let Ok(rewritten) = crate::dynamic_unlock::rewrite_worksheet_xml(
                     &worksheet_xml,
                     &yellow_style_ids,
                     &unlocked_style_ids,
                     explicit_lock_id,
+                    unlocked_col_id_global,
+                    columns_to_unlock,
                 ) {
                     worksheet_xml = rewritten;
                 }
@@ -692,5 +694,4 @@ pub fn apply_protection(
     Ok(())
 }
 
-pub mod color_routing;
-pub use color_routing::apply_color_routing_protection;
+pub mod dynamic_unlock;

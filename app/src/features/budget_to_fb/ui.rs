@@ -122,6 +122,7 @@ pub fn setup(ui: &MainWindow) {
                         None,
                         wb_config.clone(),
                         sheet_configs.clone(),
+                        &[],
                         |msg| {
                             let _ = ui_handle_clone.upgrade_in_event_loop({
                                 let msg_status = msg.status.clone();

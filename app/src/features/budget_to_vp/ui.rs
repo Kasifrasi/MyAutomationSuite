@@ -145,6 +145,8 @@ pub fn setup(ui: &MainWindow) {
                     // (Quelldateiname, Status, Detail)
                     let mut rows_info: Vec<(String, String, String)> = Vec::new();
 
+                    let columns_to_unlock: Vec<u32> = (1..=1000).collect();
+
                     let ok_count = match crate::shared::process::run_sidecar_batch(
                         &sidecar_exe,
                         &result.successes,
@@ -154,6 +156,7 @@ pub fn setup(ui: &MainWindow) {
                         Some("FFFAE5".to_string()),
                         wb_config.clone(),
                         sheet_configs.clone(),
+                        &columns_to_unlock,
                         |msg| {
                             let _ = ui_handle_clone.upgrade_in_event_loop({
                                 let msg_status = msg.status.clone();

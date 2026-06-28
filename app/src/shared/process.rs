@@ -82,6 +82,7 @@ pub fn run_sidecar_batch<T: serde::Serialize>(
     color_routing_hex: Option<String>,
     wb_config: Option<excel_protection::WorkbookConfig>,
     sheet_configs: Vec<excel_protection::SheetConfig>,
+    columns_to_unlock: &[u32],
     mut on_progress: impl FnMut(crate::shared::models::ProgressMessage),
 ) -> Result<u32, String> {
     // 1. Temp-JSON schreiben
@@ -154,11 +155,13 @@ pub fn run_sidecar_batch<T: serde::Serialize>(
             let paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
             paths.into_par_iter().for_each(|p| {
                 if p.extension().is_some_and(|ext| ext == "xlsx") {
-                    if let Some(ref hex) = color_routing_hex {
-                        let _ = excel_protection::apply_color_routing_protection(&p, hex);
-                    }
-                    let _ =
-                        excel_protection::apply_protection(&p, wb_config.as_ref(), &sheet_configs, color_routing_hex.as_deref());
+                    let _ = excel_protection::apply_protection(
+                        &p,
+                        wb_config.as_ref(),
+                        &sheet_configs,
+                        color_routing_hex.as_deref(),
+                        columns_to_unlock,
+                    );
                 }
             });
         }
