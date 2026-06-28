@@ -431,7 +431,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 
 		// Paar 2: Abzüglich manueller Betrag → aus dem "Manueller Betrag"-Feld der gewählten MA
 		p2Top := r
-		manFormula := evalMAChooseManBetrag(sel.maSelP)
+		manFormula := evalMAChooseManBetrag(sel)
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Abzüglich manueller Betrag", false)
 		g.evalDeduct(ws, cellName(valL, r), manFormula)
 		addrManL := absName(valL, r)
@@ -932,6 +932,13 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 		g.evalCellFormula(ws, cellName(EV_COL_ABW_EUR, row),
 			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", absName(EV_COL_ACT_EUR, row), absName(EV_COL_BUD_EUR, row)), EV_FMT_PCT, "")
 
+		if !isMA {
+			cleanName := strings.ReplaceAll(name, " ", "_")
+			cleanName = strings.ReplaceAll(cleanName, "-", "_")
+			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActLC_%s", cleanName), EV_COL_ACT_LC, row)
+			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActEUR_%s", cleanName), EV_COL_ACT_EUR, row)
+		}
+
 		if isIncome && name == "KMW-Mittel" {
 			kmwActEUR = absName(EV_COL_ACT_EUR, row)
 			kmwBudEUR = absName(EV_COL_BUD_EUR, row)
@@ -960,25 +967,24 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 
 // evalActualFormulas: Ist-/Prognose-Formeln je Zeile.
 func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int, sel evalSelRefs) (string, string) {
+	cleanName := strings.ReplaceAll(name, " ", "_")
+	cleanName = strings.ReplaceAll(cleanName, "-", "_")
+
 	if isIncome && isMA {
-		// Prognose der Finanzierungsanteile = Summe der ausgewählten Mittelanforderungen
-		// (#1..#k) der Periode P je Finanzierungsart (Eigenmittel/Drittmittel/KMW-Mittel)
-		// aus dem MA-Grid. "Zinsertraege" hat keine MA-Quelle ⇒ SUMIFS ergibt 0.
-		return evalMAExpenseActual(sel, name, EV_DTN_MAG_LC), evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
+		maL := evalMAExpenseActual(sel, name, EV_DTN_MAG_LC)
+		maE := evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
+		return fmt.Sprintf("=%s + AW_FB_ActLC_%s", maL[1:], cleanName),
+			fmt.Sprintf("=%s + AW_FB_ActEUR_%s", maE[1:], cleanName)
 	}
 	if isIncome {
-		// FB: kumulative Einnahmen je Typ bis zur gewählten Periode N (CHOOSE über die
-		// Kum-Spalten der Finanzberichte). Einnahmen-Typzeilen liegen bei 12..15.
 		return evalFBChooseRef(sel.fbSelNum, 12+idx, 3), evalFBChooseRef(sel.fbSelNum, 12+idx, 4)
 	}
 	if isMA {
-		// Prognose der Ausgaben = Summe der ausgewählten Mittelanforderungen (#1..#k)
-		// der Periode P, je Kategorie (MA-Grid auf dem Daten-Blatt).
-		return evalMAExpenseActual(sel, name, EV_DTN_MAG_LC), evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
+		maL := evalMAExpenseActual(sel, name, EV_DTN_MAG_LC)
+		maE := evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
+		return fmt.Sprintf("=%s + AW_FB_ActLC_%s", maL[1:], cleanName),
+			fmt.Sprintf("=%s + AW_FB_ActEUR_%s", maE[1:], cleanName)
 	}
-	// FB: kumulative Ausgaben je Kategorie bis Periode N. Die FB-Ausgabentabellen
-	// sind positionsbasiert (eine Zeile je Kostenposition); für die kategorienweise
-	// Auswertung werden alle zur Kategorie gehörenden Positionszeilen aufsummiert.
 	rows := g.fbExpenseRowsForCategory(name)
 	return evalFBChooseRefRows(sel.fbSelNum, rows, 3), evalFBChooseRefRows(sel.fbSelNum, rows, 4)
 }
@@ -1123,23 +1129,31 @@ func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
 
 // evalMAChooseManBetrag liefert einen CHOOSE-Ausdruck über die MA_ManBetrag_<n>-Namen
 // aller 18 Perioden, gewählt per maSelP – analog zu evalMAChooseKurs.
-func evalMAChooseManBetrag(maSelP string) string {
+func evalMAChooseManBetrag(sel evalSelRefs) string {
+	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
 		parts[i] = fmt.Sprintf("MA_ManBetrag_%d", i+1)
 	}
-	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, maSelP, strings.Join(parts, ","))
+	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }
 
 // evalMAChooseKurs liefert einen nicht-volatilen CHOOSE-Ausdruck über alle 18
 // MA_Kurs_<n>-Namen. Ersatz für INDIRECT("MA_Kurs_"&maSelP), das Excel 365 mit
 // dem @-Operator (implizite Schnittmenge) versieht und dadurch falsch rendert.
-func evalMAChooseKurs(maSelP string) string {
+func evalMAChooseKurs(sel evalSelRefs) string {
+	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
 		parts[i] = fmt.Sprintf("MA_Kurs_%d", i+1)
 	}
-	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, maSelP, strings.Join(parts, ","))
+	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }
 
 // evalMACurrentKMWRequest summiert die KMW-Mittel-Anforderung der EINEN aktuell
