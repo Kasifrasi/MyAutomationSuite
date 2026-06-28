@@ -615,10 +615,6 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	r++
 
 	// Slots: bei Bedarf (s ≤ k) eingeblendet, sonst leer (Struktur im Hintergrund).
-	metaPer := evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT)
-	metaRank := evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT)
-	metaSumLC := evalAbsCol(EV_DTN_MA_META_SUMLC, 1, MA_TABLE_COUNT)
-	metaSumEU := evalAbsCol(EV_DTN_MA_META_SUMEU, 1, MA_TABLE_COUNT)
 	firstSlot := r
 	lblSt := StyleOptions{Size: 9.0, HAlign: "left", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
@@ -630,11 +626,21 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 		row := firstSlot + s - 1
 		lbl := fmt.Sprintf(`=IF(%d<=%s,"Periode "&%s&" (#%d)","")`, s, kCell, pCell, s)
 		g.evalMergedFormula(ws, cellName(EV_PB_C1, row), cellName(EV_PB_L2, row), lbl, lblSt)
-		lcF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,%d),0),"")`,
-			s, kCell, EVAL_DATEN_SHEET, metaSumLC, EVAL_DATEN_SHEET, metaPer, pCell, EVAL_DATEN_SHEET, metaRank, s)
+
+		lcF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
+			s, kCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_LC, 1, EV_DTN_MAG_ROWS),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), s)
 		g.evalMergedFormula(ws, cellName(EV_PB_V1, row), cellName(EV_PB_SLC2, row), lcF, lcSt)
-		euF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,%d),0),"")`,
-			s, kCell, EVAL_DATEN_SHEET, metaSumEU, EVAL_DATEN_SHEET, metaPer, pCell, EVAL_DATEN_SHEET, metaRank, s)
+
+		euF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
+			s, kCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, EV_DTN_MAG_ROWS),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), s)
 		g.evalMergedFormula(ws, cellName(EV_PB_SEU1, row), cellName(EV_PB_C2, row), euF, euSt)
 
 		labelAddr := absName(EV_PB_C1, row)
