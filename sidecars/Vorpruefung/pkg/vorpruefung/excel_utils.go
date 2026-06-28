@@ -357,6 +357,8 @@ func (g *Generator) styleHeader(sheet string, r1, c1, r2, c2 int) error {
 }
 
 func (g *Generator) styleOuterBorder(sheet string, r1, c1, r2, c2 int, weight int, color string) error {
+	colorClean := strings.TrimPrefix(color, "#")
+
 	for r := r1; r <= r2; r++ {
 		for c := c1; c <= c2; c++ {
 			if r == r1 || r == r2 || c == c1 || c == c2 {
@@ -365,6 +367,18 @@ func (g *Generator) styleOuterBorder(sheet string, r1, c1, r2, c2 int, weight in
 				if err != nil {
 					continue
 				}
+
+				isTop := r == r1
+				isBottom := r == r2
+				isLeft := c == c1
+				isRight := c == c2
+				cacheKey := fmt.Sprintf("border-%d-%t-%t-%t-%t-%d-%s", styleID, isTop, isBottom, isLeft, isRight, weight, colorClean)
+
+				if cachedStyleID, exists := g.borderCache[cacheKey]; exists {
+					_ = g.file.SetCellStyle(sheet, cell, cell, cachedStyleID)
+					continue
+				}
+
 				style, err := g.file.GetStyle(styleID)
 				if err != nil || style == nil {
 					style = &excelize.Style{}
@@ -380,7 +394,7 @@ func (g *Generator) styleOuterBorder(sheet string, r1, c1, r2, c2 int, weight in
 					for i, b := range borders {
 						if b.Type == borderType {
 							borders[i].Style = styleVal
-							borders[i].Color = strings.TrimPrefix(color, "#")
+							borders[i].Color = colorClean
 							found = true
 							break
 						}
@@ -388,28 +402,29 @@ func (g *Generator) styleOuterBorder(sheet string, r1, c1, r2, c2 int, weight in
 					if !found {
 						borders = append(borders, excelize.Border{
 							Type:  borderType,
-							Color: strings.TrimPrefix(color, "#"),
+							Color: colorClean,
 							Style: styleVal,
 						})
 					}
 				}
 
-				if r == r1 {
+				if isTop {
 					upsertBorder("top", weight)
 				}
-				if r == r2 {
+				if isBottom {
 					upsertBorder("bottom", weight)
 				}
-				if c == c1 {
+				if isLeft {
 					upsertBorder("left", weight)
 				}
-				if c == c2 {
+				if isRight {
 					upsertBorder("right", weight)
 				}
 
 				style.Border = borders
 				newStyleID, err := g.file.NewStyle(style)
 				if err == nil {
+					g.borderCache[cacheKey] = newStyleID
 					_ = g.file.SetCellStyle(sheet, cell, cell, newStyleID)
 				}
 			}
@@ -423,24 +438,35 @@ func (g *Generator) reapplyRightBorder(sheet, cell string, weight int, color str
 	if err != nil {
 		return
 	}
+
+	colorClean := strings.TrimPrefix(color, "#")
+	cacheKey := fmt.Sprintf("rightborder-%d-%d-%s", styleID, weight, colorClean)
+
+	if cachedStyleID, exists := g.borderCache[cacheKey]; exists {
+		_ = g.file.SetCellStyle(sheet, cell, cell, cachedStyleID)
+		return
+	}
+
 	style, err := g.file.GetStyle(styleID)
 	if err != nil || style == nil {
 		return
 	}
-	color = strings.TrimPrefix(color, "#")
+
 	found := false
 	for i, b := range style.Border {
 		if b.Type == "right" {
 			style.Border[i].Style = weight
-			style.Border[i].Color = color
+			style.Border[i].Color = colorClean
 			found = true
 			break
 		}
 	}
 	if !found {
-		style.Border = append(style.Border, excelize.Border{Type: "right", Color: color, Style: weight})
+		style.Border = append(style.Border, excelize.Border{Type: "right", Color: colorClean, Style: weight})
 	}
+
 	if newID, err := g.file.NewStyle(style); err == nil {
+		g.borderCache[cacheKey] = newID
 		_ = g.file.SetCellStyle(sheet, cell, cell, newID)
 	}
 }

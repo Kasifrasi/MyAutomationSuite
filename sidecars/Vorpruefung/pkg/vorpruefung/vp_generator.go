@@ -31,6 +31,7 @@ func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 		file:           f,
 		styleCache:     make(map[string]int),
 		condStyleCache: make(map[string]int),
+		borderCache:    make(map[string]int),
 		budget:         budgetCfg,
 	}
 

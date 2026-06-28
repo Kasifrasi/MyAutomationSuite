@@ -54,6 +54,7 @@ type Generator struct {
 	file           *excelize.File
 	styleCache     map[string]int
 	condStyleCache map[string]int
+	borderCache    map[string]int
 
 	rangesAusgaben   []string
 	rangesEinnahmen1 []string

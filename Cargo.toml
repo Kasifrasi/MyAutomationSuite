@@ -5,8 +5,7 @@ members = [
     "core/folder_generator",
     "core/excel_protection",
     "core/shared_constants",
-    "app"
-, "test/rust-excel", "test/excel-routing-test"]
+    "app"]
 
 [workspace.package]
 version = "0.5.0"
