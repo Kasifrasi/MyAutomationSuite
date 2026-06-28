@@ -48,6 +48,7 @@ type StyleOptions struct {
 	BorderColor  string
 	WrapText     bool
 	Strike       bool
+	Unlocked     bool
 }
 
 type Generator struct {

@@ -113,7 +113,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, periodNr int, fbExists 
 	_ = f.MergeCell(ws, rngPerStart, rngPerEnd)
 	_ = f.SetCellValue(ws, rngPerStart, fmt.Sprintf("Periode %d", periodNr))
 	_ = g.setStyle(ws, rngPerStart, rngPerEnd, StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: MA_CLR_GRAY, BorderBottom: 1, BorderColor: "D3D3D3",
+		HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3",
 	})
 
 	dvPer := excelize.NewDataValidation(true)

@@ -81,7 +81,7 @@ func (g *Generator) CreateKMWMittelSheet() error {
 
 	// Tabelle erstellen
 	err = f.AddTable(ws, &excelize.Table{
-		Range:          "B4:E22",
+		Range:          "B4:E76",
 		Name:           KMW_TABLE_NAME,
 		StyleName:      "TableStyleLight1",
 		ShowRowStripes: falsePtr(),
@@ -93,7 +93,7 @@ func (g *Generator) CreateKMWMittelSheet() error {
 	// ─── Validierungen hinzufügen ─────────────────────────────────────────────
 	// Validierung 'Periode' aus der Hilfsliste
 	dvPeriode := excelize.NewDataValidation(true)
-	dvPeriode.Sqref = "B5:B22"
+	dvPeriode.Sqref = "B5:B76"
 	dvPeriode.SetSqrefDropList(fmt.Sprintf("'%s'!$%s$1:$%s$36", KMW_SHEET_NAME, colLetter(KMW_COL_VAL_LIST), colLetter(KMW_COL_VAL_LIST)))
 	err = f.AddDataValidation(ws, dvPeriode)
 	if err != nil {
@@ -102,15 +102,15 @@ func (g *Generator) CreateKMWMittelSheet() error {
 
 	// Validierung 'Waehrung': EUR, USD
 	dvWaehrung := excelize.NewDataValidation(true)
-	dvWaehrung.Sqref = "C5:C22"
+	dvWaehrung.Sqref = "C5:C76"
 	dvWaehrung.SetDropList([]string{"EUR", "USD"})
 	err = f.AddDataValidation(ws, dvWaehrung)
 	if err != nil {
 		return fmt.Errorf("fehler beim Hinzufügen der Waehrung-Validierung: %w", err)
 	}
 
-	// ─── Datenbereich formatieren (B5:E22) ────────────────────────────────────
-	for row := 5; row <= 22; row++ {
+	// ─── Datenbereich formatieren (B5:E76) ────────────────────────────────────
+	for row := 5; row <= 76; row++ {
 		// B: Periode
 		_ = g.setStyle(ws, cellName(KMW_COL_PERIODE, row), cellName(KMW_COL_PERIODE, row), StyleOptions{
 			FillColor:    KMW_CLR_INPUT,
@@ -178,8 +178,8 @@ func (g *Generator) CreateKMWMittelSheet() error {
 	}
 	_ = f.SetRowHeight(ws, 4, 20.0)
 
-	// ─── Ergebniszeile (GESAMT + Summe Betrag) (B23:E23) ──────────────────────
-	totalsRow := 23
+	// ─── Ergebniszeile (GESAMT + Summe Betrag) (B77:E77) ──────────────────────
+	totalsRow := 77
 	_ = f.SetCellValue(ws, cellName(KMW_COL_PERIODE, totalsRow), "GESAMT")
 	_ = f.SetCellFormula(ws, cellName(KMW_COL_BETRAG, totalsRow), fmt.Sprintf("=SUBTOTAL(109,%s[Betrag])", KMW_TABLE_NAME))
 
@@ -216,8 +216,14 @@ func (g *Generator) CreateKMWMittelSheet() error {
 
 	// ─── Außenrahmen (kräftig grau) ───────────────────────────────────────────
 	_ = g.styleOuterBorder(ws, 4, KMW_COL_PERIODE, 4, KMW_COL_DATUM, 2, KMW_CLR_BORDER)
-	_ = g.styleOuterBorder(ws, 5, KMW_COL_PERIODE, 22, KMW_COL_DATUM, 2, KMW_CLR_BORDER)
+	_ = g.styleOuterBorder(ws, 5, KMW_COL_PERIODE, 76, KMW_COL_DATUM, 2, KMW_CLR_BORDER)
 	_ = g.styleOuterBorder(ws, totalsRow, KMW_COL_PERIODE, totalsRow, KMW_COL_DATUM, 2, KMW_CLR_BORDER)
+
+	// ─── Zeilen 23 bis 76 gruppieren und ausgeblendet zuklappen ─────────────────
+	for r := 23; r <= 76; r++ {
+		_ = f.SetRowOutlineLevel(ws, r, 1)
+		_ = f.SetRowVisible(ws, r, false)
+	}
 
 	return nil
 }

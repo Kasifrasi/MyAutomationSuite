@@ -23,7 +23,7 @@ import (
 
 const (
 	EVAL_SHEET_NAME   = constants.VPSheetAUSWERTUNG
-	EVAL_TAB_COLOR    = "FFFF00" // Gelb
+	EVAL_TAB_COLOR    = "FF0000" // Rot
 	EVAL_DATEN_SHEET  = constants.VPSheetDATEN
 	EVAL_FB_SHEET     = constants.VPSheetFINANZBERICHTE
 	EVAL_STACK_MAXROW = 500

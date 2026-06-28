@@ -21,11 +21,11 @@ func absName(col, row int) string {
 }
 
 func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
-	key := fmt.Sprintf("%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%d-%s-%t-%t",
+	key := fmt.Sprintf("%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%d-%s-%t-%t-%t",
 		opts.Bold, opts.Italic, opts.Size, opts.FontColor, opts.FillColor,
 		opts.HAlign, opts.VAlign, opts.NumFormat, opts.NumFmtID,
 		opts.BorderTop, opts.BorderBottom, opts.BorderLeft, opts.BorderRight,
-		opts.BorderColor, opts.WrapText, opts.Strike)
+		opts.BorderColor, opts.WrapText, opts.Strike, opts.Unlocked)
 
 	if id, exists := g.styleCache[key]; exists {
 		return id, nil
@@ -94,6 +94,12 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 		style.Border = borders
 	}
 
+	if opts.Unlocked {
+		style.Protection = &excelize.Protection{
+			Locked: false,
+		}
+	}
+
 	id, err := g.file.NewStyle(style)
 	if err != nil {
 		return 0, err
@@ -103,11 +109,11 @@ func (g *Generator) getOrCreateStyle(opts StyleOptions) (int, error) {
 }
 
 func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) {
-	key := fmt.Sprintf("cond-%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%d-%s-%t-%t",
+	key := fmt.Sprintf("cond-%t-%t-%f-%s-%s-%s-%s-%s-%d-%d-%d-%d-%d-%s-%t-%t-%t",
 		opts.Bold, opts.Italic, opts.Size, opts.FontColor, opts.FillColor,
 		opts.HAlign, opts.VAlign, opts.NumFormat, opts.NumFmtID,
 		opts.BorderTop, opts.BorderBottom, opts.BorderLeft, opts.BorderRight,
-		opts.BorderColor, opts.WrapText, opts.Strike)
+		opts.BorderColor, opts.WrapText, opts.Strike, opts.Unlocked)
 
 	if id, exists := g.condStyleCache[key]; exists {
 		return id, nil

@@ -486,7 +486,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 		_ = g.file.SetRowHeight(ws, row, 22.0)
 
 		// Ja/Nein Dropdown (Spalte D)
-		err = g.dbDropdownJaNein(ws, row, DB_C_LBL2, "Nein", "")
+		err = g.dbDropdownJaNein(ws, row, DB_C_LBL2, "Nein", DB_CLR_INPUT)
 		if err != nil {
 			return err
 		}
