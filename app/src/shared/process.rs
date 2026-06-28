@@ -13,11 +13,15 @@ pub fn get_fb_path() -> std::path::PathBuf {
     };
     let exe_path = dir.join(exe_name);
 
-    // Nur neu schreiben, wenn sie noch nicht existiert oder sich die Größe geändert hat (z.B. nach einem App-Update)
+    // Nur neu schreiben, wenn sie noch nicht existiert, sich die Größe geändert hat
+    // oder die Bytes unterschiedlich sind (z. B. nach einer Änderung am Go-Sidecar mit gleicher Ausgabegröße).
     // Das verhindert unnötige Schreibvorgänge und beruhigt Antivirenscanner.
     let needs_write = match std::fs::metadata(&exe_path) {
-        Ok(meta) => meta.len() as usize != sidecar_bytes.len(),
-        Err(_) => true,
+        Ok(meta) if meta.len() as usize == sidecar_bytes.len() => match std::fs::read(&exe_path) {
+            Ok(bytes) => bytes != sidecar_bytes,
+            Err(_) => true,
+        },
+        _ => true,
     };
 
     if needs_write {
@@ -53,9 +57,15 @@ pub fn get_vorpruefung_path() -> std::path::PathBuf {
     };
     let exe_path = dir.join(exe_name);
 
+    // Nur neu schreiben, wenn sie noch nicht existiert, sich die Größe geändert hat
+    // oder die Bytes unterschiedlich sind (z. B. nach einer Änderung am Go-Sidecar mit gleicher Ausgabegröße).
+    // Das verhindert unnötige Schreibvorgänge und beruhigt Antivirenscanner.
     let needs_write = match std::fs::metadata(&exe_path) {
-        Ok(meta) => meta.len() as usize != sidecar_bytes.len(),
-        Err(_) => true,
+        Ok(meta) if meta.len() as usize == sidecar_bytes.len() => match std::fs::read(&exe_path) {
+            Ok(bytes) => bytes != sidecar_bytes,
+            Err(_) => true,
+        },
+        _ => true,
     };
 
     if needs_write {
