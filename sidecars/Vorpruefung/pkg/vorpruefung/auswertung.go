@@ -447,6 +447,29 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		g.styleOuterBorder(ws, p2Top, lblL1, p2Bottom, valL, 2, EV_CLR_BORDER)
 		g.styleOuterBorder(ws, p2Top, tog, p2Bottom, valR, 2, EV_CLR_BORDER)
 		r++
+
+		condReqGrey := fmt.Sprintf(`%s<>0`, addrManL)
+		condManGrey := fmt.Sprintf(`%s=0`, addrManL)
+
+		applyGreyCF := func(rStart, rEnd int, cond string) {
+			for row := rStart; row <= rEnd; row++ {
+				g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(lblL1, row), cellName(lblL2, row)), cond, StyleOptions{
+					FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
+				})
+				g.addConditionalFormat(ws, cellName(valL, row), cond, StyleOptions{
+					FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
+				})
+				g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(tog, row), cellName(lblR2, row)), cond, StyleOptions{
+					FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
+				})
+				g.addConditionalFormat(ws, cellName(valR, row), cond, StyleOptions{
+					FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
+				})
+			}
+		}
+
+		applyGreyCF(p1Top, p1Bottom, condReqGrey)
+		applyGreyCF(p2Top, p2Bottom, condManGrey)
 	}
 
 	return evalKMWResult{nextRow: r, mehrCell: mehrCell, prognCell: prognCell, saldoCell: saldoCell}
