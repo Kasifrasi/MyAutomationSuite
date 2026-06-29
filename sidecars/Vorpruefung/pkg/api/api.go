@@ -142,17 +142,62 @@ func FillTemplate(filePath string, data FillData) error {
 
 	// Optionale Werte für die Prüfungs-Auswahl
 	sheetFB := constants.VPSheetFB_PRUEFUNG
-	if data.FBPruefung != nil && data.FBPruefung.Auswahl != nil {
-		setVal(f, sheetFB, CellFBPruefungAuswahl, data.FBPruefung.Auswahl)
+	if data.FBPruefung != nil {
+		if data.FBPruefung.Auswahl != nil {
+			setVal(f, sheetFB, CellFBPruefungAuswahl, data.FBPruefung.Auswahl)
+		} else {
+			setVal(f, sheetFB, CellFBPruefungAuswahl, "Neuester FB")
+		}
+		if data.FBPruefung.AbzugSaldovortrag != nil {
+			setVal(f, sheetFB, CellFBPruefungAbzugSaldo, data.FBPruefung.AbzugSaldovortrag)
+		} else {
+			setVal(f, sheetFB, CellFBPruefungAbzugSaldo, "Abzug")
+		}
+		if data.FBPruefung.AbzugMehreinnahmen != nil {
+			setVal(f, sheetFB, CellFBPruefungAbzugMehr, data.FBPruefung.AbzugMehreinnahmen)
+		} else {
+			setVal(f, sheetFB, CellFBPruefungAbzugMehr, "Abzug")
+		}
 	} else {
 		setVal(f, sheetFB, CellFBPruefungAuswahl, "Neuester FB")
+		setVal(f, sheetFB, CellFBPruefungAbzugSaldo, "Abzug")
+		setVal(f, sheetFB, CellFBPruefungAbzugMehr, "Abzug")
 	}
 
 	sheetMA := constants.VPSheetMA_PRUEFUNG
-	if data.MAPruefung != nil && data.MAPruefung.Auswahl != nil {
-		setVal(f, sheetMA, CellMAPruefungAuswahl, data.MAPruefung.Auswahl)
+	if data.MAPruefung != nil {
+		if data.MAPruefung.Auswahl != nil {
+			setVal(f, sheetMA, CellMAPruefungAuswahl, data.MAPruefung.Auswahl)
+		} else {
+			setVal(f, sheetMA, CellMAPruefungAuswahl, "Neueste MA")
+		}
+		if data.MAPruefung.MonateY1 != nil {
+			setVal(f, sheetMA, CellMAPruefungMonateY1, data.MAPruefung.MonateY1)
+		} else {
+			setVal(f, sheetMA, CellMAPruefungMonateY1, 8)
+		}
+		if data.MAPruefung.MonateY2 != nil {
+			setVal(f, sheetMA, CellMAPruefungMonateY2, data.MAPruefung.MonateY2)
+		} else {
+			setVal(f, sheetMA, CellMAPruefungMonateY2, 0)
+		}
+		if data.MAPruefung.MonateY3 != nil {
+			setVal(f, sheetMA, CellMAPruefungMonateY3, data.MAPruefung.MonateY3)
+		} else {
+			setVal(f, sheetMA, CellMAPruefungMonateY3, 0)
+		}
+		// NOTE: Toggles are not yet exposed in MAPruefungData in fill.go but let's default them
+		setVal(f, sheetMA, CellMAPruefungAbzugSaldo, "Abzug")
+		setVal(f, sheetMA, CellMAPruefungAbzugMehr, "Abzug")
+		setVal(f, sheetMA, CellMAPruefungAbzugPrognose, "Abzug")
 	} else {
 		setVal(f, sheetMA, CellMAPruefungAuswahl, "Neueste MA")
+		setVal(f, sheetMA, CellMAPruefungMonateY1, 8)
+		setVal(f, sheetMA, CellMAPruefungMonateY2, 0)
+		setVal(f, sheetMA, CellMAPruefungMonateY3, 0)
+		setVal(f, sheetMA, CellMAPruefungAbzugSaldo, "Abzug")
+		setVal(f, sheetMA, CellMAPruefungAbzugMehr, "Abzug")
+		setVal(f, sheetMA, CellMAPruefungAbzugPrognose, "Abzug")
 	}
 
 	return f.Save()

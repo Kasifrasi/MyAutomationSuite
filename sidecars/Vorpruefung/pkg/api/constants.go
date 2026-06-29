@@ -87,6 +87,15 @@ const (
 
 // Pruefung Layout
 const (
-	CellFBPruefungAuswahl = "C9"
-	CellMAPruefungAuswahl = "C9"
+	CellFBPruefungAuswahl    = "E9"
+	CellFBPruefungAbzugSaldo = "F15"
+	CellFBPruefungAbzugMehr  = "F16"
+
+	CellMAPruefungAuswahl       = "E9"
+	CellMAPruefungAbzugSaldo    = "F20"
+	CellMAPruefungAbzugMehr     = "F21"
+	CellMAPruefungAbzugPrognose = "F22"
+	CellMAPruefungMonateY1      = "D37"
+	CellMAPruefungMonateY2      = "D38"
+	CellMAPruefungMonateY3      = "D39"
 )
