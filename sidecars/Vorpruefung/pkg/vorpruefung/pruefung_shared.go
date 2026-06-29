@@ -55,8 +55,9 @@ const (
 	// Grid-Block je MA-Tabelle: 8 Kostenkategorien (len(MA_CATEGORIES)) + 4
 	// Finanzierungsarten (Eigenmittel/Drittmittel/KMW-Mittel/Manueller Betrag) für die Prognose
 	// der Finanzierungsanteile. Muss zu gridEntries in daten.go passen.
-	EV_DTN_MAG_BLOCK = 8 + 4
-	EV_DTN_MAG_ROWS  = MA_TABLE_COUNT * EV_DTN_MAG_BLOCK
+	// We will compute this dynamically now.
+	// EV_DTN_MAG_BLOCK = 8 + 4
+	// EV_DTN_MAG_ROWS  = MA_TABLE_COUNT * EV_DTN_MAG_BLOCK
 
 	EVAL_NAME_MA_LISTE = "MA_Auswahl_Liste"
 	EVAL_NAME_FB_LISTE = "FB_Auswahl_Liste"

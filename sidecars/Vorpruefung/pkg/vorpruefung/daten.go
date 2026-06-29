@@ -194,23 +194,53 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		cat   string
 		maRow int
 	}
-	gridEntries := make([]maGridEntry, 0, EV_DTN_MAG_BLOCK)
-	for c, cat := range MA_CATEGORIES {
-		gridEntries = append(gridEntries, maGridEntry{cat, 10 + c})
+	maDataRows := g.budgetExpenseCount()
+	maBlockHeight := 10 + maDataRows + 14 // same calculation as in MA sheet
+	maTotalsRow := 9 + maDataRows + 1     // previously 9 + 8 + 1 = 18
+
+	// Calculate row offsets for the MA incomes based on maTotalsRow
+	// r = maTotalsRow + 2 -> 20
+	// Eigenmittel -> 21
+	// Drittmittel -> 22
+	// KMW-Mittel -> 25
+	// Manueller Betrag -> 27
+
+	rowEigen := maTotalsRow + 3
+	rowDritt := maTotalsRow + 4
+	rowKmw := maTotalsRow + 7
+	rowManuell := maTotalsRow + 9
+
+	gridEntries := make([]maGridEntry, 0, maDataRows+4)
+	for c := 0; c < maDataRows; c++ {
+		// Category labels are on the MA sheet. For now we will just use indices for categories if needed,
+		// or read the actual label from the MA sheet?
+		// Since daten.go is on a different sheet, we could just reference the label cell, but daten sheet
+		// SUMIFS requires plain strings if we use "KMW-Mittel".
+		// We'll leave the cat string empty or placeholder and fill it dynamically or let the API do it?
+		// Wait, daten.go populates the daten sheet. The API won't touch the daten sheet!
+		// But in pruefung_fb.go and pruefung_ma.go, the SUMIFS matches this value.
+		// So we can just use an index string like "Expense_0" for the category in daten.go,
+		// and in pruefung_fb.go/pruefung_ma.go we query for "Expense_0".
+		gridEntries = append(gridEntries, maGridEntry{fmt.Sprintf("Expense_%d", c), 10 + c})
 	}
+
+	// The income types (KMW-Mittel etc.) are still hardcoded in the comparison logic?
+	// The user says "ohne vordefinierte Typen ... Einnahme-Typen".
+	// But in MA, they are literally "abzueglich Eigenmittel".
 	gridEntries = append(gridEntries,
-		maGridEntry{"Eigenmittel", 21},
-		maGridEntry{"Drittmittel", 22},
-		maGridEntry{"KMW-Mittel", 25},
-		maGridEntry{"Manueller Betrag", 27},
+		maGridEntry{"Eigenmittel", rowEigen},
+		maGridEntry{"Drittmittel", rowDritt},
+		maGridEntry{"KMW-Mittel", rowKmw},
+		maGridEntry{"Manueller Betrag", rowManuell},
 	)
+	blockSize := len(gridEntries)
 	for j := 1; j <= MA_TABLE_COUNT; j++ {
 		p := ((j - 1) % MA_PERIOD_COUNT) + 1
 		level := ((j - 1) / MA_PERIOD_COUNT) + 1
-		offsetR := (level - 1) * 30
+		offsetR := (level - 1) * (maBlockHeight + 2)
 		colS := 2 + (p-1)*4
 		for idx, e := range gridEntries {
-			row := (j-1)*EV_DTN_MAG_BLOCK + idx + 1
+			row := (j-1)*blockSize + idx + 1
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_PER, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_PER), j))
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_RANK, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_RANK), j))
 			_ = f.SetCellValue(ws, dc(EV_DTN_MAG_CAT, row), e.cat)

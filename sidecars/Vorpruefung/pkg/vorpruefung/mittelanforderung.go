@@ -14,8 +14,6 @@ const (
 	MA_TABLE_SPACE = 1
 	MA_START_COL   = 2 // Spalte B
 	MA_START_ROW   = 5 // Zeile 5
-	MA_START_ROW_2 = 35
-	MA_START_ROW_3 = 65
 
 	MA_PERIOD_COUNT = 18
 	MA_TABLE_COUNT  = 54
@@ -68,7 +66,11 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 		}
 	}
 
-	startRowL2 := MA_START_ROW_2
+	maDataRows := g.budgetExpenseCount()
+	maBlockHeight := 10 + maDataRows + 14          // header+data+footer
+	startRowL2 := MA_START_ROW + maBlockHeight + 2 // +2 for spacing
+	startRowL3 := startRowL2 + maBlockHeight + 2
+
 	_ = f.SetCellValue(ws, cellName(MA_START_COL, startRowL2-2), "Zusätzliche Mittelanforderungen (Ausnahme 1)")
 	_ = g.setStyle(ws, cellName(MA_START_COL, startRowL2-2), cellName(MA_START_COL+2, startRowL2-2), StyleOptions{Bold: true})
 
@@ -82,7 +84,6 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 		}
 	}
 
-	startRowL3 := MA_START_ROW_3
 	_ = f.SetCellValue(ws, cellName(MA_START_COL, startRowL3-2), "Zusätzliche Mittelanforderungen (Ausnahme 2)")
 	_ = g.setStyle(ws, cellName(MA_START_COL, startRowL3-2), cellName(MA_START_COL+2, startRowL3-2), StyleOptions{Bold: true})
 
@@ -109,12 +110,12 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 	}
 
 	// Zeilen-Gruppierungen für Ebene 2 und 3 (jeweils mit 1 ungruppierten Abstandzeile dazwischen)
-	for r := startRowL2 - 2; r <= startRowL2+25; r++ {
+	for r := startRowL2 - 2; r <= startRowL2+maBlockHeight; r++ {
 		_ = f.SetRowOutlineLevel(ws, r, 1)
 		_ = f.SetRowVisible(ws, r, false)
 	}
 
-	for r := startRowL3 - 2; r <= startRowL3+25; r++ {
+	for r := startRowL3 - 2; r <= startRowL3+maBlockHeight; r++ {
 		_ = f.SetRowOutlineLevel(ws, r, 1)
 		_ = f.SetRowVisible(ws, r, false)
 	}
@@ -222,7 +223,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080",
 	})
 
-	maDataRows := len(MA_CATEGORIES)
+	maDataRows := g.budgetExpenseCount()
 	maTotalsRow := maHdrRow + maDataRows + 1
 
 	// Add data body range to MA list for VSTACK
@@ -239,9 +240,15 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 		return err
 	}
 
-	for i, cat := range MA_CATEGORIES {
+	for i := 0; i < maDataRows; i++ {
 		row := maHdrRow + 1 + i
-		_ = f.SetCellValue(ws, cellName(cLbl, row), cat)
+		labelVal := ""
+		if g.cfg.ExpensePositionsCount == 0 {
+			if i < len(MA_CATEGORIES) {
+				labelVal = MA_CATEGORIES[i]
+			}
+		}
+		_ = f.SetCellValue(ws, cellName(cLbl, row), labelVal)
 		_ = f.SetCellFormula(ws, cellName(cEUR, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(cLC, row), maKursName))
 
 		_ = g.setStyle(ws, cellName(cLbl, row), cellName(cLbl, row), StyleOptions{

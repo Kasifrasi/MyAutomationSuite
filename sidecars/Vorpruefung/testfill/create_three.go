@@ -5,12 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"vorpruefung/pkg/api"
+	"vorpruefung/pkg/vorpruefung"
 
 	"github.com/xuri/excelize/v2"
 )
 
 func runThreeOutputs() {
-	inPath := "vorpruefung_base.xlsx"
+	// inPath := "vorpruefung_base.xlsx"
 
 	root, _ := repoRoot()
 	tmpDir := filepath.Join(root, "tmp")
@@ -48,8 +49,20 @@ func runThreeOutputs() {
 		},
 	}
 
+	// The generator now just needs the config, but we pass budgetData to the API
 	// 1. Ohne Standardwerte, ohne Einnahmen
-	// We want to test bare metal, so we copy budgetData but set ReserveFreigabe to nil
+	// We want to test bare metal, so we just run the generator with the right counts.
+	out1_gen := filepath.Join(tmpDir, "1_gen_bare.xlsx")
+	cfg := vorpruefung.GeneratorConfig{
+		ExpensePositionsCount: len(budgetData.Ausgaben),
+		IncomeTypesCount:      4, // Eigen, Dritt, KMW, Zinsen
+	}
+	err = vorpruefung.GenerateVorpruefung(out1_gen, cfg)
+	if err != nil {
+		log.Fatalf("Gen Fehler 1: %v", err)
+	}
+
+	bareDashboard := api.DashboardData{}
 	bareBudget := *budgetData
 	bareBudget.ReserveFreigabe = nil
 	bareBudget.Ausgaben = nil
@@ -60,10 +73,9 @@ func runThreeOutputs() {
 	bareBudget.DrittmittelY3 = nil
 	bareBudget.DrittGeber = nil
 	bareBudget.DrittSonstiges = nil
-	bareDashboard := api.DashboardData{}
 
 	data1 := api.FillData{FB: nil, Budget: &bareBudget, Dashboard: bareDashboard}
-	err = copyFile(inPath, out1)
+	err = copyFile(out1_gen, out1)
 	if err == nil {
 		err = api.FillTemplate(out1, data1)
 	}
@@ -73,7 +85,7 @@ func runThreeOutputs() {
 
 	// 2. Mit Standardwerten, ohne Einnahmen
 	data2 := api.FillData{FB: fbPeriodsOhneEinnahmen, Budget: budgetData}
-	err = copyFile(inPath, out2)
+	err = copyFile(out1_gen, out2)
 	if err == nil {
 		f, _ := excelize.OpenFile(out2)
 		api.FillDefaults(f)
@@ -99,7 +111,7 @@ func runThreeOutputs() {
 			Auswahl: &strMA,
 		},
 	}
-	err = copyFile(inPath, out3)
+	err = copyFile(out1_gen, out3)
 	if err == nil {
 		f, _ := excelize.OpenFile(out3)
 		api.FillDefaults(f)

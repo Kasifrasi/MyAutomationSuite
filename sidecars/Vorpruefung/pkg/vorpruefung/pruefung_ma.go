@@ -93,16 +93,32 @@ func (g *Generator) CreateMAPruefungSheet() error {
 
 // evalMAExpenseActual summiert die ausgewählten Mittelanforderungen (#1..#k) der
 // Periode P je Kategorie über das MA-Grid auf dem Daten-Blatt.
-func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
+func evalMAExpenseActual(g *Generator, sel evalSelRefs, idx int, valCol int, isIncome bool) string {
+	cat := ""
+	if isIncome {
+		switch idx {
+		case 0:
+			cat = "Eigenmittel"
+		case 1:
+			cat = "Drittmittel"
+		case 2:
+			cat = "KMW-Mittel"
+		case 3:
+			cat = "Manueller Betrag" // Unused but mapping holds
+		}
+	} else {
+		cat = fmt.Sprintf("Expense_%d", idx)
+	}
+
 	// Weil der Rank (sel.maSelK) jetzt fest der Level-Ebene (1, 2, 3) entspricht,
 	// liefert eine SUMIFS über Rang <= k genau alle MAs dieser Periode bis zu diesem Level.
 	return fmt.Sprintf(
 		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,"%s",'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1"),2),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(valCol, 1, EV_DTN_MAG_ROWS),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS), cat,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS))
+		EVAL_DATEN_SHEET, evalAbsCol(valCol, 1, g.maGridRows()),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, g.maGridRows()), cat,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()), sel.maSelK,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()))
 }
 
 // evalMAChooseManBetrag liefert einen CHOOSE-Ausdruck über die MA_ManBetrag_<n>-Namen
@@ -138,13 +154,13 @@ func evalMAChooseKurs(sel evalSelRefs) string {
 // gewählten Mittelanforderung (Periode P, Rang exakt = k) aus dem MA-Grid. Anders
 // als die Prognose (#1..#k) bewusst nicht zusammengesetzt – frühere Anforderungen
 // einer Periode sind bereits über die bereitgestellten KMW-Mittel erfasst.
-func evalMACurrentKMWRequest(sel evalSelRefs) string {
+func evalMACurrentKMWRequest(g *Generator, sel evalSelRefs) string {
 	return fmt.Sprintf(
 		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%s),2),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, EV_DTN_MAG_ROWS),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK)
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, g.maGridRows()),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, g.maGridRows()),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()), sel.maSelK)
 }
 
 // evalMASelectedZeitraum liefert den Zeitraum (Monate) der aktuell gewählten
@@ -172,12 +188,13 @@ func evalMASelectedZeitraum(sel evalSelRefs) string {
 func (g *Generator) evalFBMehreinnahmenParts(sel evalSelRefs) (string, string) {
 	var fbIstParts []string
 	var budParts []string
-	for i, name := range TYPE_NAMES {
-		if name == "KMW-Mittel" {
+	for i := 0; i < g.budgetIncomeCount(); i++ {
+		// Wait, KMW is typically index 2. We skip KMW-Mittel
+		if i == 2 {
 			continue
 		}
 		fbIstParts = append(fbIstParts, evalFBChooseRef(sel.fbSelNum, 12+i, 4)[1:])
-		_, budName := g.evalBudgetNames(true, name)
+		_, budName := g.evalBudgetNames(true, i)
 		budParts = append(budParts, fmt.Sprintf("IFERROR(%s,0)", budName))
 	}
 	return strings.Join(fbIstParts, "+"), strings.Join(budParts, "+")

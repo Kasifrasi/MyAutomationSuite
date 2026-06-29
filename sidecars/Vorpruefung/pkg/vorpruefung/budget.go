@@ -232,8 +232,8 @@ func (g *Generator) CreateBudgetSheet() error {
 	r += 1
 
 	ausgDataRows := len(BG_CATEGORIES)
-	if g.budget != nil {
-		ausgDataRows = len(g.budget.Ausgaben)
+	if g.cfg.ExpensePositionsCount > 0 {
+		ausgDataRows = g.cfg.ExpensePositionsCount
 	}
 	catCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
 	idCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", NumFormat: "@", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
@@ -243,7 +243,7 @@ func (g *Generator) CreateBudgetSheet() error {
 		row := r + i
 		_ = f.SetRowHeight(ws, row, 30)
 
-		if g.budget != nil {
+		if g.cfg.ExpensePositionsCount > 0 {
 			// Datengetrieben: Wir legen die Struktur für die Position an, befüllen sie
 			// aber NICHT mit den konkreten Positionswerten. Das Befüllen übernimmt die API.
 			// Hier bleibt die Zelle als leeres Eingabefeld formatiert.
@@ -348,11 +348,8 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	// geberRows: explizit benannte Geber (ohne Sonstiges).
 	// dataRows:  geberRows + 1 feste Sonstiges-Zeile (immer vorhanden).
 	geberRows := 10
-	if g.budget != nil {
-		if len(g.budget.Drittmittel.Geber) > 10 {
-			geberRows = len(g.budget.Drittmittel.Geber)
-		}
-	}
+	// TODO: Maybe let the API configure this, but default to 10 if not set.
+	// For now, if we don't have GeberCount, we fallback to 10.
 	dataRows := geberRows + 1 // +1 für Sonstiges
 
 	g.mergeCells(ws, cellName(cName, titleRow), cellName(cEur, titleRow), "Drittmittel – Aufstellung je Geber", StyleOptions{

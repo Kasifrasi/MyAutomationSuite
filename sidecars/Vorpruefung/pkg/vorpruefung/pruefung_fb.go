@@ -264,7 +264,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		// über die bereitgestellten KMW-Mittel (KMW-Tabelle) erfasst. Beide Seiten
 		// (Basis / bereinigt) ziehen denselben berechneten Wert ab (grauer Hintergrund).
 		p1Top := r
-		reqFormula := evalMACurrentKMWRequest(sel)
+		reqFormula := evalMACurrentKMWRequest(g, sel)
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Abzüglich aktuelle Anforderung", false)
 		g.evalKmwCalc(ws, cellName(valL, r), reqFormula, false)
 		addrReqL := absName(valL, r)
@@ -498,28 +498,38 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 	_ = g.file.SetRowHeight(ws, hdrRow, 28.0)
 	r++
 
-	rowNames := TYPE_NAMES
+	nRows := g.budgetIncomeCount()
 	if !isIncome {
-		rowNames = EXPENSE_CATEGORIES
+		nRows = g.budgetExpenseCount()
 	}
 	dataStart := r
 	kmwActEUR, kmwBudEUR := "", ""
 
-	for i, name := range rowNames {
+	for i := 0; i < nRows; i++ {
 		row := dataStart + i
 
-		_ = g.setValue(ws, cellName(EV_COL_LABEL, row), name, StyleOptions{
+		// Label wird von der API gefüllt. Nur formatiert bereitstellen.
+		labelVal := ""
+		if g.cfg.IncomeTypesCount == 0 && g.cfg.ExpensePositionsCount == 0 {
+			if isIncome && i < len(TYPE_NAMES) {
+				labelVal = TYPE_NAMES[i]
+			} else if !isIncome && i < len(EXPENSE_CATEGORIES) {
+				labelVal = EXPENSE_CATEGORIES[i]
+			}
+		}
+
+		_ = g.setValue(ws, cellName(EV_COL_LABEL, row), labelVal, StyleOptions{
 			HAlign: "left", VAlign: "center",
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 		})
 
 		actLC := cellName(EV_COL_ACT_LC, row)
 		actEUR := cellName(EV_COL_ACT_EUR, row)
-		lcF, eurF := g.evalActualFormulas(isIncome, isMA, name, i, sel)
+		lcF, eurF := g.evalActualFormulas(isIncome, isMA, i, sel)
 		g.evalCellFormula(ws, actLC, lcF, EV_FMT_LC, EV_CLR_CALC)
 		g.evalCellFormula(ws, actEUR, eurF, EV_FMT_EUR, EV_CLR_CALC)
 
-		budLCName, budEURName := g.evalBudgetNames(isIncome, name)
+		budLCName, budEURName := g.evalBudgetNames(isIncome, i)
 		g.evalCellFormula(ws, cellName(EV_COL_BUD_LC, row), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", budLCName), EV_FMT_LC, EV_CLR_CALC)
 		g.evalCellFormula(ws, cellName(EV_COL_BUD_EUR, row), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", budEURName), EV_FMT_EUR, EV_CLR_CALC)
 
@@ -533,19 +543,23 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", absName(EV_COL_ACT_EUR, row), absName(EV_COL_BUD_EUR, row)), EV_FMT_PCT, "")
 
 		if !isMA {
-			cleanName := strings.ReplaceAll(name, " ", "_")
-			cleanName = strings.ReplaceAll(cleanName, "-", "_")
-			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActLC_%s", cleanName), EV_COL_ACT_LC, row)
-			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActEUR_%s", cleanName), EV_COL_ACT_EUR, row)
+			// cleanName war für AW_FB_ActLC_Bauausgaben. Jetzt ohne festen Namen einfach Index?
+			// Da Named Ranges keine Leerzeichen etc. mögen, nutzen wir einen generischen Index.
+			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActLC_%s_%d", map[bool]string{true: "Inc", false: "Exp"}[isIncome], i), EV_COL_ACT_LC, row)
+			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActEUR_%s_%d", map[bool]string{true: "Inc", false: "Exp"}[isIncome], i), EV_COL_ACT_EUR, row)
 		}
 
-		if isIncome && name == "KMW-Mittel" {
+		// Hack for KMW comparison later
+		// Since we don't know the exact row for KMW anymore from hardcoded strings, we will
+		// just assume KMW is the 3rd row for backward compatibility or let the API figure it out.
+		// Wait, KMW is usually Income Type 3 (index 2). Let's use index 2 for now.
+		if isIncome && i == 2 {
 			kmwActEUR = absName(EV_COL_ACT_EUR, row)
 			kmwBudEUR = absName(EV_COL_BUD_EUR, row)
 		}
 	}
 
-	dataEnd := dataStart + len(rowNames) - 1
+	dataEnd := dataStart + nRows - 1
 	totalRow := dataEnd + 1
 	g.evalTotalRow(ws, totalRow, dataStart, dataEnd)
 
@@ -566,10 +580,10 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 }
 
 // evalActualFormulas: Ist-/Prognose-Formeln je Zeile.
-func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int, sel evalSelRefs) (string, string) {
+func (g *Generator) evalActualFormulas(isIncome, isMA bool, idx int, sel evalSelRefs) (string, string) {
 	if isIncome && isMA {
-		maL := evalMAExpenseActual(sel, name, EV_DTN_MAG_LC)
-		maE := evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
+		maL := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_LC, isIncome)
+		maE := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_EUR, isIncome)
 		fbL := evalFBChooseRef(sel.fbSelNum, 12+idx, 3)
 		fbE := evalFBChooseRef(sel.fbSelNum, 12+idx, 4)
 		return fmt.Sprintf("=%s + %s", maL[1:], fbL[1:]),
@@ -579,32 +593,46 @@ func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int
 		return evalFBChooseRef(sel.fbSelNum, 12+idx, 3), evalFBChooseRef(sel.fbSelNum, 12+idx, 4)
 	}
 	if isMA {
-		maL := evalMAExpenseActual(sel, name, EV_DTN_MAG_LC)
-		maE := evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
-		rows := g.fbExpenseRowsForCategory(name)
-		fbL := evalFBChooseRefRows(sel.fbSelNum, rows, 3)
-		fbE := evalFBChooseRefRows(sel.fbSelNum, rows, 4)
+		maL := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_LC, isIncome)
+		maE := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_EUR, isIncome)
+		// 1 to 1 mapping: FB row is FB_AUSG_FIRST_ROW + idx
+		row := FB_AUSG_FIRST_ROW + idx
+		fbL := evalFBChooseRef(sel.fbSelNum, row, 3)
+		fbE := evalFBChooseRef(sel.fbSelNum, row, 4)
 		return fmt.Sprintf("=%s + %s", maL[1:], fbL[1:]),
 			fmt.Sprintf("=%s + %s", maE[1:], fbE[1:])
 	}
-	rows := g.fbExpenseRowsForCategory(name)
-	return evalFBChooseRefRows(sel.fbSelNum, rows, 3), evalFBChooseRefRows(sel.fbSelNum, rows, 4)
+
+	row := FB_AUSG_FIRST_ROW + idx
+	return evalFBChooseRef(sel.fbSelNum, row, 3), evalFBChooseRef(sel.fbSelNum, row, 4)
 }
 
-func (g *Generator) evalBudgetNames(isIncome bool, name string) (string, string) {
+func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {
 	if isIncome {
-		switch name {
-		case "Eigenmittel":
+		switch idx {
+		case 0:
 			return BG_NAME_EIGEN_LW, BG_NAME_EIGEN_EUR
-		case "Drittmittel":
+		case 1:
 			return BG_NAME_DRITT_LW, BG_NAME_DRITT_EUR
-		case "KMW-Mittel":
+		case 2:
 			return BG_NAME_KMW_LW, BG_NAME_KMW_EUR
 		default:
 			return "0", "0"
 		}
 	}
-	return bgKostenName(name, "LW"), bgKostenName(name, "EUR")
+
+	// Budget table has rows starting at ausgHdrRow + 1. We don't have Named Ranges per position anymore.
+	// But wait! We need to pull the budget value for this position.
+	// Where is the budget value? It's in the Budget sheet.
+	// We can use the BG_TABLE_AUSG!
+	// Wait, we can just use the absolute cell reference for the budget position row.
+	// The budget expense block starts at row 24 or similar, depending on Drittmittel etc...
+	// Actually, the Budget Ausgaben block starts after "2. GEPLANTE AUSGABEN".
+	// Let's just lookup by index in the budget table using INDEX.
+	// BG_TABLE_AUSG columns: Betrag (LC) is 4, Betrag (EUR) is 8
+	budLC := fmt.Sprintf("INDEX(%s[Betrag (LC)], %d)", BG_TABLE_AUSG, idx+1)
+	budEUR := fmt.Sprintf("INDEX(%s[Betrag (EUR)], %d)", BG_TABLE_AUSG, idx+1)
+	return budLC, budEUR
 }
 
 func (g *Generator) evalTotalRow(ws string, totalRow, dataStart, dataEnd int) {

@@ -10,7 +10,7 @@ import (
 // UIProgress sendet Statusmeldungen im JSON-Format an die Standardausgabe,
 // die von deiner Slint/Python-GUI leicht geparst werden können.
 
-func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
+func GenerateVorpruefung(outputPath string, cfg GeneratorConfig) error {
 	f := excelize.NewFile()
 
 	orderedSheets := []string{
@@ -33,7 +33,7 @@ func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 		styleCache:     make(map[string]int),
 		condStyleCache: make(map[string]int),
 		borderCache:    make(map[string]int),
-		budget:         budgetCfg,
+		cfg:            cfg,
 	}
 
 	if err := g.CreateDashboardSheet(); err != nil {
@@ -82,29 +82,20 @@ func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 // budgetExpenseCount liefert die Anzahl der Ausgaben-Zeilen (Positionen bei Config,
 // sonst die Standard-Kategorien). Bestimmt die Zeilenanzahl der FB-Ausgabentabellen.
 func (g *Generator) budgetExpenseCount() int {
-	if g.budget != nil {
-		return len(g.budget.Ausgaben)
+	if g.cfg.ExpensePositionsCount > 0 {
+		return g.cfg.ExpensePositionsCount
 	}
 	return len(EXPENSE_CATEGORIES)
 }
 
-// fbExpenseRowsForCategory liefert die FB-Ausgaben-Zeilennummern (auf dem Blatt
-// "III. Finanzberichte"), die zu einer Kostenkategorie gehören. Die erste
-// Ausgaben-Datenzeile liegt bei FB_AUSG_FIRST_ROW; Position i ⇒ Zeile +i.
-func (g *Generator) fbExpenseRowsForCategory(cat string) []int {
-	var rows []int
-	if g.budget != nil {
-		for i, p := range g.budget.Ausgaben {
-			if p.Kategorie == cat {
-				rows = append(rows, FB_AUSG_FIRST_ROW+i)
-			}
-		}
-		return rows
+func (g *Generator) maGridRows() int {
+	blockSize := g.budgetExpenseCount() + 4
+	return MA_TABLE_COUNT * blockSize
+}
+
+func (g *Generator) budgetIncomeCount() int {
+	if g.cfg.IncomeTypesCount > 0 {
+		return g.cfg.IncomeTypesCount
 	}
-	for i, c := range EXPENSE_CATEGORIES {
-		if c == cat {
-			rows = append(rows, FB_AUSG_FIRST_ROW+i)
-		}
-	}
-	return rows
+	return len(TYPE_NAMES)
 }

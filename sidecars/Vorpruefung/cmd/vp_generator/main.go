@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"shared/models"
 	"shared/runner"
 	"vorpruefung/pkg/vorpruefung"
@@ -9,9 +8,10 @@ import (
 
 func main() {
 	runner.Run(func(data models.ScannedBudgetData, outputPath string, optionsJSON string) error {
-		cfg := vorpruefung.MapScannedToBudget(&data)
-		if err := cfg.Validate(); err != nil {
-			return fmt.Errorf("budget-daten sind ungültig: %w", err)
+		expCount := len(data.Positions)
+
+		cfg := vorpruefung.GeneratorConfig{
+			ExpensePositionsCount: expCount,
 		}
 		return vorpruefung.GenerateVorpruefung(outputPath, cfg)
 	})

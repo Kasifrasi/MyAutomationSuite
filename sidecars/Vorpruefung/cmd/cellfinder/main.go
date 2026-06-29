@@ -22,8 +22,8 @@ func main() {
 	tmpFile := "temp_template_scan.xlsx"
 	fmt.Println("Generiere temporäre Vorlage auf Basis des aktuellen Codes...")
 
-	// 'nil' generiert ein Standard-Template ohne spezifische Budget-Daten
-	if err := vorpruefung.GenerateVorpruefung(tmpFile, nil); err != nil {
+	// leere config generiert ein Standard-Template ohne spezifische Budget-Daten
+	if err := vorpruefung.GenerateVorpruefung(tmpFile, vorpruefung.GeneratorConfig{}); err != nil {
 		log.Fatalf("Fehler bei der Generierung: %v", err)
 	}
 	// Räumt die temporäre Datei am Ende auf

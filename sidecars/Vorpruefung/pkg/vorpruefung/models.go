@@ -51,6 +51,11 @@ type StyleOptions struct {
 	Unlocked     bool
 }
 
+type GeneratorConfig struct {
+	ExpensePositionsCount int
+	IncomeTypesCount      int
+}
+
 type Generator struct {
 	file           *excelize.File
 	styleCache     map[string]int
@@ -65,7 +70,7 @@ type Generator struct {
 	dynArrayCells    []dynArrayCell
 	evalFBSelNumAddr string
 
-	budget *BudgetConfig
+	cfg GeneratorConfig
 }
 
 type dynArrayCell struct {

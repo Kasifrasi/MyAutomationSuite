@@ -236,8 +236,16 @@ func (g *Generator) drawReportTable(
 
 	// Einnahmen-Typen-Zeilen
 	var typeRows []int
-	for _, typeName := range TYPE_NAMES {
-		_ = g.fbDrawEinnahmenRow(ws, r, cLabel, typeName)
+	nInc := g.budgetIncomeCount()
+	for i := 0; i < nInc; i++ {
+		// Just generate the row; the label is left empty for the API to fill!
+		labelVal := ""
+		if g.cfg.IncomeTypesCount == 0 { // Fallback if old code
+			if i < len(TYPE_NAMES) {
+				labelVal = TYPE_NAMES[i]
+			}
+		}
+		_ = g.fbDrawEinnahmenRow(ws, r, cLabel, labelVal)
 		typeRows = append(typeRows, r)
 		r++
 	}
@@ -315,8 +323,9 @@ func (g *Generator) drawReportTable(
 
 		// ID: bei Config fester Wert (sortierbar, klare Zuteilung), sonst per INDEX
 		// aus der Budget-ID-Liste.
-		if g.budget != nil {
-			_ = f.SetCellValue(ws, cellName(cLabel, row), g.budget.Ausgaben[i].ID)
+		if g.cfg.ExpensePositionsCount > 0 {
+			// Leave it empty for the API to fill!
+			_ = f.SetCellValue(ws, cellName(cLabel, row), "")
 		} else {
 			_ = f.SetCellFormula(ws, cellName(cLabel, row), fmt.Sprintf(`=IFERROR(INDEX(%s, ROW() - %d), "")`, FB_NAME_ID_LIST, ausgHdrRow))
 		}
@@ -516,9 +525,10 @@ func (g *Generator) drawReportTable(
 	tbl2EUR := fmt.Sprintf("%s:%s", absName(colStart+3, r2_start+1), absName(colStart+3, r2_start+6))
 
 	// Formeln für Einnahmen-Typen (LC/EUR)
-	for i, tStr := range TYPE_NAMES {
-		lcFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,"%s",%s)+SUMIF(%s,"%s",%s),2)`, tbl1Typ, tStr, tbl1LC, tbl2Typ, tStr, tbl2LC)
-		eurFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,"%s",%s)+SUMIF(%s,"%s",%s),2)`, tbl1Typ, tStr, tbl1EUR, tbl2Typ, tStr, tbl2EUR)
+	for i := 0; i < nInc; i++ {
+		labelAddr := absName(cLabel, typeRows[i])
+		lcFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,%s,%s)+SUMIF(%s,%s,%s),2)`, tbl1Typ, labelAddr, tbl1LC, tbl2Typ, labelAddr, tbl2LC)
+		eurFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,%s,%s)+SUMIF(%s,%s,%s),2)`, tbl1Typ, labelAddr, tbl1EUR, tbl2Typ, labelAddr, tbl2EUR)
 
 		_ = f.SetCellFormula(ws, cellName(cValLC, typeRows[i]), lcFormula)
 		_ = f.SetCellFormula(ws, cellName(cValEUR, typeRows[i]), eurFormula)

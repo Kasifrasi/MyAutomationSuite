@@ -113,26 +113,26 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 		lcF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
 			s, kCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_LC, 1, EV_DTN_MAG_ROWS),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), pCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), s)
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_LC, 1, g.maGridRows()),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, g.maGridRows()),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()), s)
 		_ = g.setFormula(ws, cellName(EV_PB_V1, row), lcF, valSt)
 
 		euF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
 			s, kCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, EV_DTN_MAG_ROWS),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), pCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), s)
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, g.maGridRows()),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, g.maGridRows()),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()), s)
 		_ = g.setFormula(ws, cellName(EV_PB_SLC2, row), euF, euSt)
 
 		manF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"Manueller Betrag",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
 			s, kCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, EV_DTN_MAG_ROWS),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), pCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), s)
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, g.maGridRows()),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, g.maGridRows()),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()), s)
 		_ = g.setFormula(ws, cellName(EV_PB_SEU1, row), manF, euSt)
 
 		labelAddr := absName(EV_PB_C1, row)
