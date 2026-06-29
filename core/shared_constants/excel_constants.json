@@ -24,7 +24,8 @@
       "kmw_mittel": "II. KMW-Mittel",
       "finanzberichte": "III. Finanzberichte",
       "ma": "IV. MA",
-      "auswertung": "V. AUSWERTUNG",
+      "fb_pruefung": "Pruefung FB",
+      "ma_pruefung": "Pruefung MA",
       "daten": "Daten"
     }
   }

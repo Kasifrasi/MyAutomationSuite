@@ -65,6 +65,12 @@ type Generator struct {
 	dynArrayCells    []dynArrayCell
 	evalFBSelNumAddr string
 
+	evalFBMehrCell        string
+	evalFBResIncActEUR    string
+	evalFBResIncKmwActEUR string
+	evalFBResIncBudEUR    string
+	evalFBResIncKmwBudEUR string
+
 	budget *BudgetConfig
 }
 

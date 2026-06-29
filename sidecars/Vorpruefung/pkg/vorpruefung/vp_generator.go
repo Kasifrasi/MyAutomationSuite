@@ -19,7 +19,8 @@ func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 		constants.VPSheetKMW_MITTEL,
 		constants.VPSheetFINANZBERICHTE,
 		constants.VPSheetMA,
-		constants.VPSheetAUSWERTUNG,
+		constants.VPSheetFB_PRUEFUNG,
+		constants.VPSheetMA_PRUEFUNG,
 		constants.VPSheetDATEN,
 	}
 
@@ -50,8 +51,11 @@ func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 	if err := g.CreateMittelanforderungSheet(); err != nil {
 		return fmt.Errorf("fehler beim Erstellen des Mittelanforderung-Blatts: %w", err)
 	}
-	if err := g.CreateAuswertungSheet(); err != nil {
-		return fmt.Errorf("fehler beim Erstellen des Auswertungs-Blatts: %w", err)
+	if err := g.CreateFBPruefungSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des FB-Prüfungs-Blatts: %w", err)
+	}
+	if err := g.CreateMAPruefungSheet(); err != nil {
+		return fmt.Errorf("fehler beim Erstellen des MA-Prüfungs-Blatts: %w", err)
 	}
 	if err := g.CreateDatenSheet(); err != nil {
 		return fmt.Errorf("fehler beim Erstellen des Daten-Blatts: %w", err)

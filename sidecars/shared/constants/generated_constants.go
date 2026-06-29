@@ -22,14 +22,15 @@ const (
 var FBSheetNames = []string{FBSheetDE, FBSheetEN, FBSheetES, FBSheetFR, FBSheetPT}
 
 const (
-	VPSheetAUSWERTUNG = "V. AUSWERTUNG"
 	VPSheetBUDGET = "I. Budget"
 	VPSheetDASHBOARD = "Dashboard"
 	VPSheetDATEN = "Daten"
+	VPSheetFB_PRUEFUNG = "Pruefung FB"
 	VPSheetFINANZBERICHTE = "III. Finanzberichte"
 	VPSheetKMW_MITTEL = "II. KMW-Mittel"
 	VPSheetMA = "IV. MA"
+	VPSheetMA_PRUEFUNG = "Pruefung MA"
 )
 
-var VPSheetNames = []string{VPSheetAUSWERTUNG, VPSheetBUDGET, VPSheetDASHBOARD, VPSheetDATEN, VPSheetFINANZBERICHTE, VPSheetKMW_MITTEL, VPSheetMA}
+var VPSheetNames = []string{VPSheetBUDGET, VPSheetDASHBOARD, VPSheetDATEN, VPSheetFB_PRUEFUNG, VPSheetFINANZBERICHTE, VPSheetKMW_MITTEL, VPSheetMA, VPSheetMA_PRUEFUNG}
 
