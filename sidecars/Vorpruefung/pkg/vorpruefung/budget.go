@@ -40,7 +40,7 @@ const (
 
 	BG_W_LABEL  = 25.0
 	BG_W_ID     = 8.0
-	BG_W_POS    = 30.0
+	BG_W_POS    = 100.0
 	BG_W_LC     = 18.0
 	BG_W_YEAR   = 14.0
 	BG_W_EUR    = 18.0
@@ -248,10 +248,11 @@ func (g *Generator) CreateBudgetSheet() error {
 	}
 	catCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
 	idCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", NumFormat: "@", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
-	posCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
+	posCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID, WrapText: true}
 	catArrayStr := `{"` + strings.Join(BG_CATEGORIES, `","`) + `"}`
 	for i := 0; i < ausgDataRows; i++ {
 		row := r + i
+		_ = f.SetRowHeight(ws, row, 30)
 
 		if g.budget != nil {
 			// Datengetrieben: feste Kategorie, feste ID (kein MATCH/COUNTIF), Position
@@ -296,6 +297,7 @@ func (g *Generator) CreateBudgetSheet() error {
 
 	r += ausgDataRows
 	ausgTotalsRow := r
+	_ = f.SetRowHeight(ws, ausgTotalsRow, 30)
 	g.setValue(ws, cellName(BG_COL_LABEL, ausgTotalsRow), "Geplante Gesamtausgaben", StyleOptions{})
 	g.setFormula(ws, cellName(BG_COL_LC, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{NumFormat: BG_FMT_LC})
 	g.setFormula(ws, cellName(BG_COL_Y1, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[0]), StyleOptions{NumFormat: BG_FMT_LC})
@@ -361,9 +363,11 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	headerRow := ausgHdrRow
 	// geberRows: explizit benannte Geber (ohne Sonstiges).
 	// dataRows:  geberRows + 1 feste Sonstiges-Zeile (immer vorhanden).
-	geberRows := 3
+	geberRows := 10
 	if g.budget != nil {
-		geberRows = len(g.budget.Drittmittel.Geber)
+		if len(g.budget.Drittmittel.Geber) > 10 {
+			geberRows = len(g.budget.Drittmittel.Geber)
+		}
 	}
 	dataRows := geberRows + 1 // +1 für Sonstiges
 
