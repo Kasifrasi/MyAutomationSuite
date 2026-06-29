@@ -136,21 +136,27 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 		labelAddr := absName(EV_PB_C1, row)
 		cond := fmt.Sprintf(`%s<>""`, labelAddr)
+
+		bBot := 1
+		if s == EV_MA_SLOTS {
+			bBot = 2
+		}
+
 		g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(EV_PB_C1, row), cellName(EV_PB_L2, row)),
 			cond, StyleOptions{
-				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 2, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: bBot, BorderLeft: 2, BorderRight: 1, BorderColor: EV_CLR_BORDER,
 			})
 		g.addConditionalFormat(ws, cellName(EV_PB_V1, row),
 			cond, StyleOptions{
-				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: bBot, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
 			})
 		g.addConditionalFormat(ws, cellName(EV_PB_SLC2, row),
 			cond, StyleOptions{
-				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: bBot, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
 			})
 		g.addConditionalFormat(ws, cellName(EV_PB_SEU1, row),
 			cond, StyleOptions{
-				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 2, BorderColor: EV_CLR_BORDER,
+				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: bBot, BorderLeft: 1, BorderRight: 2, BorderColor: EV_CLR_BORDER,
 			})
 	}
 	bottom := firstSlot + EV_MA_SLOTS - 1
