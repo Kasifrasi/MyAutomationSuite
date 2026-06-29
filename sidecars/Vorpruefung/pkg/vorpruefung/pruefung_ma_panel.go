@@ -58,6 +58,13 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
 	r++
 
+	warnCol1 := EV_PB_C2 + 1 // H
+	warnCol2 := EV_PB_C2 + 3 // J
+	warnFormula := fmt.Sprintf(`=IF(%s > %s + 1, "Hinweis: Eine oder mehrere ausgefüllte Mittelanforderungen werden nicht zur Auswahl angezeigt, da diese 2 oder mehr Perioden nach dem letzten Finanzbericht liegen. Es bedarf zunächst einer Finanzberichtsprüfung.", "")`, maxMaPer, maxFbPer)
+	g.evalMergedFormula(ws, cellName(warnCol1, top+1), cellName(warnCol2, top+3), warnFormula, StyleOptions{
+		FontColor: "FF0000", Bold: true, WrapText: true, HAlign: "left", VAlign: "center",
+	})
+
 	_ = g.mergeCells(ws, cellName(EV_PB_C1, r), cellName(EV_PB_L2, r), "Einbezogene Anforderungen", StyleOptions{
 		Bold: true, Size: 9.0, FontColor: EV_CLR_BLACK, FillColor: EV_CLR_HEADER, HAlign: "left", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
