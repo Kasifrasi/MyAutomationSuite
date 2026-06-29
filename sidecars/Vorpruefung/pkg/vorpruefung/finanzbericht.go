@@ -224,8 +224,8 @@ func (g *Generator) drawReportTable(
 	if isFollowUp {
 		_ = f.SetCellFormula(ws, cellName(cValLC, r), fmt.Sprintf("=ROUND(FB_SaldoLC_%d,2)", periodenNr-1))
 		_ = f.SetCellFormula(ws, cellName(cValEUR, r), fmt.Sprintf("=ROUND(FB_SaldoEUR_%d,2)", periodenNr-1))
-		_ = f.SetCellFormula(ws, cellName(cValLC+2, r), fmt.Sprintf("=ROUND(FB_SaldoLC_%d,2)", periodenNr-1))
-		_ = f.SetCellFormula(ws, cellName(cValEUR+2, r), fmt.Sprintf("=ROUND(FB_SaldoEUR_%d,2)", periodenNr-1))
+		_ = f.SetCellFormula(ws, cellName(cValLC+2, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW))
+		_ = f.SetCellFormula(ws, cellName(cValEUR+2, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_EUR, DB_NAME_SALDOVORTRAG_EUR))
 	} else {
 		_ = f.SetCellFormula(ws, cellName(cValLC, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW))
 		_ = f.SetCellFormula(ws, cellName(cValEUR, r), fmt.Sprintf("=ROUND(IF(%s=\"\",0,%s),2)", DB_NAME_SALDOVORTRAG_EUR, DB_NAME_SALDOVORTRAG_EUR))
