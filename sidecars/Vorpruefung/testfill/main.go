@@ -99,6 +99,9 @@ var kmwRows = []api.KMWTranche{
 }
 
 func main() {
+	runThreeOutputs()
+	return
+
 	var inPath, budgetPath, outPath string
 	flag.StringVar(&inPath, "in", "vorpruefung_output.xlsx", "mit -budget erzeugte Eingabe-Vorlage (.xlsx)")
 	flag.StringVar(&budgetPath, "budget", "", "Budget-JSON (für Ausgaben-IDs/Anzahl); Standard: testdata/fixtures/budget.example.json im Repo-Root")
@@ -121,10 +124,11 @@ func main() {
 		log.Fatalf("budget %q enthält keine Ausgaben – bitte eine -budget-Datei mit Positionen angeben", budgetPath)
 	}
 
+	t := true
 	data := api.FillData{
 		Dashboard: api.DashboardData{
 			Projektnummer:       "PRJ-2025-042",
-			Vorprojekt:          true,
+			Vorprojekt:          &t,
 			Projekttitel:        "Aufbau Gemeindezentrum Beispielstadt",
 			Projekttraeger:      "Beispiel Hilfswerk e.V.",
 			Berichtswaehrung:    "USD",
@@ -201,10 +205,11 @@ func loadBudgetData(path string) (*api.BudgetData, error) {
 		return nil, fmt.Errorf("%s ist kein gültiges JSON: %w", path, err)
 	}
 
+	t := true
 	budget := &api.BudgetData{
 		Eigenmittel:     scanned.Financing.Eigenmittel,
 		KMWMittel:       scanned.Financing.KmwMittel,
-		ReserveFreigabe: true,
+		ReserveFreigabe: &t,
 	}
 
 	if scanned.Financing.Drittmittel != nil {

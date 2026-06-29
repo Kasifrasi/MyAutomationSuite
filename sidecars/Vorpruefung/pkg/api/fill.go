@@ -20,7 +20,7 @@ type FillData struct {
 
 type DashboardData struct {
 	Projektnummer       string
-	Vorprojekt          bool
+	Vorprojekt          *bool
 	Projekttitel        string
 	Projekttraeger      string
 	Berichtswaehrung    string
@@ -78,7 +78,7 @@ type BudgetData struct {
 	DrittGeber      []GeberRow
 	DrittSonstiges  *IncomeRow
 	Ausgaben        []AusgabenRow
-	ReserveFreigabe bool
+	ReserveFreigabe *bool
 }
 
 type IncomeRow struct {
@@ -138,11 +138,13 @@ func setVal(f *excelize.File, sheet, cell string, val interface{}) {
 		if v != "" {
 			_ = f.SetCellValue(sheet, cell, v)
 		}
-	case bool:
-		if v {
-			_ = f.SetCellValue(sheet, cell, "Ja")
-		} else {
-			_ = f.SetCellValue(sheet, cell, "Nein")
+	case *bool:
+		if v != nil {
+			if *v {
+				_ = f.SetCellValue(sheet, cell, "Ja")
+			} else {
+				_ = f.SetCellValue(sheet, cell, "Nein")
+			}
 		}
 	}
 }
@@ -157,7 +159,7 @@ func fillDashboard(f *excelize.File, d DashboardData) {
 	setVal(f, sheet, "C8", d.Projektstart)
 	setVal(f, sheet, "E8", d.Projektende)
 
-	if d.Vorprojekt {
+	if d.Vorprojekt != nil && *d.Vorprojekt {
 		setVal(f, sheet, "C10", d.Vorprojektnummer)
 		setVal(f, sheet, "E10", d.VPBerichtswaehrung)
 		setVal(f, sheet, "C11", d.Vorprojektende)
