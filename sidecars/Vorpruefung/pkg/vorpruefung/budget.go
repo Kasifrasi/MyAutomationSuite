@@ -244,12 +244,12 @@ func (g *Generator) CreateBudgetSheet() error {
 		_ = f.SetRowHeight(ws, row, 30)
 
 		if g.budget != nil {
-			// Datengetrieben: feste Kategorie, feste ID (kein MATCH/COUNTIF), Position
-			// und Werte werden direkt eingetragen (Zellen bleiben Eingabefelder).
-			pos := g.budget.Ausgaben[i]
-			g.setValue(ws, cellName(BG_COL_LABEL, row), pos.Kategorie, catCellOpts)
-			g.setValue(ws, cellName(BG_COL_ID, row), pos.ID, idCellOpts)
-			g.setValue(ws, cellName(BG_COL_POS, row), pos.Position, posCellOpts)
+			// Datengetrieben: Wir legen die Struktur für die Position an, befüllen sie
+			// aber NICHT mit den konkreten Positionswerten. Das Befüllen übernimmt die API.
+			// Hier bleibt die Zelle als leeres Eingabefeld formatiert.
+			g.setStyle(ws, cellName(BG_COL_LABEL, row), cellName(BG_COL_LABEL, row), catCellOpts)
+			g.setStyle(ws, cellName(BG_COL_ID, row), cellName(BG_COL_ID, row), idCellOpts)
+			g.setStyle(ws, cellName(BG_COL_POS, row), cellName(BG_COL_POS, row), posCellOpts)
 			g.bgInput(ws, cellName(BG_COL_LC, row), BG_FMT_LC)
 			g.bgInput(ws, cellName(BG_COL_Y1, row), BG_FMT_LC)
 			g.bgInput(ws, cellName(BG_COL_Y2, row), BG_FMT_LC)
@@ -367,13 +367,9 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	// Explizite Geber-Zeilen
 	for i := 0; i < geberRows; i++ {
 		row := headerRow + 1 + i
-		g.setValue(ws, cellName(cName, row), "", nameOpts)
+		g.setStyle(ws, cellName(cName, row), cellName(cName, row), nameOpts)
 		g.bgInput(ws, cellName(cLc, row), BG_FMT_LC)
 		g.bgInput(ws, cellName(cEur, row), BG_FMT_EUR)
-		if g.budget != nil && i < len(g.budget.Drittmittel.Geber) {
-			geb := g.budget.Drittmittel.Geber[i]
-			g.setValue(ws, cellName(cName, row), geb.Geber, nameOpts)
-		}
 	}
 
 	// Feste Sonstiges-Zeile (immer letzte Zeile der Tabelle)

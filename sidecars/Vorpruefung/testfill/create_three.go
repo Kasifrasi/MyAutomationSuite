@@ -29,7 +29,7 @@ func runThreeOutputs() {
 		{
 			Von: date(2025, 1, 1), Bis: date(2025, 6, 30),
 			AusgabenByID: map[string]float64{"1.1": 600_000},
-			BankLC:       325_000,
+			BankLC:       floatPtr(325_000),
 		},
 	}
 
@@ -44,7 +44,7 @@ func runThreeOutputs() {
 				{Typ: "Drittmittel", Geber: "Beispiel-Geber 1", LC: floatPtr(125_000)},
 			},
 			AusgabenByID: map[string]float64{"1.1": 600_000},
-			BankLC:       325_000,
+			BankLC:       floatPtr(325_000),
 		},
 	}
 
@@ -52,7 +52,17 @@ func runThreeOutputs() {
 	// We want to test bare metal, so we copy budgetData but set ReserveFreigabe to nil
 	bareBudget := *budgetData
 	bareBudget.ReserveFreigabe = nil
-	data1 := api.FillData{FB: fbPeriodsOhneEinnahmen, Budget: &bareBudget}
+	bareBudget.Ausgaben = nil
+	bareBudget.Eigenmittel = nil
+	bareBudget.KMWMittel = nil
+	bareBudget.DrittmittelY1 = nil
+	bareBudget.DrittmittelY2 = nil
+	bareBudget.DrittmittelY3 = nil
+	bareBudget.DrittGeber = nil
+	bareBudget.DrittSonstiges = nil
+	bareDashboard := api.DashboardData{}
+
+	data1 := api.FillData{FB: nil, Budget: &bareBudget, Dashboard: bareDashboard}
 	err = copyFile(inPath, out1)
 	if err == nil {
 		err = api.FillTemplate(out1, data1)
@@ -80,10 +90,14 @@ func runThreeOutputs() {
 	strMA := "Neueste MA"
 
 	data3 := api.FillData{
-		FB:                fbPeriodsMitEinnahmen,
-		Budget:            budgetData,
-		FBPruefungAuswahl: &strFB,
-		MAPruefungAuswahl: &strMA,
+		FB:     fbPeriodsMitEinnahmen,
+		Budget: budgetData,
+		FBPruefung: &api.FBPruefungData{
+			Auswahl: &strFB,
+		},
+		MAPruefung: &api.MAPruefungData{
+			Auswahl: &strMA,
+		},
 	}
 	err = copyFile(inPath, out3)
 	if err == nil {

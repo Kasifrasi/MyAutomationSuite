@@ -10,6 +10,20 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+type FBPruefungData struct {
+	Auswahl            *string
+	AbzugSaldovortrag  *string
+	AbzugMehreinnahmen *string
+	AbzugPrognoseMehr  *string // Nur in MA-Prüfung relevant, aber im Layout vorgesehen
+}
+
+type MAPruefungData struct {
+	Auswahl  *string
+	MonateY1 *int
+	MonateY2 *int
+	MonateY3 *int
+}
+
 type FillData struct {
 	Dashboard DashboardData
 	KMW       []KMWTranche
@@ -17,9 +31,9 @@ type FillData struct {
 	FB        []FBPeriod
 	Budget    *BudgetData
 
-	// Optional settings for dropdown defaults (overrides Bare Metal behavior if set)
-	FBPruefungAuswahl *string // Default: "Neuester FB"
-	MAPruefungAuswahl *string // Default: "Neueste MA"
+	// Optionale Werte für die Prüfungs-Seiten
+	FBPruefung *FBPruefungData
+	MAPruefung *MAPruefungData
 }
 
 type DashboardData struct {
@@ -69,7 +83,9 @@ type FBPeriod struct {
 	Einnahmen1   []FBEinnahme
 	EinnahmenWK  []FBEinnahme
 	AusgabenByID map[string]float64
-	BankLC       float64
+	BankLC       *float64
+	KasseLC      *float64
+	SonstigesLC  *float64
 }
 
 type BudgetData struct {
@@ -124,11 +140,16 @@ func FillTemplate(filePath string, data FillData) error {
 	fillBudget(f, data.Budget)
 
 	// Optionale Werte für die Prüfungs-Auswahl
-	if data.FBPruefungAuswahl != nil {
-		setVal(f, constants.VPSheetFB_PRUEFUNG, "C6", *data.FBPruefungAuswahl)
+	if data.FBPruefung != nil {
+		sheet := constants.VPSheetFB_PRUEFUNG
+		setVal(f, sheet, "C6", data.FBPruefung.Auswahl)
+		// Die Toggle-Zellen befinden sich in F18, F19, F20 (im Template oft dynamisch,
+		// aber sie sind relativ zur KMW-Tabelle). Aktuell setzen wir sie über die defaults,
+		// wenn nicht explizit gesetzt.
 	}
-	if data.MAPruefungAuswahl != nil {
-		setVal(f, constants.VPSheetMA_PRUEFUNG, "C6", *data.MAPruefungAuswahl)
+	if data.MAPruefung != nil {
+		sheet := constants.VPSheetMA_PRUEFUNG
+		setVal(f, sheet, "C6", data.MAPruefung.Auswahl)
 	}
 
 	return f.Save()
@@ -149,6 +170,14 @@ func setVal(f *excelize.File, sheet, cell string, val interface{}) {
 	case string:
 		if v != "" {
 			_ = f.SetCellValue(sheet, cell, v)
+		}
+	case *string:
+		if v != nil && *v != "" {
+			_ = f.SetCellValue(sheet, cell, *v)
+		}
+	case *int:
+		if v != nil {
+			_ = f.SetCellValue(sheet, cell, *v)
 		}
 	case *bool:
 		if v != nil {
@@ -352,7 +381,18 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 			// Wir berechnen den Offset ab dem Tabellen-Ende
 			_, rowEnd, _ := excelize.CellNameToCoordinates(coords[1])
 			cellBank, _ := excelize.CoordinatesToCellName(col+1, rowEnd+6)
-			setVal(f, sheet, cellBank, fp.BankLC)
+			cellKasse, _ := excelize.CoordinatesToCellName(col+1, rowEnd+7)
+			cellSonstiges, _ := excelize.CoordinatesToCellName(col+1, rowEnd+8)
+
+			if fp.BankLC != nil {
+				setVal(f, sheet, cellBank, *fp.BankLC)
+			}
+			if fp.KasseLC != nil {
+				setVal(f, sheet, cellKasse, *fp.KasseLC)
+			}
+			if fp.SonstigesLC != nil {
+				setVal(f, sheet, cellSonstiges, *fp.SonstigesLC)
+			}
 		}
 
 		// 2. Einnahmen Tabelle 1 (KMW)
