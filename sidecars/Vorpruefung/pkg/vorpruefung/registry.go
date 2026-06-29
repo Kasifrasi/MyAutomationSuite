@@ -120,6 +120,12 @@ func FieldMASaldoLC(tableId int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_MA_SaldoLC_%d", tableId)}
 }
 
+func FieldMAKat(tableId, rowIdx int) InputField {
+	period := ((tableId - 1) % 18) + 1
+	slot := ((tableId - 1) / 18) + 1
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Kat_%d_%d_%d", period, slot, rowIdx)}
+}
+
 func FieldDashChecklist(index int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_Dash_Checklist_%d", index), Validation: ListJaNein}
 }

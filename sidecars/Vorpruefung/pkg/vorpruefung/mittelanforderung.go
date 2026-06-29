@@ -246,6 +246,8 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 			HAlign: "right", VAlign: "center", FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00",
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3",
 		})
+		_ = g.bindInputField(ws, row, cLC, FieldMAKat(tableId, i+1))
+
 		_ = g.setStyle(ws, cellName(cEUR, row), cellName(cEUR, row), StyleOptions{
 			HAlign: "right", VAlign: "center", NumFormat: `#,##0.00" €"`,
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3",
