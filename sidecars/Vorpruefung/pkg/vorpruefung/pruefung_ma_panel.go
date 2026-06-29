@@ -58,11 +58,25 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
 	r++
 
-	warnCol1 := EV_PB_C2 + 1 // H
-	warnCol2 := EV_PB_C2 + 3 // J
-	warnFormula := fmt.Sprintf(`=IF(%s > %s + 1, "Hinweis: Eine oder mehrere ausgefüllte Mittelanforderungen werden nicht zur Auswahl angezeigt, da diese 2 oder mehr Perioden nach dem letzten Finanzbericht liegen. Es bedarf zunächst einer Finanzberichtsprüfung.", "")`, maxMaPer, maxFbPer)
-	g.evalMergedFormula(ws, cellName(warnCol1, top+1), cellName(warnCol2, top+3), warnFormula, StyleOptions{
-		FontColor: "FF0000", Bold: true, WrapText: true, HAlign: "left", VAlign: "center",
+	warnCol1 := EV_PB_C2 + 1 // Spalte H (8)
+	warnCol2 := EV_PB_C2 + 3 // Spalte J (10)
+
+	// Zeile 9 (top + 1, falls top = 8 ist, was meist der Fall ist; wir nehmen konkret "top + 1" an,
+	// um flexibel zu bleiben, bzw. hart 9, wenn wir die Sektion kennen. Da "r" bei top=8 startet, ist top+1 = 9)
+	warnTitleRow := top + 1
+	warnTextRow1 := top + 2
+	warnTextRow2 := top + 6
+
+	// Überschrift (H9:J9), nur anzeigen, wenn Warnbedingung zutrifft
+	warnTitleFormula := fmt.Sprintf(`=IF(%s > %s + 1, "Hinweis:", "")`, maxMaPer, maxFbPer)
+	g.evalMergedFormula(ws, cellName(warnCol1, warnTitleRow), cellName(warnCol2, warnTitleRow), warnTitleFormula, StyleOptions{
+		FontColor: "FF0000", Bold: true, HAlign: "center", VAlign: "center",
+	})
+
+	// Textkörper (H10:J14), schwarz, zentriert, etwas kleiner (Size 10 ist Standard, wir nehmen 9)
+	warnFormula := fmt.Sprintf(`=IF(%s > %s + 1, "Eine oder mehrere ausgefüllte Mittelanforderungen werden nicht zur Auswahl angezeigt, da diese 2 oder mehr Perioden nach dem letzten Finanzbericht liegen. Es bedarf zunächst einer Finanzberichtsprüfung.", "")`, maxMaPer, maxFbPer)
+	g.evalMergedFormula(ws, cellName(warnCol1, warnTextRow1), cellName(warnCol2, warnTextRow2), warnFormula, StyleOptions{
+		FontColor: EV_CLR_BLACK, Size: 9.0, WrapText: true, HAlign: "center", VAlign: "top",
 	})
 
 	_ = g.mergeCells(ws, cellName(EV_PB_C1, r), cellName(EV_PB_L2, r), "Einbezogene Anforderungen", StyleOptions{
