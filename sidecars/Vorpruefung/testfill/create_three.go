@@ -29,8 +29,18 @@ func runThreeOutputs() {
 	fbPeriodsOhneEinnahmen := []api.FBPeriod{
 		{
 			Von: date(2025, 1, 1), Bis: date(2025, 6, 30),
-			AusgabenByID: map[string]float64{"1.1": 600_000},
-			BankLC:       floatPtr(325_000),
+			AusgabenByID: map[string]float64{
+				"1.1": 600_000,
+				"1.2": 250_000,
+				"2.1": 150_000,
+				"3.1": 300_000,
+				"3.2": 100_000,
+				"4.1": 50_000,
+				"5.1": 20_000,
+				"6.1": 10_000,
+				"7.1": 5_000,
+			},
+			BankLC: floatPtr(325_000),
 		},
 	}
 
@@ -44,8 +54,18 @@ func runThreeOutputs() {
 				{Typ: "Eigenmittel", LC: floatPtr(250_000)},
 				{Typ: "Drittmittel", Geber: "Beispiel-Geber 1", LC: floatPtr(125_000)},
 			},
-			AusgabenByID: map[string]float64{"1.1": 600_000},
-			BankLC:       floatPtr(325_000),
+			AusgabenByID: map[string]float64{
+				"1.1": 600_000,
+				"1.2": 250_000,
+				"2.1": 150_000,
+				"3.1": 300_000,
+				"3.2": 100_000,
+				"4.1": 50_000,
+				"5.1": 20_000,
+				"6.1": 10_000,
+				"7.1": 5_000,
+			},
+			BankLC: floatPtr(325_000),
 		},
 	}
 
@@ -115,18 +135,19 @@ func runThreeOutputs() {
 		Vorprojekt:       &b,
 	}
 
-	maKategorie := "Bauausgaben"
-	if len(budgetData.Ausgaben) > 0 {
-		maKategorie = budgetData.Ausgaben[0].Kategorie
-	}
-
 	maPeriods := []api.MAPeriod{
 		{
 			Von:       date(2025, 1, 1),
 			Bis:       date(2025, 6, 30),
 			OandaKurs: 125.50,
 			KategorienLC: map[string]float64{
-				maKategorie: 150_000,
+				"Bauausgaben":         150_000,
+				"Investitionen":       50_000,
+				"Personalkosten":      100_000,
+				"Projektaktivitaeten": 20_000,
+				"Projektverwaltung":   10_000,
+				"Evaluierung":         5_000,
+				"Audit":               5_000,
 			},
 			EigenLC: 10_000,
 			DrittLC: 20_000,
