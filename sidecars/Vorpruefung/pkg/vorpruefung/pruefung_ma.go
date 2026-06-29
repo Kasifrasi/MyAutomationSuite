@@ -94,6 +94,8 @@ func (g *Generator) CreateMAPruefungSheet() error {
 // evalMAExpenseActual summiert die ausgewählten Mittelanforderungen (#1..#k) der
 // Periode P je Kategorie über das MA-Grid auf dem Daten-Blatt.
 func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
+	// Weil der Rank (sel.maSelK) jetzt fest der Level-Ebene (1, 2, 3) entspricht,
+	// liefert eine SUMIFS über Rang <= k genau alle MAs dieser Periode bis zu diesem Level.
 	return fmt.Sprintf(
 		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,"%s",'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1"),2),0)`,
 		EVAL_DATEN_SHEET, evalAbsCol(valCol, 1, EV_DTN_MAG_ROWS),

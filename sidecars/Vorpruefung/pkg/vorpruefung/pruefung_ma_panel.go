@@ -53,7 +53,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_TABLE_COUNT),
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT))
 	kFormula := fmt.Sprintf(
-		`=IF(%s="Neuste MA",MAX(1,%s),IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0))`,
+		`=IF(%s="Neuste MA",MAX(1,%s),IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2))),0))`,
 		labelCell, maxMAK, labelCell, labelCell, labelCell, labelCell)
 	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
 	r++

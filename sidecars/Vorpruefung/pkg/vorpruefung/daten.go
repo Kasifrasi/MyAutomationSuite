@@ -105,21 +105,22 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 			fmt.Sprintf(`=IF(OR(IFERROR(%s,0)>0, IFERROR(%s,0)>0, IFERROR(%s,0)>0),1,0)`,
 				kmwCellLC, kmwCellEUR, manCellEUR))
 
+		// EV_DTN_MA_META_RANK hält nun fest den "Slot-Index" (1, 2 oder 3),
+		// unabängig davon, ob die MA ausgefüllt ist. Das ist essentiell, damit
+		// in pruefung_ma.go die Index-Berechnung (Periode P, Rang K -> Index J)
+		// fehlerfrei funktioniert, selbst wenn "Ausfüllungslücken" entstehen.
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_RANK, j),
-			fmt.Sprintf(`=IF(%s=1,SUMPRODUCT(($%s$1:$%s%d=%s)*($%s$1:$%s%d=1)),0)`,
-				dc(EV_DTN_MA_META_FILL, j),
-				colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), j, dc(EV_DTN_MA_META_PER, j),
-				colLetter(EV_DTN_MA_META_FILL), colLetter(EV_DTN_MA_META_FILL), j))
+			fmt.Sprintf(`=%d`, level))
 		var labelFormula string
 		if j <= MA_PERIOD_COUNT {
 			// Für den ersten Slot jeder Periode (j <= MA_PERIOD_COUNT) immer ein Label vergeben,
 			// auch wenn die MA noch nicht befüllt ist (dann "Periode X (#1)").
-			labelFormula = fmt.Sprintf(`=IF(%s>0, IF(%s=1, "Periode "&%s&" (#"&%s&")", "Periode "&%s&" (#1)"), "")`,
-				dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_RANK, j), dc(EV_DTN_MA_META_PER, j))
+			labelFormula = fmt.Sprintf(`=IF(%s>0, "Periode "&%s&" (#1)", "")`,
+				dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j))
 		} else {
-			// Für weitere Slots nur ein Label vergeben, wenn befüllt.
-			labelFormula = fmt.Sprintf(`=IF(AND(%s=1,%s>0),"Periode "&%s&" (#"&%s&")","")`,
-				dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_RANK, j))
+			// Für weitere Slots (MA #2, MA #3, etc.) nur ein Label vergeben, wenn sie befüllt sind.
+			labelFormula = fmt.Sprintf(`=IF(AND(%s=1,%s>0),"Periode "&%s&" (#%d)","")`,
+				dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j), level)
 		}
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j), labelFormula)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j),
