@@ -40,6 +40,15 @@ var fbPeriods = []api.FBPeriod{
 		},
 		BankLC: 375_000,
 	},
+	{ // Periode 3
+		Von: date(2026, 1, 1), Bis: date(2026, 6, 30),
+		KmwLC: 1_100_000, EigenLC: 250_000, DrittLC: 150_000,
+		AusgabenByID: map[string]float64{
+			"1.1": 350_000, "2.1": 300_000, "3.1": 200_000,
+			"4.1": 120_000, "5.1": 50_000, "7.1": 50_000,
+		},
+		BankLC: 350_000,
+	},
 }
 
 var maPeriods = []api.MAPeriod{

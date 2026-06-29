@@ -248,7 +248,7 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 		setVal(f, sheet, fmt.Sprintf("%s6", cInput), fp.Bis)
 
 		// 1. Ausgaben Tabelle
-		tNameAusg := fmt.Sprintf("TblFB_Ausgaben_%d", p+1)
+		tNameAusg := fmt.Sprintf("Ausgaben_%d", p+1)
 		if rng, ok := tableMap[tNameAusg]; ok {
 			coords := strings.Split(rng, ":")
 			col, row, _ := excelize.CellNameToCoordinates(coords[0])
@@ -262,32 +262,28 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 			// Bank-Aufschlüsselung (liegt einige Zeilen unter der Ausgaben-Tabelle)
 			// Wir berechnen den Offset ab dem Tabellen-Ende
 			_, rowEnd, _ := excelize.CellNameToCoordinates(coords[1])
-			// layout: ausgTotalsRow = rowEnd.
-			// saldoRow = ausgTotalsRow + 2
-			// aufschLabelRow = saldoRow + 2
-			// aufschStart = aufschLabelRow + 1 -> rowEnd + 5
-			cellBank, _ := excelize.CoordinatesToCellName(col+1, rowEnd+5)
+			cellBank, _ := excelize.CoordinatesToCellName(col+1, rowEnd+6)
 			setVal(f, sheet, cellBank, fp.BankLC)
 		}
 
 		// 2. Einnahmen Tabelle 1 (KMW)
-		tNameT1 := fmt.Sprintf("TblFB_EinnahmenT1_%d", p+1)
+		tNameT1 := fmt.Sprintf("Einnahmen_%d", p+1)
 		if rng, ok := tableMap[tNameT1]; ok {
 			coords := strings.Split(rng, ":")
 			col, row, _ := excelize.CellNameToCoordinates(coords[0])
 			// row + 1 = Vorprojektsaldo, row + 2 = KMW-Mittel
-			cKmw, _ := excelize.CoordinatesToCellName(col+1, row+2)
+			cKmw, _ := excelize.CoordinatesToCellName(col+2, row+2)
 			setVal(f, sheet, cKmw, fp.KmwLC)
 		}
 
 		// 3. Einnahmen Tabelle 2 (Eigen/Dritt)
-		tNameT2 := fmt.Sprintf("TblFB_EinnahmenT2_%d", p+1)
+		tNameT2 := fmt.Sprintf("Einnahmen_WK_%d", p+1)
 		if rng, ok := tableMap[tNameT2]; ok {
 			coords := strings.Split(rng, ":")
 			col, row, _ := excelize.CellNameToCoordinates(coords[0])
 			// row + 1 = Eigenmittel, row + 2 = Drittmittel
-			cEigen, _ := excelize.CoordinatesToCellName(col+1, row+1)
-			cDritt, _ := excelize.CoordinatesToCellName(col+1, row+2)
+			cEigen, _ := excelize.CoordinatesToCellName(col+2, row+1)
+			cDritt, _ := excelize.CoordinatesToCellName(col+2, row+2)
 			setVal(f, sheet, cEigen, fp.EigenLC)
 			setVal(f, sheet, cDritt, fp.DrittLC)
 		}
