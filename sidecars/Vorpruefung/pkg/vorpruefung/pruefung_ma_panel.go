@@ -29,12 +29,12 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 	g.evalSelLabel(ws, r, "Ausgewählte Periode")
 	pCell := cellName(EV_PB_V1, r)
-	maxFbPer := fmt.Sprintf(`MAXIFS('%s'!%s,'%s'!%s,1)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_PER, 1, MA_PERIOD_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_FILL, 1, MA_PERIOD_COUNT))
-	maxMaPer := fmt.Sprintf(`MAXIFS('%s'!%s,'%s'!%s,1)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_TABLE_COUNT))
+	maxFbPer := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=1)*'%s'!%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_FILL, 1, MA_PERIOD_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_PER, 1, MA_PERIOD_COUNT))
+	maxMaPer := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=1)*'%s'!%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT))
 	maxMAP := fmt.Sprintf(`MAX(%s+1, %s)`, maxFbPer, maxMaPer)
 	pFormula := fmt.Sprintf(
 		`=IF(%s="Neuste MA",%s,IFERROR(VALUE(MID(%s,FIND("Periode ",%s)+8,FIND(" ",%s,FIND("Periode ",%s)+8)-(FIND("Periode ",%s)+8))),0))`,

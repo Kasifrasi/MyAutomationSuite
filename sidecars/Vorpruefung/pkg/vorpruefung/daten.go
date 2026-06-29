@@ -169,9 +169,9 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	maLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_LABEL), colLetter(EV_DTN_MA_META_LABEL), MA_TABLE_COUNT)
 	maPerRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), MA_TABLE_COUNT)
 
-	maxFb := fmt.Sprintf(`MAXIFS($%s$1:$%s$%d,$%s$1:$%s$%d,1)`,
-		colLetter(EV_DTN_FB_META_PER), colLetter(EV_DTN_FB_META_PER), MA_PERIOD_COUNT,
-		colLetter(EV_DTN_FB_META_FILL), colLetter(EV_DTN_FB_META_FILL), MA_PERIOD_COUNT)
+	maxFb := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(($%s$1:$%s$%d=1)*$%s$1:$%s$%d)),0)`,
+		colLetter(EV_DTN_FB_META_FILL), colLetter(EV_DTN_FB_META_FILL), MA_PERIOD_COUNT,
+		colLetter(EV_DTN_FB_META_PER), colLetter(EV_DTN_FB_META_PER), MA_PERIOD_COUNT)
 
 	maCond := fmt.Sprintf(`(%s<>"")*(%s<=%s+1)>0`, maLabelRng, maPerRng, maxFb)
 
