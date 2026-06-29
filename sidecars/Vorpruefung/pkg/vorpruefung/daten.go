@@ -79,7 +79,6 @@ func (g *Generator) CreateDatenSheet() error {
 func (g *Generator) evalBuildDatenHelfer(ws string) {
 	f := g.file
 	maSheet := constants.VPSheetMA
-	fbSheet := constants.VPSheetFINANZBERICHTE
 
 	dc := func(col, row int) string { return cellName(col, row) }
 
@@ -143,22 +142,26 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	}
 
 	// ─── FB-Meta (Zeilen 1..18) ───────────────────────────────────────────────
-	// "Befüllt" = es kam bei den Ausgaben ODER den laufenden Einnahmen (Typzeilen
-	// 12..15, ohne Vorperiodensaldo) zu Eingaben ODER in den gelben Eingabefeldern
+	// "Befüllt" = es kam bei den Ausgaben ODER den laufenden Einnahmen
+	// zu Eingaben ODER in den gelben Eingabefeldern
 	// der Saldenaufschlüsselung (Bank, Kasse, Sonstiges) wurde etwas eingetragen
-	// ODER das "Von" / "Bis" Datum wurde in Zeile 5 / 6 ausgefüllt.
+	// ODER das "Von" / "Bis" Datum wurde ausgefüllt.
 	for p := 1; p <= MA_PERIOD_COUNT; p++ {
 		ausgName := fmt.Sprintf("Ausgaben_%d", p)
-		incCol := colLetter(3 + (p-1)*7) // laufende Einnahmen (LC) je FB-Periode
+		einName1 := fmt.Sprintf("Einnahmen_%d", p)
+		einName2 := fmt.Sprintf("Einnahmen_WK_%d", p)
 
 		aufschlBank := FieldFBAufschlBank(p).NamedRange
 		aufschlKasse := FieldFBAufschlKasse(p).NamedRange
 		aufschlSonstiges := FieldFBAufschlSonstiges(p).NamedRange
 
+		fbVon := FieldFBVon(p).NamedRange
+		fbBis := FieldFBBis(p).NamedRange
+
 		_ = f.SetCellValue(ws, dc(EV_DTN_FB_META_PER, p), p)
 
-		fillFormula := fmt.Sprintf(`=IF((IFERROR(SUBTOTAL(109,%s[Ausgaben (LC)]),0)<>0)+(IFERROR(SUM('%s'!%s12:%s15),0)<>0)+(IFERROR(COUNT(%s, %s, %s),0)>0)+('%s'!%s5<>"")+('%s'!%s6<>"")>0,1,0)`,
-			ausgName, fbSheet, incCol, incCol, aufschlBank, aufschlKasse, aufschlSonstiges, fbSheet, incCol, fbSheet, incCol)
+		fillFormula := fmt.Sprintf(`=IF((IFERROR(SUBTOTAL(109,%s[Ausgaben (LC)]),0)<>0)+(IFERROR(SUBTOTAL(109,%s[Einnahmen (LC)]),0)<>0)+(IFERROR(SUBTOTAL(109,%s[Einnahmen (LC)]),0)<>0)+(IFERROR(COUNT(%s, %s, %s),0)>0)+(%s<>"")+(%s<>"")>0,1,0)`,
+			ausgName, einName1, einName2, aufschlBank, aufschlKasse, aufschlSonstiges, fbVon, fbBis)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_FILL, p), fillFormula)
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_LABEL, p),
