@@ -369,7 +369,7 @@ func (g *Generator) evalLimitCalc(ws, cell, formula, numFmt string, bold bool) {
 func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	const pLbl, pLC, pEUR = 12, 13, 14 // L | M | N
 	g.setColWidth(ws, pLbl-1, 3.0)     // Spalte K als Abstand zur Tabelle
-	g.setColWidth(ws, pLbl, 30.0)
+	g.setColWidth(ws, pLbl, 36.0)
 	g.setColWidth(ws, pLC, 21.0)
 	g.setColWidth(ws, pEUR, 21.0)
 
