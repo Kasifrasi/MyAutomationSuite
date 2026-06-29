@@ -124,7 +124,7 @@ func (g *Generator) drawDashboardHeader(ws string) error {
 		FillColor:    DB_CLR_HEADER_BG,
 		VAlign:       "center",
 		HAlign:       "left",
-		BorderBottom: 5, // Thick bottom border
+		BorderBottom: 5, 
 		BorderColor:  DB_CLR_HEADER_ACCENT,
 	}
 	err := g.mergeCells(ws, cellName(DB_C_LBL1, DB_HEADER_ROW), cellName(DB_C_IN2, DB_HEADER_ROW), "  DASHBOARD ("+AppVersion+")", headerOpts)
