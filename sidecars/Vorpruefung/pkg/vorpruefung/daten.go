@@ -105,9 +105,9 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_PER, j),
 			fmt.Sprintf(`=IFERROR(VALUE(TRIM(MID(%s,9,5))),0)`, perCell))
 
-		kmwCellLC := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, rowKmw+offsetR))
-		kmwCellEUR := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, rowKmw+offsetR))
-		manCellEUR := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, rowManuell+offsetR))
+		kmwCellLC := FieldMAKmwLC(j).NamedRange
+		kmwCellEUR := FieldMAKmwEUR(j).NamedRange
+		manCellEUR := FieldMAManBetrag(j).NamedRange
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_FILL, j),
 			fmt.Sprintf(`=IF(OR(IFERROR(%s,0)>0, IFERROR(%s,0)>0, IFERROR(%s,0)>0),1,0)`,
@@ -135,9 +135,11 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 			fmt.Sprintf(`=IFERROR(ROUND(SUM('%s'!%s:%s),2),0)`, maSheet, cellName(colS+1, 10+offsetR), cellName(colS+1, 9+maDataRows+offsetR)))
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j),
 			fmt.Sprintf(`=IFERROR(ROUND(SUM('%s'!%s:%s),2),0)`, maSheet, cellName(colS+2, 10+offsetR), cellName(colS+2, 9+maDataRows+offsetR)))
+		eigCellEUR := FieldMAEigenmittelEUR(j).NamedRange
+		drittCellEUR := FieldMADrittmittelEUR(j).NamedRange
+
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_EIGDR, j),
-			fmt.Sprintf(`=IFERROR(ROUND('%s'!%s+'%s'!%s,2),0)`,
-				maSheet, cellName(colS+2, rowEig+offsetR), maSheet, cellName(colS+2, rowDritt+offsetR)))
+			fmt.Sprintf(`=IFERROR(ROUND(%s+%s,2),0)`, eigCellEUR, drittCellEUR))
 	}
 
 	// ─── FB-Meta (Zeilen 1..18) ───────────────────────────────────────────────
@@ -237,8 +239,30 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_PER, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_PER), j))
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_RANK, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_RANK), j))
 			_ = f.SetCellValue(ws, dc(EV_DTN_MAG_CAT, row), e.cat)
-			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+1, e.maRow+offsetR)))
-			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_EUR, row), fmt.Sprintf(`=IFERROR('%s'!%s,0)`, maSheet, cellName(colS+2, e.maRow+offsetR)))
+
+			var maValLC, maValEUR string
+			if e.cat == "Eigenmittel" {
+				maValLC = FieldMAEigenmittelLC(j).NamedRange
+				maValEUR = FieldMAEigenmittelEUR(j).NamedRange
+			} else if e.cat == "Drittmittel" {
+				maValLC = FieldMADrittmittelLC(j).NamedRange
+				maValEUR = FieldMADrittmittelEUR(j).NamedRange
+			} else if e.cat == "KMW-Mittel" {
+				maValLC = FieldMAKmwLC(j).NamedRange
+				maValEUR = FieldMAKmwEUR(j).NamedRange
+			} else if e.cat == "Manueller Betrag" {
+				// Manueller Betrag hat kein LC-Feld, wir nehmen 0
+				maValLC = "0"
+				maValEUR = FieldMAManBetrag(j).NamedRange
+			} else if strings.HasPrefix(e.cat, "Expense_") {
+				var idx int
+				fmt.Sscanf(e.cat, "Expense_%d", &idx)
+				maValLC = FieldMAKat(j, idx+1).NamedRange
+				maValEUR = fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, e.maRow+offsetR)) // EUR field relies on formula
+			}
+
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR(%s,0)`, maValLC))
+			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_EUR, row), fmt.Sprintf(`=IFERROR(%s,0)`, maValEUR))
 		}
 	}
 

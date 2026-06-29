@@ -112,12 +112,32 @@ func FieldMAEigenmittelLC(tableId int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_MA_EigenmittelLC_%d", tableId)}
 }
 
+func FieldMAEigenmittelEUR(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_EigenmittelEUR_%d", tableId)}
+}
+
+func FieldMADrittmittelEUR(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_DrittmittelEUR_%d", tableId)}
+}
+
 func FieldMADrittmittelLC(tableId int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_MA_DrittmittelLC_%d", tableId)}
 }
 
 func FieldMASaldoLC(tableId int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_MA_SaldoLC_%d", tableId)}
+}
+
+func FieldMAKmwLC(tableId int) InputField {
+	period := ((tableId - 1) % 18) + 1
+	slot := ((tableId - 1) / 18) + 1
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_KmwLC_%d_%d", period, slot)}
+}
+
+func FieldMAKmwEUR(tableId int) InputField {
+	period := ((tableId - 1) % 18) + 1
+	slot := ((tableId - 1) / 18) + 1
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_KmwEUR_%d_%d", period, slot)}
 }
 
 func FieldMAKat(tableId, rowIdx int) InputField {
