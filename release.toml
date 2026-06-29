@@ -9,6 +9,8 @@ push-options = ["origin", "refs/tags/v{{version}}"]
 # Tag-Format passend zum GitHub Workflow (erwartet "v*")
 tag-name = "v{{version}}"
 
+# Führt ein Skript vor dem Commit aus, um die Go-Sidecars bei Bedarf zu versionieren
+pre-release-hook = ["./scripts/bump_sidecar_versions.sh"]
+
 # Alles in einem Commit zusammenfassen
 consolidate-commits = true
-
