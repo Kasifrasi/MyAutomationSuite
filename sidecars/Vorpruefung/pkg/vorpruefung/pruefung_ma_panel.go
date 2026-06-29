@@ -35,7 +35,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	maxMaPer := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=1)*'%s'!%s)),0)`,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_TABLE_COUNT),
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT))
-	maxMAP := fmt.Sprintf(`MAX(%s+1, %s)`, maxFbPer, maxMaPer)
+	maxMAP := fmt.Sprintf(`%s+1`, maxFbPer)
 	pFormula := fmt.Sprintf(
 		`=IF(%s="Neuste MA",%s,IFERROR(VALUE(MID(%s,FIND("Periode ",%s)+8,FIND(" ",%s,FIND("Periode ",%s)+8)-(FIND("Periode ",%s)+8))),0))`,
 		labelCell, maxMAP, labelCell, labelCell, labelCell, labelCell, labelCell)
