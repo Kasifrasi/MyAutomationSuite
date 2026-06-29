@@ -10,7 +10,7 @@ push-options = ["origin", "refs/tags/v{{version}}"]
 tag-name = "v{{version}}"
 
 # Führt ein Skript vor dem Commit aus, um die Go-Sidecars bei Bedarf zu versionieren
-pre-release-hook = ["./scripts/bump_sidecar_versions.sh"]
+pre-release-hook = ["sh", "-c", "cd $(git rev-parse --show-toplevel) && ./scripts/bump_sidecar_versions.sh"]
 
 # Alles in einem Commit zusammenfassen
 consolidate-commits = true
