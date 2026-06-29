@@ -16,6 +16,10 @@ type FillData struct {
 	MA        []MAPeriod
 	FB        []FBPeriod
 	Budget    *BudgetData
+
+	// Optional settings for dropdown defaults (overrides Bare Metal behavior if set)
+	FBPruefungAuswahl *string // Default: "Neuester FB"
+	MAPruefungAuswahl *string // Default: "Neueste MA"
 }
 
 type DashboardData struct {
@@ -118,6 +122,14 @@ func FillTemplate(filePath string, data FillData) error {
 	fillMA(f, data.MA)
 	fillFB(f, data.FB, data.Budget)
 	fillBudget(f, data.Budget)
+
+	// Optionale Werte für die Prüfungs-Auswahl
+	if data.FBPruefungAuswahl != nil {
+		setVal(f, constants.VPSheetFB_PRUEFUNG, "C6", *data.FBPruefungAuswahl)
+	}
+	if data.MAPruefungAuswahl != nil {
+		setVal(f, constants.VPSheetMA_PRUEFUNG, "C6", *data.MAPruefungAuswahl)
+	}
 
 	return f.Save()
 }

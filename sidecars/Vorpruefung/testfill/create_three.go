@@ -76,7 +76,15 @@ func runThreeOutputs() {
 	}
 
 	// 3. Mit Standardwerten, mit Einnahmen
-	data3 := api.FillData{FB: fbPeriodsMitEinnahmen, Budget: budgetData}
+	strFB := "Neuester FB"
+	strMA := "Neueste MA"
+
+	data3 := api.FillData{
+		FB:                fbPeriodsMitEinnahmen,
+		Budget:            budgetData,
+		FBPruefungAuswahl: &strFB,
+		MAPruefungAuswahl: &strMA,
+	}
 	err = copyFile(inPath, out3)
 	if err == nil {
 		f, _ := excelize.OpenFile(out3)
