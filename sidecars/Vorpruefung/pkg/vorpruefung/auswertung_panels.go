@@ -25,9 +25,9 @@ const EV_GRID_LIGHT = "D3D3D3" // helle Gitterlinie wie auf den Quellblättern
 func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	const pLbl, pLC, pEUR = 12, 13, 14 // L | M | N
 	g.setColWidth(ws, pLbl-1, 3.0)     // Spalte K als Abstand zur Tabelle
-	g.setColWidth(ws, pLbl, 25.0)
-	g.setColWidth(ws, pLC, 18.0)
-	g.setColWidth(ws, pEUR, 18.0)
+	g.setColWidth(ws, pLbl, 30.0)
+	g.setColWidth(ws, pLC, 21.0)
+	g.setColWidth(ws, pEUR, 21.0)
 
 	// Index j der gewählten MA-Tabelle (Periode = maSelP, Rang = maSelK).
 	jAddr := absName(EV_HELP_COL, top)
@@ -166,9 +166,9 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	const cLbl, cLC, cEUR, cKumLC, cKumEUR = 12, 13, 14, 15, 16 // L | M | N | O | P
 	g.setColWidth(ws, cLbl-1, 3.0)
-	g.setColWidth(ws, cLbl, 25.0)
+	g.setColWidth(ws, cLbl, 30.0)
 	for c := cLC; c <= cKumEUR; c++ {
-		g.setColWidth(ws, c, 18.0)
+		g.setColWidth(ws, c, 21.0)
 	}
 
 	nAddr := sel.fbSelNum
@@ -239,8 +239,8 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	}
 	// dataRow spiegelt LC/EUR/Kum-LC/Kum-EUR (Offsets 1..4) einer Quellzeile.
 	fmts := []string{"#,##0.00", `#,##0.00" €"`, "#,##0.00", `#,##0.00" €"`}
-	dataRow := func(label string, labelIsFormula bool, srcRow int, fill string, bld bool) {
-		lblOpts := StyleOptions{Bold: bld, HAlign: "left", VAlign: "center", FillColor: fill,
+	dataRow := func(label string, labelIsFormula bool, srcRow int, fill string, bld bool, align string) {
+		lblOpts := StyleOptions{Bold: bld, HAlign: align, VAlign: "center", FillColor: fill,
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT}
 		if labelIsFormula {
 			_ = g.setFormula(ws, cellName(cLbl, r), label, lblOpts)
@@ -259,11 +259,11 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	// ─── EINNAHMEN ───
 	section("Einnahmen")
 	colHeaders("Typ / ID", []string{"Einnahmen (LC)", "Einnahmen (EUR)", "Kum. Einnahmen (LC)", "Kum. Einnahmen (EUR)"})
-	dataRow(mirror(0, 11), true, 11, COLOR_WHITE, false) // Vorperiodensaldo (Label gespiegelt)
+	dataRow(mirror(0, 11), true, 11, COLOR_WHITE, false, "left") // Vorperiodensaldo (Label gespiegelt)
 	for i, t := range TYPE_NAMES {
-		dataRow(t, false, 12+i, COLOR_WHITE, false)
+		dataRow(t, false, 12+i, COLOR_WHITE, false, "left")
 	}
-	dataRow("Gesamteinnahmen", false, 16, COLOR_TOTAL, true)
+	dataRow("Gesamteinnahmen", false, 16, COLOR_TOTAL, true, "left")
 
 	// ─── AUSGABEN ───
 	// Positionsbasiert: eine Zeile je Kostenposition (Anzahl folgt dem Budget).
@@ -271,10 +271,10 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	colHeaders("ID", []string{"Ausgaben (LC)", "Ausgaben (EUR)", "Kum. Ausgaben (LC)", "Kum. Ausgaben (EUR)"})
 	nPos := g.budgetExpenseCount()
 	for i := 0; i < nPos; i++ {
-		dataRow(mirror(0, FB_AUSG_FIRST_ROW+i), true, FB_AUSG_FIRST_ROW+i, COLOR_WHITE, false) // ID gespiegelt
+		dataRow(mirror(0, FB_AUSG_FIRST_ROW+i), true, FB_AUSG_FIRST_ROW+i, COLOR_WHITE, false, "center") // ID gespiegelt
 	}
 	gesamtAusgRow := FB_AUSG_FIRST_ROW + nPos // = ausgTotalsRow auf dem FB-Blatt
-	dataRow("Gesamtausgaben", false, gesamtAusgRow, COLOR_TOTAL, true)
+	dataRow("Gesamtausgaben", false, gesamtAusgRow, COLOR_TOTAL, true, "left")
 	r++ // Leerzeile
 
 	// ─── SALDO DES FINANZBERICHTS ───
