@@ -78,12 +78,10 @@ func (g *Generator) CreateDatenSheet() error {
 //   - MA-Grid (je MA-Tabelle × Kategorie: Periode, Rang, Kategorie, LC, EUR)
 func (g *Generator) evalBuildDatenHelfer(ws string) {
 	f := g.file
-	maSheet := constants.VPSheetMA
 
 	dc := func(col, row int) string { return cellName(col, row) }
 
 	maDataRows := len(MA_CATEGORIES)
-	maBlockHeight := 10 + maDataRows + 8 // same calculation as in MA sheet
 	maTotalsRow := 9 + maDataRows + 1
 
 	rowKmw := maTotalsRow + 7
@@ -95,14 +93,9 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	for j := 1; j <= MA_TABLE_COUNT; j++ {
 		p := ((j - 1) % MA_PERIOD_COUNT) + 1
 		level := ((j - 1) / MA_PERIOD_COUNT) + 1
-		offsetR := (level - 1) * (maBlockHeight + 2)
-
-		colS := 2 + (p-1)*4
-		perCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 4+offsetR)) // Periode-Kopf
 
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_J, j), j)
-		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_PER, j),
-			fmt.Sprintf(`=IFERROR(VALUE(TRIM(MID(%s,9,5))),0)`, perCell))
+		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_PER, j), p)
 
 		kmwCellLC := FieldMAKmwLC(j).NamedRange
 		kmwCellEUR := FieldMAKmwEUR(j).NamedRange
@@ -130,10 +123,8 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 				dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j), level)
 		}
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j), labelFormula)
-		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j),
-			fmt.Sprintf(`=IFERROR(ROUND(SUM('%s'!%s:%s),2),0)`, maSheet, cellName(colS+1, 10+offsetR), cellName(colS+1, 9+maDataRows+offsetR)))
-		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j),
-			fmt.Sprintf(`=IFERROR(ROUND(SUM('%s'!%s:%s),2),0)`, maSheet, cellName(colS+2, 10+offsetR), cellName(colS+2, 9+maDataRows+offsetR)))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j), fmt.Sprintf(`=IFERROR(%s,0)`, FieldMASumLC(j)))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j), fmt.Sprintf(`=IFERROR(%s,0)`, FieldMASumEUR(j)))
 		eigCellEUR := FieldMAEigenmittelEUR(j).NamedRange
 		drittCellEUR := FieldMADrittmittelEUR(j).NamedRange
 
@@ -160,8 +151,8 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 
 		_ = f.SetCellValue(ws, dc(EV_DTN_FB_META_PER, p), p)
 
-		fillFormula := fmt.Sprintf(`=IF((IFERROR(SUBTOTAL(109,%s[Ausgaben (LC)]),0)<>0)+(IFERROR(SUBTOTAL(109,%s[Einnahmen (LC)]),0)<>0)+(IFERROR(SUBTOTAL(109,%s[Einnahmen (LC)]),0)<>0)+(IFERROR(COUNT(%s, %s, %s),0)>0)+(%s<>"")+(%s<>"")>0,1,0)`,
-			ausgName, einName1, einName2, aufschlBank, aufschlKasse, aufschlSonstiges, fbVon, fbBis)
+		fillFormula := fmt.Sprintf(`=IF((IFERROR(SUBTOTAL(109,%s[Ausgaben (LC)]),0)<>0)+(IFERROR(SUMIFS(%s[Einnahmen (LC)],%s[Typ],"<>Saldo*"),0)<>0)+(IFERROR(SUBTOTAL(109,%s[Einnahmen (LC)]),0)<>0)+(IFERROR(COUNT(%s, %s, %s),0)>0)+(%s<>"")+(%s<>"")>0,1,0)`,
+			ausgName, einName1, einName1, einName2, aufschlBank, aufschlKasse, aufschlSonstiges, fbVon, fbBis)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_FILL, p), fillFormula)
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_LABEL, p),
@@ -233,10 +224,6 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	)
 	blockSize := len(gridEntries)
 	for j := 1; j <= MA_TABLE_COUNT; j++ {
-		p := ((j - 1) % MA_PERIOD_COUNT) + 1
-		level := ((j - 1) / MA_PERIOD_COUNT) + 1
-		offsetR := (level - 1) * (maBlockHeight + 2)
-		colS := 2 + (p-1)*4
 		for idx, e := range gridEntries {
 			row := (j-1)*blockSize + idx + 1
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_PER, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_PER), j))
@@ -258,10 +245,10 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 				maValLC = "0"
 				maValEUR = FieldMAManBetrag(j).NamedRange
 			} else if strings.HasPrefix(e.cat, "Expense_") {
-				var idx int
-				fmt.Sscanf(e.cat, "Expense_%d", &idx)
-				maValLC = FieldMAKat(j, idx+1).NamedRange
-				maValEUR = fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, e.maRow+offsetR)) // EUR field relies on formula
+				var catIdx int
+				fmt.Sscanf(e.cat, "Expense_%d", &catIdx)
+				maValLC = FieldMAKat(j, catIdx+1).NamedRange
+				maValEUR = FieldMAKatEUR(j, catIdx+1)
 			}
 
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR(%s,0)`, maValLC))

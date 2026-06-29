@@ -238,6 +238,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 		}
 		_ = f.SetCellValue(ws, cellName(cLbl, row), labelVal)
 		_ = f.SetCellFormula(ws, cellName(cEUR, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(cLC, row), maKursName))
+		g.upsertNamedFormula(FieldMAKatEUR(tableId, i+1), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, row)))
 
 		_ = g.setStyle(ws, cellName(cLbl, row), cellName(cLbl, row), StyleOptions{
 			HAlign: "left", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3",
@@ -257,7 +258,9 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 	// Totals
 	_ = f.SetCellValue(ws, cellName(cLbl, maTotalsRow), "SUMME")
 	_ = f.SetCellFormula(ws, cellName(cLC, maTotalsRow), fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(cLC, maHdrRow+1), cellName(cLC, maHdrRow+maDataRows)))
+	g.upsertNamedFormula(FieldMASumLC(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cLC, maTotalsRow)))
 	_ = f.SetCellFormula(ws, cellName(cEUR, maTotalsRow), fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(cEUR, maHdrRow+1), cellName(cEUR, maHdrRow+maDataRows)))
+	g.upsertNamedFormula(FieldMASumEUR(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, maTotalsRow)))
 
 	_ = g.setStyle(ws, cellName(cLbl, maTotalsRow), cellName(cLbl, maTotalsRow), StyleOptions{
 		Bold: true, FillColor: MA_CLR_GRAY, HAlign: "left", VAlign: "center",

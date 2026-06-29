@@ -128,6 +128,25 @@ func FieldMASaldoLC(tableId int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_MA_SaldoLC_%d", tableId)}
 }
 
+// ─────────────────────────────────────────────────────────────
+// Output Fields (for Sums & Calculated EUR values)
+// ─────────────────────────────────────────────────────────────
+
+func FieldMASumLC(tableId int) string {
+	return fmt.Sprintf("Out_MA_SumLC_%d", tableId)
+}
+
+func FieldMASumEUR(tableId int) string {
+	return fmt.Sprintf("Out_MA_SumEUR_%d", tableId)
+}
+
+func FieldMAKatEUR(tableId, rowIdx int) string {
+	period := ((tableId - 1) % 18) + 1
+	slot := ((tableId - 1) / 18) + 1
+	return fmt.Sprintf("Out_MA_KatEUR_%d_%d_%d", period, slot, rowIdx)
+}
+
+// KMW-Mittel inputs
 func FieldMAKmwLC(tableId int) InputField {
 	period := ((tableId - 1) % 18) + 1
 	slot := ((tableId - 1) / 18) + 1
