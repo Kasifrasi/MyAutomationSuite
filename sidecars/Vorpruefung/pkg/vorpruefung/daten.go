@@ -184,9 +184,9 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 
 	maCond := fmt.Sprintf(`(%s<>"")*(%s<=%s+1)>0`, maLabelRng, maPerRng, maxFb)
 
-	// Alle entsprechenden Anforderungen auflisten ("Periode X (#k)"), plus "Neuste MA".
+	// Alle entsprechenden Anforderungen auflisten ("Periode X (#k)"), plus "Neueste MA".
 	_ = g.setDynArrayFormula(ws, dc(EV_DTN_MA_LISTE, 1),
-		fmt.Sprintf(`_xlfn.VSTACK(_xlfn._xlws.FILTER(%s,%s,""),"Neuste MA")`, maLabelRng, maCond), StyleOptions{})
+		fmt.Sprintf(`_xlfn.VSTACK(_xlfn._xlws.FILTER(%s,%s,""),"Neueste MA")`, maLabelRng, maCond), StyleOptions{})
 	g.upsertNamedFormula(EVAL_NAME_MA_LISTE,
 		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
 			ws, absName(EV_DTN_MA_LISTE, 1), ws, colLetter(EV_DTN_MA_LISTE), colLetter(EV_DTN_MA_LISTE)))
