@@ -97,12 +97,13 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_PER, j),
 			fmt.Sprintf(`=IFERROR(VALUE(TRIM(MID(%s,9,5))),0)`, perCell))
 
-		perCol := colLetter(EV_DTN_MA_META_PER)
-		kmwCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 25+offsetR))
+		kmwCellLC := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 25+offsetR))
+		kmwCellEUR := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, 25+offsetR))
+		manCellEUR := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, 27+offsetR))
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_FILL, j),
-			fmt.Sprintf(`=IF(OR(IFERROR(SUBTOTAL(109,%s[Angefordert (LC)]),0)<>0, AND(IFERROR(%s,0)>0, COUNTIF($%s$1:$%s%d,$%s%d)=1)),1,0)`,
-				maName, kmwCell, perCol, perCol, j, perCol, j))
+			fmt.Sprintf(`=IF(OR(IFERROR(%s,0)>0, IFERROR(%s,0)>0, IFERROR(%s,0)>0),1,0)`,
+				kmwCellLC, kmwCellEUR, manCellEUR))
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_RANK, j),
 			fmt.Sprintf(`=IF(%s=1,SUMPRODUCT(($%s$1:$%s%d=%s)*($%s$1:$%s%d=1)),0)`,
@@ -147,11 +148,11 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	// ─── FB-Auswahlliste (FILTER der befüllten Perioden) ──────────────────────
 	fbLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_LABEL), colLetter(EV_DTN_FB_META_LABEL), MA_PERIOD_COUNT)
 	fbFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_FILL), colLetter(EV_DTN_FB_META_FILL), MA_PERIOD_COUNT)
-	// Reihenfolge wie die Perioden (aufsteigend): "Kein Finanzbericht (Projektbeginn)"
+	// Reihenfolge wie die Perioden (aufsteigend): "Projektbeginn"
 	// als frühester Zustand oben (N=0 ⇒ MA der Periode 1 wählbar), darunter die
 	// befüllten Perioden, und der Auto-Eintrag "Neuester FB" ganz unten (= jüngster).
 	_ = g.setDynArrayFormula(ws, dc(EV_DTN_FB_LISTE, 1),
-		fmt.Sprintf(`_xlfn.VSTACK("Kein Finanzbericht (Projektbeginn)",_xlfn._xlws.FILTER(%s,%s=1,""),"Neuester FB")`, fbLabelRng, fbFillRng), StyleOptions{})
+		fmt.Sprintf(`_xlfn.VSTACK("Projektbeginn",_xlfn._xlws.FILTER(%s,%s=1,""),"Neuester FB")`, fbLabelRng, fbFillRng), StyleOptions{})
 	g.upsertNamedFormula(EVAL_NAME_FB_LISTE,
 		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
 			ws, absName(EV_DTN_FB_LISTE, 1), ws, colLetter(EV_DTN_FB_LISTE), colLetter(EV_DTN_FB_LISTE)))
