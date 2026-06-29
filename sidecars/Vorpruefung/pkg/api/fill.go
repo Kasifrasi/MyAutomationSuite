@@ -325,18 +325,20 @@ func fillBudget(f *excelize.File, budget *BudgetData) {
 		}
 	}
 
-	fillInc(8, budget.Eigenmittel)
-	fillInc(14, budget.KMWMittel)
+	fillInc(7, budget.Eigenmittel)
+	fillInc(13, budget.KMWMittel)
 
 	if budget.DrittmittelY1 != nil {
-		setVal(f, sheet, "F11", *budget.DrittmittelY1)
+		setVal(f, sheet, "F10", *budget.DrittmittelY1)
 	}
 	if budget.DrittmittelY2 != nil {
-		setVal(f, sheet, "G11", *budget.DrittmittelY2)
+		setVal(f, sheet, "G10", *budget.DrittmittelY2)
 	}
 	if budget.DrittmittelY3 != nil {
-		setVal(f, sheet, "H11", *budget.DrittmittelY3)
+		setVal(f, sheet, "H10", *budget.DrittmittelY3)
 	}
+
+	setVal(f, sheet, "K5", budget.ReserveFreigabe)
 
 	tables, _ := f.GetTables(sheet)
 	tableMap := make(map[string]string)

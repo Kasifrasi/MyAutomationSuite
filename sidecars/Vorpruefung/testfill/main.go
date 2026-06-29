@@ -171,8 +171,9 @@ func loadBudgetData(path string) (*api.BudgetData, error) {
 	}
 
 	budget := &api.BudgetData{
-		Eigenmittel: scanned.Financing.Eigenmittel,
-		KMWMittel:   scanned.Financing.KmwMittel,
+		Eigenmittel:     scanned.Financing.Eigenmittel,
+		KMWMittel:       scanned.Financing.KmwMittel,
+		ReserveFreigabe: true,
 	}
 
 	if scanned.Financing.Drittmittel != nil {
