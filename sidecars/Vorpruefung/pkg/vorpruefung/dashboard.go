@@ -19,8 +19,6 @@ const (
 	DB_HEADER_ROW = 2 // grüner DASHBOARD-Banner mit Versions-Tag
 	DB_TITLE_ROW  = 4 // "Statische Projektinformationen"
 
-	DB_APP_VERSION = "v1.0"
-
 	// --- Benannte Bereiche ---
 	DB_NAME_SALDOVORTRAG_LW  = "Saldovortrag_LW"
 	DB_NAME_SALDOVORTRAG_EUR = "Saldovortrag_EUR"
@@ -48,6 +46,8 @@ const (
 )
 
 // --- Dokumenten-Checkliste ---
+var AppVersion = "v1.0"
+
 var DB_DOCS = []string{
 	"Vorprojektsaldo (Nachweis)",
 	"Vertrag",
@@ -127,7 +127,7 @@ func (g *Generator) drawDashboardHeader(ws string) error {
 		BorderBottom: 5, // Thick bottom border
 		BorderColor:  DB_CLR_HEADER_ACCENT,
 	}
-	err := g.mergeCells(ws, cellName(DB_C_LBL1, DB_HEADER_ROW), cellName(DB_C_IN2, DB_HEADER_ROW), "  DASHBOARD ("+DB_APP_VERSION+")", headerOpts)
+	err := g.mergeCells(ws, cellName(DB_C_LBL1, DB_HEADER_ROW), cellName(DB_C_IN2, DB_HEADER_ROW), "  DASHBOARD ("+AppVersion+")", headerOpts)
 	if err != nil {
 		return err
 	}
