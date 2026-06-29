@@ -97,6 +97,7 @@ type AusgabenRow struct {
 	Y1        *float64
 	Y2        *float64
 	Y3        *float64
+	EUR       *float64
 }
 
 func FillTemplate(filePath string, data FillData) error {
@@ -352,6 +353,7 @@ func fillBudget(f *excelize.File, budget *BudgetData) {
 		col, row, _ := excelize.CellNameToCoordinates(coords[0])
 		for i, a := range budget.Ausgaben {
 			r := row + 1 + i
+			// Betrag (LC) ist col + 3 (Spalte E = 5, wenn col = 2 (B))
 			if a.LC != nil {
 				c, _ := excelize.CoordinatesToCellName(col+3, r)
 				setVal(f, sheet, c, *a.LC)
@@ -367,6 +369,10 @@ func fillBudget(f *excelize.File, budget *BudgetData) {
 			if a.Y3 != nil {
 				c, _ := excelize.CoordinatesToCellName(col+6, r)
 				setVal(f, sheet, c, *a.Y3)
+			}
+			if a.EUR != nil {
+				c, _ := excelize.CoordinatesToCellName(col+7, r)
+				setVal(f, sheet, c, *a.EUR)
 			}
 		}
 	}

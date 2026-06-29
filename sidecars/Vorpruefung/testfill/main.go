@@ -197,6 +197,7 @@ func loadBudgetData(path string) (*api.BudgetData, error) {
 			Y1:        p.Y1,
 			Y2:        p.Y2,
 			Y3:        p.Y3,
+			EUR:       p.EUR,
 		})
 	}
 	return budget, nil
