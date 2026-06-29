@@ -274,8 +274,10 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
 		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrVerf, addrReqL), true)
+		addrVerblL1 := absName(valL, r)
 		g.evalKmwLabel(ws, r, tog, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
 		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrBereinigt, addrReqR), true)
+		addrVerblR1 := absName(valR, r)
 		p1Bottom := r
 		g.styleOuterBorder(ws, p1Top, lblL1, p1Bottom, valL, 2, EV_CLR_BORDER)
 		g.styleOuterBorder(ws, p1Top, tog, p1Bottom, valR, 2, EV_CLR_BORDER)
@@ -292,9 +294,11 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		addrManR := absName(valR, r)
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
-		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(MAX(0,%s-MAX(0,%s)),2)", addrVerf, addrManL), true)
+		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrVerf, addrManL), true)
+		addrVerblL2 := absName(valL, r)
 		g.evalKmwLabel(ws, r, tog, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
-		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(MAX(0,%s-MAX(0,%s)),2)", addrBereinigt, addrManR), true)
+		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrBereinigt, addrManR), true)
+		addrVerblR2 := absName(valR, r)
 		p2Bottom := r
 		g.styleOuterBorder(ws, p2Top, lblL1, p2Bottom, valL, 2, EV_CLR_BORDER)
 		g.styleOuterBorder(ws, p2Top, tog, p2Bottom, valR, 2, EV_CLR_BORDER)
@@ -322,6 +326,16 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 
 		applyGreyCF(p1Top, p1Bottom, condReqGrey)
 		applyGreyCF(p2Top, p2Bottom, condManGrey)
+
+		// Negativ-Formatierung (rot), nur wenn nicht ausgegraut
+		redStyle := StyleOptions{
+			Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD,
+			BorderTop: 1, BorderBottom: 2, BorderLeft: 1, BorderRight: 2, BorderColor: EV_CLR_BORDER,
+		}
+		g.addConditionalFormat(ws, cellName(valL, p1Bottom), fmt.Sprintf(`AND(%s<0, %s=0)`, addrVerblL1, addrManL), redStyle)
+		g.addConditionalFormat(ws, cellName(valR, p1Bottom), fmt.Sprintf(`AND(%s<0, %s=0)`, addrVerblR1, addrManL), redStyle)
+		g.addConditionalFormat(ws, cellName(valL, p2Bottom), fmt.Sprintf(`AND(%s<0, %s<>0)`, addrVerblL2, addrManL), redStyle)
+		g.addConditionalFormat(ws, cellName(valR, p2Bottom), fmt.Sprintf(`AND(%s<0, %s<>0)`, addrVerblR2, addrManL), redStyle)
 	}
 
 	return evalKMWResult{nextRow: r, mehrCell: mehrCell, prognCell: prognCell, saldoCell: saldoCell}
