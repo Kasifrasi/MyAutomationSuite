@@ -39,7 +39,7 @@ const (
 	DB_FMT_DATE = "dd.mm.yyyy"
 	DB_FMT_RATE = "0.0000"
 
-	DB_CCY_COL = 27 // Spalte AA (weit rechts, ausgeblendet)
+	DB_CCY_COL = 27
 
 	DB_SALDOVORTRAG_ROW = 14
 	DB_DOCS_START_ROW   = 16
