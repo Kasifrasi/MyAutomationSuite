@@ -99,8 +99,6 @@ var kmwRows = []api.KMWTranche{
 }
 
 func main() {
-	runThreeOutputs()
-	return
 
 	var inPath, budgetPath, outPath string
 	flag.StringVar(&inPath, "in", "vorpruefung_output.xlsx", "mit -budget erzeugte Eingabe-Vorlage (.xlsx)")

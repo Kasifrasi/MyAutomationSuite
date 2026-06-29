@@ -303,15 +303,10 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 		return
 	}
 	sheet := constants.VPSheetMA
-	tables, err := f.GetTables(sheet)
-	if err != nil {
-		return
-	}
 
-	tableMap := make(map[string]string)
-	for _, t := range tables {
-		tableMap[t.Name] = t.Range
-	}
+	maDataRows := len(vorpruefung.ListKostenkategorien)
+	maBlockHeight := 10 + maDataRows + 8 // header+data+footer
+	rowOffsetEbene := maBlockHeight + 2
 
 	for p, mp := range periods {
 		col := ColMAStart + p*ColMAStep
@@ -323,50 +318,33 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 		setVal(f, sheet, cBIS, mp.Bis)
 		setVal(f, sheet, cKurs, mp.OandaKurs)
 
-		// Ebene 1
-		tNameL1 := fmt.Sprintf("MA_%d", p+1)
-		if rng, ok := tableMap[tNameL1]; ok {
-			coords := strings.Split(rng, ":")
-			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
-			for i, a := range budget.Ausgaben {
+		// Wir iterieren über die 3 Ebenen (jeweils mit dem rowOffsetEbene verschoben)
+		for level := 0; level < 3; level++ {
+			offsetR := level * rowOffsetEbene
+			colT := col - 1
+			row := 9 + offsetR // Header is on row 9 + offsetR
+
+			for i, cat := range vorpruefung.ListKostenkategorien {
 				// Schreibe Kategorie in die linke Spalte (colT)
 				cLabel, _ := excelize.CoordinatesToCellName(colT, row+1+i)
-				setVal(f, sheet, cLabel, a.Kategorie)
+				setVal(f, sheet, cLabel, cat)
 
-				if v, exists := mp.KategorienLC[a.Kategorie]; exists && v != 0 {
-					cVal, _ := excelize.CoordinatesToCellName(colT+1, row+1+i)
-					setVal(f, sheet, cVal, v)
+				if level == 0 { // Werte nur in Ebene 1 setzen
+					if v, exists := mp.KategorienLC[cat]; exists && v != 0 {
+						cVal, _ := excelize.CoordinatesToCellName(colT+1, row+1+i)
+						setVal(f, sheet, cVal, v)
+					}
 				}
 			}
 
-			rEigen := row + len(budget.Ausgaben) + RowMAOffsetEigen
-			rDritt := row + len(budget.Ausgaben) + RowMAOffsetDritt
+			if level == 0 {
+				rEigen := row + len(vorpruefung.ListKostenkategorien) + RowMAOffsetEigen
+				rDritt := row + len(vorpruefung.ListKostenkategorien) + RowMAOffsetDritt
 
-			cEigen, _ := excelize.CoordinatesToCellName(col, rEigen)
-			cDritt, _ := excelize.CoordinatesToCellName(col, rDritt)
-			setVal(f, sheet, cEigen, mp.EigenLC)
-			setVal(f, sheet, cDritt, mp.DrittLC)
-		}
-
-		// Ebene 2
-		tNameL2 := fmt.Sprintf("MA_%d", p+1+TableMAOffsetEbene2)
-		if rng, ok := tableMap[tNameL2]; ok {
-			coords := strings.Split(rng, ":")
-			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
-			for i, a := range budget.Ausgaben {
-				cLabel, _ := excelize.CoordinatesToCellName(colT, row+1+i)
-				setVal(f, sheet, cLabel, a.Kategorie)
-			}
-		}
-
-		// Ebene 3
-		tNameL3 := fmt.Sprintf("MA_%d", p+1+TableMAOffsetEbene3)
-		if rng, ok := tableMap[tNameL3]; ok {
-			coords := strings.Split(rng, ":")
-			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
-			for i, a := range budget.Ausgaben {
-				cLabel, _ := excelize.CoordinatesToCellName(colT, row+1+i)
-				setVal(f, sheet, cLabel, a.Kategorie)
+				cEigen, _ := excelize.CoordinatesToCellName(col, rEigen)
+				cDritt, _ := excelize.CoordinatesToCellName(col, rDritt)
+				setVal(f, sheet, cEigen, mp.EigenLC)
+				setVal(f, sheet, cDritt, mp.DrittLC)
 			}
 		}
 	}

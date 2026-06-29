@@ -83,23 +83,31 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 
 	dc := func(col, row int) string { return cellName(col, row) }
 
+	maDataRows := len(MA_CATEGORIES)
+	maBlockHeight := 10 + maDataRows + 8 // same calculation as in MA sheet
+	maTotalsRow := 9 + maDataRows + 1
+
+	rowKmw := maTotalsRow + 7
+	rowManuell := maTotalsRow + 9
+	rowEig := maTotalsRow + 3
+	rowDritt := maTotalsRow + 4
+
 	// ─── MA-Meta (Zeilen 1..54) ───────────────────────────────────────────────
 	for j := 1; j <= MA_TABLE_COUNT; j++ {
 		p := ((j - 1) % MA_PERIOD_COUNT) + 1
 		level := ((j - 1) / MA_PERIOD_COUNT) + 1
-		offsetR := (level - 1) * 30 // MA_START_ROW_2 - MA_START_ROW = 30
+		offsetR := (level - 1) * (maBlockHeight + 2)
 
 		colS := 2 + (p-1)*4
-		maName := fmt.Sprintf("MA_%d", j)
 		perCell := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 4+offsetR)) // Periode-Kopf
 
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_J, j), j)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_PER, j),
 			fmt.Sprintf(`=IFERROR(VALUE(TRIM(MID(%s,9,5))),0)`, perCell))
 
-		kmwCellLC := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, 25+offsetR))
-		kmwCellEUR := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, 25+offsetR))
-		manCellEUR := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, 27+offsetR))
+		kmwCellLC := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+1, rowKmw+offsetR))
+		kmwCellEUR := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, rowKmw+offsetR))
+		manCellEUR := fmt.Sprintf("'%s'!%s", maSheet, cellName(colS+2, rowManuell+offsetR))
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_FILL, j),
 			fmt.Sprintf(`=IF(OR(IFERROR(%s,0)>0, IFERROR(%s,0)>0, IFERROR(%s,0)>0),1,0)`,
@@ -124,12 +132,12 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		}
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j), labelFormula)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j),
-			fmt.Sprintf(`=IFERROR(ROUND(SUBTOTAL(109,%s[Angefordert (LC)]),2),0)`, maName))
+			fmt.Sprintf(`=IFERROR(ROUND(SUM('%s'!%s:%s),2),0)`, maSheet, cellName(colS+1, 10+offsetR), cellName(colS+1, 9+maDataRows+offsetR)))
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j),
-			fmt.Sprintf(`=IFERROR(ROUND(SUBTOTAL(109,%s[Angefordert (EUR)]),2),0)`, maName))
+			fmt.Sprintf(`=IFERROR(ROUND(SUM('%s'!%s:%s),2),0)`, maSheet, cellName(colS+2, 10+offsetR), cellName(colS+2, 9+maDataRows+offsetR)))
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_EIGDR, j),
 			fmt.Sprintf(`=IFERROR(ROUND('%s'!%s+'%s'!%s,2),0)`,
-				maSheet, cellName(colS+2, 21+offsetR), maSheet, cellName(colS+2, 22+offsetR)))
+				maSheet, cellName(colS+2, rowEig+offsetR), maSheet, cellName(colS+2, rowDritt+offsetR)))
 	}
 
 	// ─── FB-Meta (Zeilen 1..18) ───────────────────────────────────────────────
@@ -194,21 +202,6 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		cat   string
 		maRow int
 	}
-	maDataRows := g.budgetExpenseCount()
-	maBlockHeight := 10 + maDataRows + 14 // same calculation as in MA sheet
-	maTotalsRow := 9 + maDataRows + 1     // previously 9 + 8 + 1 = 18
-
-	// Calculate row offsets for the MA incomes based on maTotalsRow
-	// r = maTotalsRow + 2 -> 20
-	// Eigenmittel -> 21
-	// Drittmittel -> 22
-	// KMW-Mittel -> 25
-	// Manueller Betrag -> 27
-
-	rowEigen := maTotalsRow + 3
-	rowDritt := maTotalsRow + 4
-	rowKmw := maTotalsRow + 7
-	rowManuell := maTotalsRow + 9
 
 	gridEntries := make([]maGridEntry, 0, maDataRows+4)
 	for c := 0; c < maDataRows; c++ {
@@ -228,7 +221,7 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	// The user says "ohne vordefinierte Typen ... Einnahme-Typen".
 	// But in MA, they are literally "abzueglich Eigenmittel".
 	gridEntries = append(gridEntries,
-		maGridEntry{"Eigenmittel", rowEigen},
+		maGridEntry{"Eigenmittel", rowEig},
 		maGridEntry{"Drittmittel", rowDritt},
 		maGridEntry{"KMW-Mittel", rowKmw},
 		maGridEntry{"Manueller Betrag", rowManuell},

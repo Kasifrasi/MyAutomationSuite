@@ -62,8 +62,8 @@ func (g *Generator) CreateMittelanforderungSheet() error {
 		}
 	}
 
-	maDataRows := g.budgetExpenseCount()
-	maBlockHeight := 10 + maDataRows + 14          // header+data+footer
+	maDataRows := len(MA_CATEGORIES)
+	maBlockHeight := 10 + maDataRows + 8           // header+data+footer
 	startRowL2 := MA_START_ROW + maBlockHeight + 2 // +2 for spacing
 	startRowL3 := startRowL2 + maBlockHeight + 2
 
@@ -212,7 +212,6 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 	r++ // Tabellenkopf folgt direkt (Periode/Von/Bis/Kurs belegen Zeilen 5–8)
 
 	// ─── Zeile 9: Tabelle MA_<p> (Kostenkategorie | LC | EUR) ──────────────────
-	maName := fmt.Sprintf("MA_%d", tableId)
 	maHdrRow := r
 
 	_ = f.SetCellValue(ws, cellName(cLbl, maHdrRow), "Kostenkategorie")
@@ -224,30 +223,18 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080",
 	})
 
-	maDataRows := g.budgetExpenseCount()
+	maDataRows := len(MA_CATEGORIES)
 	maTotalsRow := maHdrRow + maDataRows + 1
 
 	// Add data body range to MA list for VSTACK
 	dataRangeMA := fmt.Sprintf("'%s'!%s:%s", ws, absName(cLbl, maHdrRow+1), absName(cEUR, maHdrRow+maDataRows))
 	g.rangesMA = append(g.rangesMA, dataRangeMA)
 
-	err := f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(cLbl, maHdrRow), cellName(cEUR, maTotalsRow-1)),
-		Name:           maName,
-		StyleName:      "",
-		ShowRowStripes: falsePtr(),
-	})
-	if err != nil {
-		return err
-	}
-
 	for i := 0; i < maDataRows; i++ {
 		row := maHdrRow + 1 + i
 		labelVal := ""
-		if g.cfg.ExpensePositionsCount == 0 {
-			if i < len(MA_CATEGORIES) {
-				labelVal = MA_CATEGORIES[i]
-			}
+		if i < len(MA_CATEGORIES) {
+			labelVal = MA_CATEGORIES[i]
 		}
 		_ = f.SetCellValue(ws, cellName(cLbl, row), labelVal)
 		_ = f.SetCellFormula(ws, cellName(cEUR, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(cLC, row), maKursName))
@@ -267,8 +254,8 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 
 	// Totals
 	_ = f.SetCellValue(ws, cellName(cLbl, maTotalsRow), "SUMME")
-	_ = f.SetCellFormula(ws, cellName(cLC, maTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s[Angefordert (LC)]),2)`, maName))
-	_ = f.SetCellFormula(ws, cellName(cEUR, maTotalsRow), fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s[Angefordert (EUR)]),2)`, maName))
+	_ = f.SetCellFormula(ws, cellName(cLC, maTotalsRow), fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(cLC, maHdrRow+1), cellName(cLC, maHdrRow+maDataRows)))
+	_ = f.SetCellFormula(ws, cellName(cEUR, maTotalsRow), fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(cEUR, maHdrRow+1), cellName(cEUR, maHdrRow+maDataRows)))
 
 	_ = g.setStyle(ws, cellName(cLbl, maTotalsRow), cellName(cLbl, maTotalsRow), StyleOptions{
 		Bold: true, FillColor: MA_CLR_GRAY, HAlign: "left", VAlign: "center",
