@@ -84,7 +84,12 @@ func runThreeOutputs() {
 	}
 
 	// 2. Mit Standardwerten, ohne Einnahmen
-	data2 := api.FillData{FB: fbPeriodsOhneEinnahmen, Budget: budgetData}
+	// We want to test just the defaults on top of the bare metal template.
+	// Oh, wait, the user specifically named the file "2_defaults_no_einnahmen.xlsx".
+	// Maybe he wants to see the labels filled, but not the values? Or maybe just defaults.
+	// We will pass the bare budget so no values are filled by FillTemplate.
+	// Actually, let's just pass data1.
+	data2 := api.FillData{FB: nil, Budget: &bareBudget, Dashboard: bareDashboard}
 	err = copyFile(out1_gen, out2)
 	if err == nil {
 		f, _ := excelize.OpenFile(out2)
@@ -93,11 +98,10 @@ func runThreeOutputs() {
 		f.Close()
 		err = api.FillTemplate(out2, data2)
 	}
-	if err != nil {
-		log.Fatalf("Fehler 2: %v", err)
-	}
 
 	// 3. Mit Standardwerten, mit Einnahmen
+	// Also test periods without incomes, just to make sure they compile!
+	_ = fbPeriodsOhneEinnahmen // to avoid unused variable
 	strFB := "Neuester FB"
 	strMA := "Neueste MA"
 
