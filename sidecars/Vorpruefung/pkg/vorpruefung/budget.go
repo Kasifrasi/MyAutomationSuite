@@ -167,9 +167,6 @@ func (g *Generator) CreateBudgetSheet() error {
 	eigenRow := r
 	g.setValue(ws, cellName(BG_COL_LABEL, r), "Eigenmittel", StyleOptions{Size: 10})
 	g.bgYearRow(ws, r)
-	if g.budget != nil {
-		g.bgFillIncomeRow(ws, r, g.budget.Eigenmittel)
-	}
 	g.upsertNamedRange(BG_NAME_EIGEN_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_EIGEN_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -186,11 +183,6 @@ func (g *Generator) CreateBudgetSheet() error {
 	for _, c := range []int{BG_COL_Y1, BG_COL_Y2, BG_COL_Y3} {
 		g.bgInput(ws, cellName(c, r), BG_FMT_LC)
 	}
-	if g.budget != nil {
-		g.bgFillInput(ws, cellName(BG_COL_Y1, r), g.budget.Drittmittel.Y1)
-		g.bgFillInput(ws, cellName(BG_COL_Y2, r), g.budget.Drittmittel.Y2)
-		g.bgFillInput(ws, cellName(BG_COL_Y3, r), g.budget.Drittmittel.Y3)
-	}
 	g.upsertNamedRange(BG_NAME_DRITT_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_DRITT_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -202,9 +194,6 @@ func (g *Generator) CreateBudgetSheet() error {
 	kmwRow := r
 	g.setValue(ws, cellName(BG_COL_LABEL, r), "KMW-Mittel", StyleOptions{Size: 10})
 	g.bgYearRow(ws, r)
-	if g.budget != nil {
-		g.bgFillIncomeRow(ws, r, g.budget.KMWMittel)
-	}
 	g.upsertNamedRange(BG_NAME_KMW_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_KMW_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -266,11 +255,6 @@ func (g *Generator) CreateBudgetSheet() error {
 			g.bgInput(ws, cellName(BG_COL_Y2, row), BG_FMT_LC)
 			g.bgInput(ws, cellName(BG_COL_Y3, row), BG_FMT_LC)
 			g.bgInput(ws, cellName(BG_COL_EUR, row), BG_FMT_EUR)
-			g.bgFillInput(ws, cellName(BG_COL_LC, row), pos.LC)
-			g.bgFillInput(ws, cellName(BG_COL_Y1, row), pos.Y1)
-			g.bgFillInput(ws, cellName(BG_COL_Y2, row), pos.Y2)
-			g.bgFillInput(ws, cellName(BG_COL_Y3, row), pos.Y3)
-			g.bgFillInput(ws, cellName(BG_COL_EUR, row), pos.EUR)
 			continue
 		}
 
@@ -389,8 +373,6 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 		if g.budget != nil && i < len(g.budget.Drittmittel.Geber) {
 			geb := g.budget.Drittmittel.Geber[i]
 			g.setValue(ws, cellName(cName, row), geb.Geber, nameOpts)
-			g.bgFillInput(ws, cellName(cLc, row), geb.LC)
-			g.bgFillInput(ws, cellName(cEur, row), geb.EUR)
 		}
 	}
 
@@ -399,11 +381,6 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 	g.setValue(ws, cellName(cName, sonstigesRow), "Sonstige", nameOpts)
 	g.bgInput(ws, cellName(cLc, sonstigesRow), BG_FMT_LC)
 	g.bgInput(ws, cellName(cEur, sonstigesRow), BG_FMT_EUR)
-	if g.budget != nil && g.budget.Drittmittel.Sonstiges != nil {
-		s := g.budget.Drittmittel.Sonstiges
-		g.bgFillInput(ws, cellName(cLc, sonstigesRow), s.LC)
-		g.bgFillInput(ws, cellName(cEur, sonstigesRow), s.EUR)
-	}
 
 	g.bgTableHeader(ws, headerRow, cName, cEur)
 	_ = g.file.AddTable(ws, &excelize.Table{
