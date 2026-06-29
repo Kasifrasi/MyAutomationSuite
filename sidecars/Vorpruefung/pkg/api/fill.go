@@ -52,12 +52,18 @@ type MAPeriod struct {
 	DrittLC      float64
 }
 
+type FBEinnahme struct {
+	Typ   string
+	Geber string
+	LC    *float64
+	EUR   *float64
+}
+
 type FBPeriod struct {
 	Von          time.Time
 	Bis          time.Time
-	KmwLC        float64
-	EigenLC      float64
-	DrittLC      float64
+	Einnahmen1   []FBEinnahme
+	EinnahmenWK  []FBEinnahme
 	AusgabenByID map[string]float64
 	BankLC       float64
 }
@@ -224,6 +230,75 @@ func fillMA(f *excelize.File, periods []MAPeriod) {
 	}
 }
 
+func addOrUpdateEinnahme(f *excelize.File, sheet, tableName, typ, geber string, lc, eur *float64) error {
+	tables, err := f.GetTables(sheet)
+	if err != nil {
+		return err
+	}
+	var tRange string
+	for _, t := range tables {
+		if t.Name == tableName {
+			tRange = t.Range
+			break
+		}
+	}
+	if tRange == "" {
+		return fmt.Errorf("Tabelle %s nicht gefunden", tableName)
+	}
+
+	coords := strings.Split(tRange, ":")
+	colStart, rowStart, _ := excelize.CellNameToCoordinates(coords[0])
+	_, rowEnd, _ := excelize.CellNameToCoordinates(coords[1])
+
+	targetRow := -1
+	emptyRow := -1
+
+	for r := rowStart + 1; r <= rowEnd; r++ {
+		cTyp, _ := excelize.CoordinatesToCellName(colStart, r)
+		cGeber, _ := excelize.CoordinatesToCellName(colStart+1, r)
+
+		valTyp, _ := f.GetCellValue(sheet, cTyp)
+		valGeber, _ := f.GetCellValue(sheet, cGeber)
+
+		if valTyp == typ && valGeber == geber {
+			targetRow = r
+			break
+		}
+		if valTyp == "" && emptyRow == -1 {
+			emptyRow = r
+		}
+	}
+
+	if targetRow == -1 {
+		if emptyRow != -1 {
+			targetRow = emptyRow
+		} else {
+			targetRow = rowEnd
+			if err := f.InsertRows(sheet, targetRow, 1); err != nil {
+				return err
+			}
+		}
+	}
+
+	cTyp, _ := excelize.CoordinatesToCellName(colStart, targetRow)
+	cGeber, _ := excelize.CoordinatesToCellName(colStart+1, targetRow)
+	cLC, _ := excelize.CoordinatesToCellName(colStart+2, targetRow)
+	cEUR, _ := excelize.CoordinatesToCellName(colStart+3, targetRow)
+
+	setVal(f, sheet, cTyp, typ)
+	if geber != "" {
+		setVal(f, sheet, cGeber, geber)
+	}
+	if lc != nil {
+		setVal(f, sheet, cLC, *lc)
+	}
+	if eur != nil {
+		setVal(f, sheet, cEUR, *eur)
+	}
+
+	return nil
+}
+
 func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 	if budget == nil {
 		return
@@ -268,24 +343,14 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 
 		// 2. Einnahmen Tabelle 1 (KMW)
 		tNameT1 := fmt.Sprintf("Einnahmen_%d", p+1)
-		if rng, ok := tableMap[tNameT1]; ok {
-			coords := strings.Split(rng, ":")
-			col, row, _ := excelize.CellNameToCoordinates(coords[0])
-			// row + 1 = Vorprojektsaldo, row + 2 = KMW-Mittel
-			cKmw, _ := excelize.CoordinatesToCellName(col+2, row+2)
-			setVal(f, sheet, cKmw, fp.KmwLC)
+		for _, e := range fp.Einnahmen1 {
+			_ = addOrUpdateEinnahme(f, sheet, tNameT1, e.Typ, e.Geber, e.LC, e.EUR)
 		}
 
 		// 3. Einnahmen Tabelle 2 (Eigen/Dritt)
 		tNameT2 := fmt.Sprintf("Einnahmen_WK_%d", p+1)
-		if rng, ok := tableMap[tNameT2]; ok {
-			coords := strings.Split(rng, ":")
-			col, row, _ := excelize.CellNameToCoordinates(coords[0])
-			// row + 1 = Eigenmittel, row + 2 = Drittmittel
-			cEigen, _ := excelize.CoordinatesToCellName(col+2, row+1)
-			cDritt, _ := excelize.CoordinatesToCellName(col+2, row+2)
-			setVal(f, sheet, cEigen, fp.EigenLC)
-			setVal(f, sheet, cDritt, fp.DrittLC)
+		for _, e := range fp.EinnahmenWK {
+			_ = addOrUpdateEinnahme(f, sheet, tNameT2, e.Typ, e.Geber, e.LC, e.EUR)
 		}
 	}
 }

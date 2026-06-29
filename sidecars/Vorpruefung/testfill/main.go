@@ -24,7 +24,13 @@ const (
 var fbPeriods = []api.FBPeriod{
 	{ // Periode 1
 		Von: date(2025, 1, 1), Bis: date(2025, 6, 30),
-		KmwLC: 1_250_000, EigenLC: 250_000, DrittLC: 125_000,
+		Einnahmen1: []api.FBEinnahme{
+			{Typ: "KMW-Mittel", LC: floatPtr(1_250_000)},
+		},
+		EinnahmenWK: []api.FBEinnahme{
+			{Typ: "Eigenmittel", LC: floatPtr(250_000)},
+			{Typ: "Drittmittel", Geber: "Beispiel-Geber 1", LC: floatPtr(125_000)},
+		},
 		AusgabenByID: map[string]float64{
 			"1.1": 600_000, "2.1": 300_000, "3.1": 200_000,
 			"3.2": 150_000, "4.1": 120_000, "5.1": 80_000, "7.1": 50_000,
@@ -33,7 +39,13 @@ var fbPeriods = []api.FBPeriod{
 	},
 	{ // Periode 2
 		Von: date(2025, 7, 1), Bis: date(2025, 12, 31),
-		KmwLC: 1_000_000, EigenLC: 200_000, DrittLC: 100_000,
+		Einnahmen1: []api.FBEinnahme{
+			{Typ: "KMW-Mittel", LC: floatPtr(1_000_000)},
+		},
+		EinnahmenWK: []api.FBEinnahme{
+			{Typ: "Eigenmittel", LC: floatPtr(200_000)},
+			{Typ: "Drittmittel", Geber: "Beispiel-Geber 1", LC: floatPtr(100_000)},
+		},
 		AusgabenByID: map[string]float64{
 			"1.1": 400_000, "1.2": 300_000, "3.1": 200_000,
 			"3.2": 150_000, "4.1": 100_000, "5.1": 70_000, "7.1": 30_000,
@@ -42,13 +54,23 @@ var fbPeriods = []api.FBPeriod{
 	},
 	{ // Periode 3
 		Von: date(2026, 1, 1), Bis: date(2026, 6, 30),
-		KmwLC: 1_100_000, EigenLC: 250_000, DrittLC: 150_000,
+		Einnahmen1: []api.FBEinnahme{
+			{Typ: "KMW-Mittel", LC: floatPtr(1_100_000)},
+		},
+		EinnahmenWK: []api.FBEinnahme{
+			{Typ: "Eigenmittel", LC: floatPtr(250_000)},
+			{Typ: "Drittmittel", Geber: "Beispiel-Geber 1", LC: floatPtr(150_000)},
+		},
 		AusgabenByID: map[string]float64{
 			"1.1": 350_000, "2.1": 300_000, "3.1": 200_000,
 			"4.1": 120_000, "5.1": 50_000, "7.1": 50_000,
 		},
 		BankLC: 350_000,
 	},
+}
+
+func floatPtr(f float64) *float64 {
+	return &f
 }
 
 var maPeriods = []api.MAPeriod{
