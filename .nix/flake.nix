@@ -100,6 +100,10 @@
           cd "$root/sidecars/shared/constants" && go generate
           go run -C "$root/sidecars/Vorpruefung" ./cmd/vp_generator -budget "$budget" -o "$template" || exit 1
           go run -C "$root/sidecars/Vorpruefung" ./testfill -in "$template" -budget "$budget" -o "$out"
+
+          mkdir -p /home/ardit/share
+          cp "$out" /home/ardit/share/
+          echo "Erfolgreich erstellt und nach /home/ardit/share kopiert."
         '';
 
         # Build-time tools and dependencies
