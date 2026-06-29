@@ -3,8 +3,9 @@ package api
 import (
 	"strings"
 
-	"github.com/xuri/excelize/v2"
 	"shared/constants"
+
+	"github.com/xuri/excelize/v2"
 )
 
 // FillDefaults befüllt ein Bare-Metal-Template mit den ursprünglichen Standardwerten.
@@ -12,26 +13,26 @@ import (
 func FillDefaults(f *excelize.File) error {
 	// 1. Dashboard
 	sheetDash := constants.VPSheetDASHBOARD
-	_ = setValSafe(f, sheetDash, "E5", "Ja")
-	for row := 16; row <= 22; row++ {
-		cell, _ := excelize.CoordinatesToCellName(4, row) // D16:D22
+	_ = setValSafe(f, sheetDash, CellDashVorprojekt, "Ja")
+	for row := RowDashChecklistStart; row <= RowDashChecklistEnd; row++ {
+		cell, _ := excelize.CoordinatesToCellName(ColDashChecklist, row)
 		_ = setValSafe(f, sheetDash, cell, "Nein")
 	}
 
 	// 2. Budget
 	sheetBudget := constants.VPSheetBUDGET
-	_ = setValSafe(f, sheetBudget, "K5", "Nein")
+	_ = setValSafe(f, sheetBudget, CellBudgetReserveFreigabe, "Nein")
 
 	// 3. FB Prüfung
 	sheetFBPruefung := constants.VPSheetFB_PRUEFUNG
-	_ = setValSafe(f, sheetFBPruefung, "C6", "Neuester FB")
+	_ = setValSafe(f, sheetFBPruefung, CellFBPruefungAuswahl, "Neuester FB")
 	if err := fillValidationDefaults(f, sheetFBPruefung); err != nil {
 		return err
 	}
 
 	// 4. MA Prüfung
 	sheetMAPruefung := constants.VPSheetMA_PRUEFUNG
-	_ = setValSafe(f, sheetMAPruefung, "C6", "Neueste MA")
+	_ = setValSafe(f, sheetMAPruefung, CellMAPruefungAuswahl, "Neueste MA")
 	if err := fillValidationDefaults(f, sheetMAPruefung); err != nil {
 		return err
 	}

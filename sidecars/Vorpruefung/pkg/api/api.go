@@ -141,16 +141,18 @@ func FillTemplate(filePath string, data FillData) error {
 	fillBudget(f, data.Budget)
 
 	// Optionale Werte für die Prüfungs-Auswahl
-	if data.FBPruefung != nil {
-		sheet := constants.VPSheetFB_PRUEFUNG
-		setVal(f, sheet, "C6", data.FBPruefung.Auswahl)
-		// Die Toggle-Zellen befinden sich in F18, F19, F20 (im Template oft dynamisch,
-		// aber sie sind relativ zur KMW-Tabelle). Aktuell setzen wir sie über die defaults,
-		// wenn nicht explizit gesetzt.
+	sheetFB := constants.VPSheetFB_PRUEFUNG
+	if data.FBPruefung != nil && data.FBPruefung.Auswahl != nil {
+		setVal(f, sheetFB, CellFBPruefungAuswahl, data.FBPruefung.Auswahl)
+	} else {
+		setVal(f, sheetFB, CellFBPruefungAuswahl, "Neuester FB")
 	}
-	if data.MAPruefung != nil {
-		sheet := constants.VPSheetMA_PRUEFUNG
-		setVal(f, sheet, "C6", data.MAPruefung.Auswahl)
+
+	sheetMA := constants.VPSheetMA_PRUEFUNG
+	if data.MAPruefung != nil && data.MAPruefung.Auswahl != nil {
+		setVal(f, sheetMA, CellMAPruefungAuswahl, data.MAPruefung.Auswahl)
+	} else {
+		setVal(f, sheetMA, CellMAPruefungAuswahl, "Neueste MA")
 	}
 
 	return f.Save()
@@ -193,32 +195,32 @@ func setVal(f *excelize.File, sheet, cell string, val interface{}) {
 
 func fillDashboard(f *excelize.File, d DashboardData) {
 	sheet := constants.VPSheetDASHBOARD
-	setVal(f, sheet, "C5", d.Projektnummer)
-	setVal(f, sheet, "E5", d.Vorprojekt)
-	setVal(f, sheet, "C6", d.Projekttitel)
-	setVal(f, sheet, "C7", d.Projekttraeger)
-	setVal(f, sheet, "E7", d.Berichtswaehrung)
-	setVal(f, sheet, "C8", d.Projektstart)
-	setVal(f, sheet, "E8", d.Projektende)
+	setVal(f, sheet, CellDashProjektnummer, d.Projektnummer)
+	setVal(f, sheet, CellDashVorprojekt, d.Vorprojekt)
+	setVal(f, sheet, CellDashProjekttitel, d.Projekttitel)
+	setVal(f, sheet, CellDashProjekttraeger, d.Projekttraeger)
+	setVal(f, sheet, CellDashBerichtswaehrung, d.Berichtswaehrung)
+	setVal(f, sheet, CellDashProjektstart, d.Projektstart)
+	setVal(f, sheet, CellDashProjektende, d.Projektende)
 
 	if d.Vorprojekt != nil && *d.Vorprojekt {
-		setVal(f, sheet, "C10", d.Vorprojektnummer)
-		setVal(f, sheet, "E10", d.VPBerichtswaehrung)
-		setVal(f, sheet, "C11", d.Vorprojektende)
-		setVal(f, sheet, "E11", d.VPWechselkurs)
-		setVal(f, sheet, "C12", d.VPSaldoLC)
-		setVal(f, sheet, "E12", d.VPSaldoEUR)
-		setVal(f, sheet, "C13", d.VPFolgeprojektstart)
-		setVal(f, sheet, "E13", d.VPWechselkurs)
-		setVal(f, sheet, "C14", d.VPSaldoLC)
-		setVal(f, sheet, "E14", d.VPSaldoEUR)
+		setVal(f, sheet, CellDashVPNummer, d.Vorprojektnummer)
+		setVal(f, sheet, CellDashVPBerichtswaehrung, d.VPBerichtswaehrung)
+		setVal(f, sheet, CellDashVPEnde, d.Vorprojektende)
+		setVal(f, sheet, CellDashVPWechselkurs, d.VPWechselkurs)
+		setVal(f, sheet, CellDashVPSaldoLC, d.VPSaldoLC)
+		setVal(f, sheet, CellDashVPSaldoEUR, d.VPSaldoEUR)
+		setVal(f, sheet, CellDashVPFolgeprojektstart, d.VPFolgeprojektstart)
+		setVal(f, sheet, CellDashVPFolgeWechselkurs, d.VPWechselkurs)
+		setVal(f, sheet, CellDashVPFolgeSaldoLC, d.VPSaldoLC)
+		setVal(f, sheet, CellDashVPFolgeSaldoEUR, d.VPSaldoEUR)
 	}
 
 	for i, v := range d.DocChecklist {
-		if i >= 7 {
+		if i > (RowDashChecklistEnd - RowDashChecklistStart) {
 			break
 		}
-		cell, _ := excelize.CoordinatesToCellName(4, 16+i)
+		cell, _ := excelize.CoordinatesToCellName(ColDashChecklist, RowDashChecklistStart+i)
 		setVal(f, sheet, cell, v)
 	}
 }
@@ -226,14 +228,14 @@ func fillDashboard(f *excelize.File, d DashboardData) {
 func fillKMW(f *excelize.File, tranchen []KMWTranche) {
 	sheet := constants.VPSheetKMW_MITTEL
 	for i, kr := range tranchen {
-		row := 5 + i
-		if row > 22 {
+		row := RowKMWStart + i
+		if row > RowKMWEnd {
 			break
 		}
-		cPeriode, _ := excelize.CoordinatesToCellName(2, row)
-		cWaehrung, _ := excelize.CoordinatesToCellName(3, row)
-		cBetrag, _ := excelize.CoordinatesToCellName(4, row)
-		cDatum, _ := excelize.CoordinatesToCellName(5, row)
+		cPeriode, _ := excelize.CoordinatesToCellName(ColKMWPeriode, row)
+		cWaehrung, _ := excelize.CoordinatesToCellName(ColKMWWaehrung, row)
+		cBetrag, _ := excelize.CoordinatesToCellName(ColKMWBetrag, row)
+		cDatum, _ := excelize.CoordinatesToCellName(ColKMWDatum, row)
 
 		setVal(f, sheet, cPeriode, kr.Periode)
 		setVal(f, sheet, cWaehrung, kr.Waehrung)
@@ -258,11 +260,11 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 	}
 
 	for p, mp := range periods {
-		col := 3 + p*4 // C, G, K...
+		col := ColMAStart + p*ColMAStep
 
-		cVON, _ := excelize.CoordinatesToCellName(col, 5)
-		cBIS, _ := excelize.CoordinatesToCellName(col, 6)
-		cKurs, _ := excelize.CoordinatesToCellName(col, 8)
+		cVON, _ := excelize.CoordinatesToCellName(col, RowMAVon)
+		cBIS, _ := excelize.CoordinatesToCellName(col, RowMABis)
+		cKurs, _ := excelize.CoordinatesToCellName(col, RowMAKurs)
 		setVal(f, sheet, cVON, mp.Von)
 		setVal(f, sheet, cBIS, mp.Bis)
 		setVal(f, sheet, cKurs, mp.OandaKurs)
@@ -283,12 +285,8 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 				}
 			}
 
-			// We can also find the total row and offsets for Eigen, Dritt, KMW.
-			// The data rows take len(budget.Ausgaben).
-			// The offsets are: Eigen = row + len(budget.Ausgaben) + 4
-			// Dritt = row + len(...) + 5
-			rEigen := row + len(budget.Ausgaben) + 4
-			rDritt := row + len(budget.Ausgaben) + 5
+			rEigen := row + len(budget.Ausgaben) + RowMAOffsetEigen
+			rDritt := row + len(budget.Ausgaben) + RowMAOffsetDritt
 
 			cEigen, _ := excelize.CoordinatesToCellName(col, rEigen)
 			cDritt, _ := excelize.CoordinatesToCellName(col, rDritt)
@@ -296,11 +294,8 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 			setVal(f, sheet, cDritt, mp.DrittLC)
 		}
 
-		// 3 Finanzierungsarten (Tabelle offsets depend on row calculation, easier is to just address them dynamically if possible)
-		// but since we only have fixed row references for EigenLC, we might need to find them or compute them.
-		// Actually, mp.EigenLC and mp.DrittLC are mapped in MAPeriod struct. Let's see what is there.
 		// Ebene 2
-		tNameL2 := fmt.Sprintf("MA_%d", p+1+18)
+		tNameL2 := fmt.Sprintf("MA_%d", p+1+TableMAOffsetEbene2)
 		if rng, ok := tableMap[tNameL2]; ok {
 			coords := strings.Split(rng, ":")
 			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
@@ -311,7 +306,7 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 		}
 
 		// Ebene 3
-		tNameL3 := fmt.Sprintf("MA_%d", p+1+36)
+		tNameL3 := fmt.Sprintf("MA_%d", p+1+TableMAOffsetEbene3)
 		if rng, ok := tableMap[tNameL3]; ok {
 			coords := strings.Split(rng, ":")
 			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
@@ -409,16 +404,16 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 	}
 
 	for p, fp := range periods {
-		colStart := 2 + p*7
-		cLabel, _ := excelize.ColumnNumberToName(colStart)     // B, I, P...
-		cInput, _ := excelize.ColumnNumberToName(colStart + 1) // C, J, Q...
+		colStart := ColFBStart + p*ColFBStep
+		cLabel, _ := excelize.ColumnNumberToName(colStart)
+		cInput, _ := excelize.ColumnNumberToName(colStart + 1)
 
-		setVal(f, sheet, fmt.Sprintf("%s5", cInput), fp.Von)
-		setVal(f, sheet, fmt.Sprintf("%s6", cInput), fp.Bis)
+		setVal(f, sheet, fmt.Sprintf("%s%d", cInput, RowFBVon), fp.Von)
+		setVal(f, sheet, fmt.Sprintf("%s%d", cInput, RowFBBis), fp.Bis)
 
 		// Einnahmetypen aus dem Generator importieren und schreiben (ab Row 12)
 		for i, tn := range vorpruefung.TYPE_NAMES {
-			setVal(f, sheet, fmt.Sprintf("%s%d", cLabel, 12+i), tn)
+			setVal(f, sheet, fmt.Sprintf("%s%d", cLabel, RowFBEinnahmen+i), tn)
 		}
 
 		// 1. Ausgaben Tabelle
@@ -440,9 +435,9 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 			// Bank-Aufschlüsselung (liegt einige Zeilen unter der Ausgaben-Tabelle)
 			// Wir berechnen den Offset ab dem Tabellen-Ende
 			_, rowEnd, _ := excelize.CellNameToCoordinates(coords[1])
-			cellBank, _ := excelize.CoordinatesToCellName(col+1, rowEnd+6)
-			cellKasse, _ := excelize.CoordinatesToCellName(col+1, rowEnd+7)
-			cellSonstiges, _ := excelize.CoordinatesToCellName(col+1, rowEnd+8)
+			cellBank, _ := excelize.CoordinatesToCellName(col+1, rowEnd+OffsetFBBank)
+			cellKasse, _ := excelize.CoordinatesToCellName(col+1, rowEnd+OffsetFBKasse)
+			cellSonstiges, _ := excelize.CoordinatesToCellName(col+1, rowEnd+OffsetFBSonstiges)
 
 			if fp.BankLC != nil {
 				setVal(f, sheet, cellBank, *fp.BankLC)
@@ -480,41 +475,41 @@ func fillBudget(f *excelize.File, budget *BudgetData) {
 			return
 		}
 		if inc.LC != nil {
-			c, _ := excelize.CoordinatesToCellName(5, row)
+			c, _ := excelize.CoordinatesToCellName(ColBudgetLC, row)
 			setVal(f, sheet, c, *inc.LC)
 		}
 		if inc.Y1 != nil {
-			c, _ := excelize.CoordinatesToCellName(6, row)
+			c, _ := excelize.CoordinatesToCellName(ColBudgetY1, row)
 			setVal(f, sheet, c, *inc.Y1)
 		}
 		if inc.Y2 != nil {
-			c, _ := excelize.CoordinatesToCellName(7, row)
+			c, _ := excelize.CoordinatesToCellName(ColBudgetY2, row)
 			setVal(f, sheet, c, *inc.Y2)
 		}
 		if inc.Y3 != nil {
-			c, _ := excelize.CoordinatesToCellName(8, row)
+			c, _ := excelize.CoordinatesToCellName(ColBudgetY3, row)
 			setVal(f, sheet, c, *inc.Y3)
 		}
 		if inc.EUR != nil {
-			c, _ := excelize.CoordinatesToCellName(9, row)
+			c, _ := excelize.CoordinatesToCellName(ColBudgetEUR, row)
 			setVal(f, sheet, c, *inc.EUR)
 		}
 	}
 
-	fillInc(7, budget.Eigenmittel)
-	fillInc(13, budget.KMWMittel)
+	fillInc(RowBudgetEigenmittel, budget.Eigenmittel)
+	fillInc(RowBudgetKMWMittel, budget.KMWMittel)
 
 	if budget.DrittmittelY1 != nil {
-		setVal(f, sheet, "F10", *budget.DrittmittelY1)
+		setVal(f, sheet, CellBudgetDrittmittelY1, *budget.DrittmittelY1)
 	}
 	if budget.DrittmittelY2 != nil {
-		setVal(f, sheet, "G10", *budget.DrittmittelY2)
+		setVal(f, sheet, CellBudgetDrittmittelY2, *budget.DrittmittelY2)
 	}
 	if budget.DrittmittelY3 != nil {
-		setVal(f, sheet, "H10", *budget.DrittmittelY3)
+		setVal(f, sheet, CellBudgetDrittmittelY3, *budget.DrittmittelY3)
 	}
 
-	setVal(f, sheet, "K5", budget.ReserveFreigabe)
+	setVal(f, sheet, CellBudgetReserveFreigabe, budget.ReserveFreigabe)
 
 	tables, _ := f.GetTables(sheet)
 	tableMap := make(map[string]string)
@@ -529,39 +524,37 @@ func fillBudget(f *excelize.File, budget *BudgetData) {
 		for i, a := range budget.Ausgaben {
 			r := row + 1 + i
 
-			// col = Label/Kategorie, col+1 = ID, col+2 = Position
 			if a.Kategorie != "" {
 				c, _ := excelize.CoordinatesToCellName(col, r)
 				setVal(f, sheet, c, a.Kategorie)
 			}
 			if a.ID != "" {
-				c, _ := excelize.CoordinatesToCellName(col+1, r)
+				c, _ := excelize.CoordinatesToCellName(col+ColBudgetOffsetID, r)
 				setVal(f, sheet, c, a.ID)
 			}
 			if a.Position != "" {
-				c, _ := excelize.CoordinatesToCellName(col+2, r)
+				c, _ := excelize.CoordinatesToCellName(col+ColBudgetOffsetPosition, r)
 				setVal(f, sheet, c, a.Position)
 			}
 
-			// Betrag (LC) ist col + 3 (Spalte E = 5, wenn col = 2 (B))
 			if a.LC != nil {
-				c, _ := excelize.CoordinatesToCellName(col+3, r)
+				c, _ := excelize.CoordinatesToCellName(col+ColBudgetOffsetLC, r)
 				setVal(f, sheet, c, *a.LC)
 			}
 			if a.Y1 != nil {
-				c, _ := excelize.CoordinatesToCellName(col+4, r)
+				c, _ := excelize.CoordinatesToCellName(col+ColBudgetOffsetY1, r)
 				setVal(f, sheet, c, *a.Y1)
 			}
 			if a.Y2 != nil {
-				c, _ := excelize.CoordinatesToCellName(col+5, r)
+				c, _ := excelize.CoordinatesToCellName(col+ColBudgetOffsetY2, r)
 				setVal(f, sheet, c, *a.Y2)
 			}
 			if a.Y3 != nil {
-				c, _ := excelize.CoordinatesToCellName(col+6, r)
+				c, _ := excelize.CoordinatesToCellName(col+ColBudgetOffsetY3, r)
 				setVal(f, sheet, c, *a.Y3)
 			}
 			if a.EUR != nil {
-				c, _ := excelize.CoordinatesToCellName(col+7, r)
+				c, _ := excelize.CoordinatesToCellName(col+ColBudgetOffsetEUR, r)
 				setVal(f, sheet, c, *a.EUR)
 			}
 		}
