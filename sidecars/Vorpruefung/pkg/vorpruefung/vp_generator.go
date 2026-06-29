@@ -18,8 +18,8 @@ func GenerateVorpruefung(outputPath string, budgetCfg *BudgetConfig) error {
 		constants.VPSheetBUDGET,
 		constants.VPSheetKMW_MITTEL,
 		constants.VPSheetFINANZBERICHTE,
-		constants.VPSheetMA,
 		constants.VPSheetFB_PRUEFUNG,
+		constants.VPSheetMA,
 		constants.VPSheetMA_PRUEFUNG,
 		constants.VPSheetDATEN,
 	}

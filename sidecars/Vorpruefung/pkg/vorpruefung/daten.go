@@ -110,9 +110,18 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 				dc(EV_DTN_MA_META_FILL, j),
 				colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), j, dc(EV_DTN_MA_META_PER, j),
 				colLetter(EV_DTN_MA_META_FILL), colLetter(EV_DTN_MA_META_FILL), j))
-		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j),
-			fmt.Sprintf(`=IF(AND(%s=1,%s>0),"Periode "&%s&" (#"&%s&")","")`,
-				dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_RANK, j)))
+		var labelFormula string
+		if j <= MA_PERIOD_COUNT {
+			// Für den ersten Slot jeder Periode (j <= MA_PERIOD_COUNT) immer ein Label vergeben,
+			// auch wenn die MA noch nicht befüllt ist (dann "Periode X (#1)").
+			labelFormula = fmt.Sprintf(`=IF(%s>0, IF(%s=1, "Periode "&%s&" (#"&%s&")", "Periode "&%s&" (#1)"), "")`,
+				dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_RANK, j), dc(EV_DTN_MA_META_PER, j))
+		} else {
+			// Für weitere Slots nur ein Label vergeben, wenn befüllt.
+			labelFormula = fmt.Sprintf(`=IF(AND(%s=1,%s>0),"Periode "&%s&" (#"&%s&")","")`,
+				dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_RANK, j))
+		}
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j), labelFormula)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j),
 			fmt.Sprintf(`=IFERROR(ROUND(SUBTOTAL(109,%s[Angefordert (LC)]),2),0)`, maName))
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j),
@@ -156,13 +165,17 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
 			ws, absName(EV_DTN_FB_LISTE, 1), ws, colLetter(EV_DTN_FB_LISTE), colLetter(EV_DTN_FB_LISTE)))
 
-	// ─── MA-Auswahlliste (FILTER auf Periode == FB-Auswahl+1 & befüllt) ───────
+	// ─── MA-Auswahlliste (Bis zu Perioden von Max(FB) + 1, auch wenn diese noch leer sind) ───────
 	maLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_LABEL), colLetter(EV_DTN_MA_META_LABEL), MA_TABLE_COUNT)
 	maPerRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_PER), colLetter(EV_DTN_MA_META_PER), MA_TABLE_COUNT)
-	maFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_MA_META_FILL), colLetter(EV_DTN_MA_META_FILL), MA_TABLE_COUNT)
-	maCond := fmt.Sprintf(`(%s=%s+1)*(%s=1)`, maPerRng, g.evalFBSelNumAddr, maFillRng)
-	// Perioden aufsteigend zuerst, der Auto-Eintrag "Neuste MA" ganz unten (= jüngste
-	// MA für die gewählte Folgeperiode, Standard).
+
+	maxFb := fmt.Sprintf(`MAXIFS($%s$1:$%s$%d,$%s$1:$%s$%d,1)`,
+		colLetter(EV_DTN_FB_META_PER), colLetter(EV_DTN_FB_META_PER), MA_PERIOD_COUNT,
+		colLetter(EV_DTN_FB_META_FILL), colLetter(EV_DTN_FB_META_FILL), MA_PERIOD_COUNT)
+
+	maCond := fmt.Sprintf(`(%s<>"")*(%s<=%s+1)>0`, maLabelRng, maPerRng, maxFb)
+
+	// Alle entsprechenden Anforderungen auflisten ("Periode X (#k)"), plus "Neuste MA".
 	_ = g.setDynArrayFormula(ws, dc(EV_DTN_MA_LISTE, 1),
 		fmt.Sprintf(`_xlfn.VSTACK(_xlfn._xlws.FILTER(%s,%s,""),"Neuste MA")`, maLabelRng, maCond), StyleOptions{})
 	g.upsertNamedFormula(EVAL_NAME_MA_LISTE,

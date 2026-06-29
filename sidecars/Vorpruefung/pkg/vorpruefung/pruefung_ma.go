@@ -43,10 +43,7 @@ func (g *Generator) CreateMAPruefungSheet() error {
 	sel := evalSelRefs{maSelP: maSelPCell, maSelK: maSelKCell, fbSelNum: fbSelNumCell}
 
 	// Jetzt maSelP = N+1 setzen (Folgeperiode des gewählten Finanzberichts).
-	_ = g.setFormula(ws, maSelPCell, fmt.Sprintf("=%s+1", g.evalFBSelNumAddr), StyleOptions{
-		Bold: true, HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	// ...wurde entfernt, da maSelP nun direkt aus dem MA-Auswahl-Dropdown gelesen wird.
 
 	maKMW := g.evalDrawKMWSektion(ws, r, true, sel)
 	r = maKMW.nextRow + EV_TABLE_GAP

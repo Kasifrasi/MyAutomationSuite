@@ -1,8 +1,8 @@
 package vorpruefung
 
 import (
-	"strings"
 	"fmt"
+	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -29,7 +29,17 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 	g.evalSelLabel(ws, r, "Ausgewählte Periode")
 	pCell := cellName(EV_PB_V1, r)
-	g.evalMergedValue(ws, pCell, cellName(EV_PB_C2, r), 0, num0) // Formel (=N+1) wird nachgelagert gesetzt
+	maxFbPer := fmt.Sprintf(`MAXIFS('%s'!%s,'%s'!%s,1)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_PER, 1, MA_PERIOD_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_FB_META_FILL, 1, MA_PERIOD_COUNT))
+	maxMaPer := fmt.Sprintf(`MAXIFS('%s'!%s,'%s'!%s,1)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_TABLE_COUNT))
+	maxMAP := fmt.Sprintf(`MAX(%s+1, %s)`, maxFbPer, maxMaPer)
+	pFormula := fmt.Sprintf(
+		`=IF(%s="Neuste MA",%s,IFERROR(VALUE(MID(%s,FIND("Periode ",%s)+8,FIND(" ",%s,FIND("Periode ",%s)+8)-(FIND("Periode ",%s)+8))),0))`,
+		labelCell, maxMAP, labelCell, labelCell, labelCell, labelCell, labelCell)
+	g.evalMergedFormula(ws, pCell, cellName(EV_PB_C2, r), pFormula, num0)
 	r++
 
 	g.evalSelLabel(ws, r, "Ausgewählte Anforderung (#)")
@@ -43,7 +53,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_TABLE_COUNT),
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT))
 	kFormula := fmt.Sprintf(
-		`=IF(%s="Neuste MA",%s,IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0))`,
+		`=IF(%s="Neuste MA",MAX(1,%s),IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0))`,
 		labelCell, maxMAK, labelCell, labelCell, labelCell, labelCell)
 	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
 	r++
@@ -327,7 +337,6 @@ func (g *Generator) evalLimitCalc(ws, cell, formula, numFmt string, bold bool) {
 // VERGLEICHSTABELLEN
 // ==================================================================================
 
-
 // evalDrawMAMirrorPanel zeichnet rechts neben der Mittelanforderungsprüfung eine
 // Spiegelung der ausgewählten Mittelanforderung im Format des Blatts "IV. MA".
 func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
@@ -467,4 +476,3 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 
 	g.styleOuterBorder(ws, top, pLbl, bottom, pEUR, 2, EV_CLR_BORDER)
 }
-
