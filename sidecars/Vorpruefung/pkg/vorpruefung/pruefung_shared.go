@@ -31,7 +31,7 @@ const (
 	EV_PB_C2   = 7 // Box-/Wert-Ende (G)
 
 	EV_TABLE_GAP = 2
-	EV_MA_SLOTS  = 6 // max. gleichzeitig anzeigbare Anforderungen je Periode
+	EV_MA_SLOTS  = 3 // max. gleichzeitig anzeigbare Anforderungen je Periode (MA #1, #2, #3)
 
 	// Daten-Helfer (Spaltennummern auf dem Blatt "Daten")
 	EV_DTN_MA_META_J     = 53 // BA  Tabellenindex j
