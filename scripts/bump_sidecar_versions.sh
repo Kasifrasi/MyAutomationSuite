@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 VP_FILE="sidecars/Vorpruefung/pkg/vorpruefung/dashboard.go"
