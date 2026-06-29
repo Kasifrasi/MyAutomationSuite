@@ -104,10 +104,21 @@ func runThreeOutputs() {
 	_ = fbPeriodsOhneEinnahmen // to avoid unused variable
 	strFB := "Neuester FB"
 	strMA := "Neueste MA"
+	b := true
+	fullDashboard := api.DashboardData{
+		Projektnummer:    "P-2026-001",
+		Projekttitel:     "Ausbau Infrastruktur",
+		Projekttraeger:   "Local NGO e.V.",
+		Projektstart:     date(2025, 1, 1),
+		Projektende:      date(2025, 12, 31),
+		Berichtswaehrung: "EUR",
+		Vorprojekt:       &b,
+	}
 
 	data3 := api.FillData{
-		FB:     fbPeriodsMitEinnahmen,
-		Budget: budgetData,
+		FB:        fbPeriodsMitEinnahmen,
+		Budget:    budgetData,
+		Dashboard: fullDashboard,
 		FBPruefung: &api.FBPruefungData{
 			Auswahl: &strFB,
 		},

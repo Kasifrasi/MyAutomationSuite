@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"shared/constants"
+	"vorpruefung/pkg/vorpruefung"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -135,7 +136,7 @@ func FillTemplate(filePath string, data FillData) error {
 
 	fillDashboard(f, data.Dashboard)
 	fillKMW(f, data.KMW)
-	fillMA(f, data.MA)
+	fillMA(f, data.MA, data.Budget)
 	fillFB(f, data.FB, data.Budget)
 	fillBudget(f, data.Budget)
 
@@ -241,12 +242,19 @@ func fillKMW(f *excelize.File, tranchen []KMWTranche) {
 	}
 }
 
-func fillMA(f *excelize.File, periods []MAPeriod) {
+func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
+	if budget == nil {
+		return
+	}
 	sheet := constants.VPSheetMA
-	maCategories := []string{
-		"Bauausgaben", "Investitionen", "Personalkosten",
-		"Projektaktivitaeten", "Projektverwaltung",
-		"Evaluierung", "Audit", "Reserve",
+	tables, err := f.GetTables(sheet)
+	if err != nil {
+		return
+	}
+
+	tableMap := make(map[string]string)
+	for _, t := range tables {
+		tableMap[t.Name] = t.Range
 	}
 
 	for p, mp := range periods {
@@ -259,17 +267,58 @@ func fillMA(f *excelize.File, periods []MAPeriod) {
 		setVal(f, sheet, cBIS, mp.Bis)
 		setVal(f, sheet, cKurs, mp.OandaKurs)
 
-		for i, cat := range maCategories {
-			if v, ok := mp.KategorienLC[cat]; ok && v != 0 {
-				cData, _ := excelize.CoordinatesToCellName(col, 10+i)
-				setVal(f, sheet, cData, v)
+		// Ebene 1
+		tNameL1 := fmt.Sprintf("TblMA_L1_%d", p+1)
+		if rng, ok := tableMap[tNameL1]; ok {
+			coords := strings.Split(rng, ":")
+			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
+			for i, a := range budget.Ausgaben {
+				// Schreibe Kategorie in die linke Spalte (colT)
+				cLabel, _ := excelize.CoordinatesToCellName(colT, row+1+i)
+				setVal(f, sheet, cLabel, a.Kategorie)
+
+				if v, exists := mp.KategorienLC[a.Kategorie]; exists && v != 0 {
+					cVal, _ := excelize.CoordinatesToCellName(colT+1, row+1+i)
+					setVal(f, sheet, cVal, v)
+				}
+			}
+
+			// We can also find the total row and offsets for Eigen, Dritt, KMW.
+			// The data rows take len(budget.Ausgaben).
+			// The offsets are: Eigen = row + len(budget.Ausgaben) + 4
+			// Dritt = row + len(...) + 5
+			rEigen := row + len(budget.Ausgaben) + 4
+			rDritt := row + len(budget.Ausgaben) + 5
+
+			cEigen, _ := excelize.CoordinatesToCellName(col, rEigen)
+			cDritt, _ := excelize.CoordinatesToCellName(col, rDritt)
+			setVal(f, sheet, cEigen, mp.EigenLC)
+			setVal(f, sheet, cDritt, mp.DrittLC)
+		}
+
+		// 3 Finanzierungsarten (Tabelle offsets depend on row calculation, easier is to just address them dynamically if possible)
+		// but since we only have fixed row references for EigenLC, we might need to find them or compute them.
+		// Actually, mp.EigenLC and mp.DrittLC are mapped in MAPeriod struct. Let's see what is there.
+		tNameL2 := fmt.Sprintf("TblMA_L2_%d", p+1)
+		if rng, ok := tableMap[tNameL2]; ok {
+			coords := strings.Split(rng, ":")
+			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
+			for i, a := range budget.Ausgaben {
+				cLabel, _ := excelize.CoordinatesToCellName(colT, row+1+i)
+				setVal(f, sheet, cLabel, a.Kategorie)
 			}
 		}
 
-		cEigen, _ := excelize.CoordinatesToCellName(col, 21)
-		cDritt, _ := excelize.CoordinatesToCellName(col, 22)
-		setVal(f, sheet, cEigen, mp.EigenLC)
-		setVal(f, sheet, cDritt, mp.DrittLC)
+		// Ebene 3
+		tNameL3 := fmt.Sprintf("TblMA_L3_%d", p+1)
+		if rng, ok := tableMap[tNameL3]; ok {
+			coords := strings.Split(rng, ":")
+			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
+			for i, a := range budget.Ausgaben {
+				cLabel, _ := excelize.CoordinatesToCellName(colT, row+1+i)
+				setVal(f, sheet, cLabel, a.Kategorie)
+			}
+		}
 	}
 }
 
@@ -360,10 +409,16 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 
 	for p, fp := range periods {
 		colStart := 2 + p*7
+		cLabel, _ := excelize.ColumnNumberToName(colStart)     // B, I, P...
 		cInput, _ := excelize.ColumnNumberToName(colStart + 1) // C, J, Q...
 
 		setVal(f, sheet, fmt.Sprintf("%s5", cInput), fp.Von)
 		setVal(f, sheet, fmt.Sprintf("%s6", cInput), fp.Bis)
+
+		// Einnahmetypen aus dem Generator importieren und schreiben (ab Row 12)
+		for i, tn := range vorpruefung.TYPE_NAMES {
+			setVal(f, sheet, fmt.Sprintf("%s%d", cLabel, 12+i), tn)
+		}
 
 		// 1. Ausgaben Tabelle
 		tNameAusg := fmt.Sprintf("Ausgaben_%d", p+1)
@@ -372,6 +427,10 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 			col, row, _ := excelize.CellNameToCoordinates(coords[0])
 			// header = row, data starts at row + 1
 			for i, id := range budget.AusgabenIDs {
+				// ID eintragen in die Label-Spalte
+				cellID, _ := excelize.CoordinatesToCellName(col, row+1+i)
+				setVal(f, sheet, cellID, id)
+
 				if v, exists := fp.AusgabenByID[id]; exists && v != 0 {
 					cell, _ := excelize.CoordinatesToCellName(col+1, row+1+i)
 					setVal(f, sheet, cell, v)
@@ -468,6 +527,21 @@ func fillBudget(f *excelize.File, budget *BudgetData) {
 		col, row, _ := excelize.CellNameToCoordinates(coords[0])
 		for i, a := range budget.Ausgaben {
 			r := row + 1 + i
+
+			// col = Label/Kategorie, col+1 = ID, col+2 = Position
+			if a.Kategorie != "" {
+				c, _ := excelize.CoordinatesToCellName(col, r)
+				setVal(f, sheet, c, a.Kategorie)
+			}
+			if a.ID != "" {
+				c, _ := excelize.CoordinatesToCellName(col+1, r)
+				setVal(f, sheet, c, a.ID)
+			}
+			if a.Position != "" {
+				c, _ := excelize.CoordinatesToCellName(col+2, r)
+				setVal(f, sheet, c, a.Position)
+			}
+
 			// Betrag (LC) ist col + 3 (Spalte E = 5, wenn col = 2 (B))
 			if a.LC != nil {
 				c, _ := excelize.CoordinatesToCellName(col+3, r)
