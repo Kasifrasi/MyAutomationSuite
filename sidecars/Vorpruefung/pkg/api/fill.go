@@ -1,19 +1,15 @@
 package api
 
 import (
-	"archive/zip"
-	"bytes"
 	"fmt"
-	"io"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	"shared/constants"
+
+	"github.com/xuri/excelize/v2"
 )
 
-// FillData enthält alle Daten, die nach der Generierung der Vorlage über die API eingefügt werden sollen.
 type FillData struct {
 	Dashboard DashboardData
 	KMW       []KMWTranche
@@ -37,8 +33,7 @@ type DashboardData struct {
 	VPSaldoLC           float64
 	VPSaldoEUR          float64
 	VPFolgeprojektstart time.Time
-	// Dokumenten-Checkliste (immer 7 Dropdowns D16..D22)
-	DocChecklist []string
+	DocChecklist        []string
 }
 
 type KMWTranche struct {
@@ -104,159 +99,100 @@ type AusgabenRow struct {
 	Y3        *float64
 }
 
-// ─── Edit-Modell ──────────────────────────────────────────────────────────────
-
-type editKind int
-
-const (
-	editNum editKind = iota
-	editStr
-	editDate
-)
-
-type cellEdit struct {
-	ref  string
-	kind editKind
-	num  float64
-	str  string
-}
-
-func numEdit(ref string, v float64) cellEdit { return cellEdit{ref: ref, kind: editNum, num: v} }
-func strEdit(ref, s string) cellEdit         { return cellEdit{ref: ref, kind: editStr, str: s} }
-func dateEdit(ref string, t time.Time) cellEdit {
-	return cellEdit{ref: ref, kind: editDate, num: excelSerial(t)}
-}
-
-// excelSerial rechnet time.Time in den Excel-Datumswert (Tage seit 1900) um.
-func excelSerial(t time.Time) float64 {
-	delta := t.Sub(time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC))
-	return float64(delta / (24 * time.Hour))
-}
-
-func cell(col, row int) string {
-	c, _ := excelizeColumnName(col)
-	return fmt.Sprintf("%s%d", c, row)
-}
-
-// Hilfsfunktion: Spaltennummer (1-basiert) in Buchstaben umwandeln
-func excelizeColumnName(col int) (string, error) {
-	if col < 1 {
-		return "", fmt.Errorf("ungültige Spaltennummer")
-	}
-	name := ""
-	for col > 0 {
-		col--
-		name = string(rune('A'+(col%26))) + name
-		col /= 26
-	}
-	return name, nil
-}
-
-// ─── Haupt-API Funktion ────────────────────────────────────────────────────────
-
-// FillTemplate liest die fertig generierte Excel-Datei, patchet die XML-Worksheets
-// direkt (um dynamische Array-Metadaten zu erhalten) und speichert die Datei.
 func FillTemplate(filePath string, data FillData) error {
-	parts, order, err := readZip(filePath)
+	f, err := excelize.OpenFile(filePath)
 	if err != nil {
-		return fmt.Errorf("vorlage lesen: %w", err)
+		return fmt.Errorf("konnte Datei nicht öffnen: %w", err)
 	}
+	defer f.Close()
 
-	sheetPart, err := mapSheetNamesToParts(parts)
-	if err != nil {
-		return fmt.Errorf("sheet-zuordnung: %w", err)
-	}
+	fillDashboard(f, data.Dashboard)
+	fillKMW(f, data.KMW)
+	fillMA(f, data.MA)
+	fillFB(f, data.FB, data.Budget)
+	fillBudget(f, data.Budget)
 
-	// 1. Dashboard
-	if err := patchSheet(parts, sheetPart, constants.VPSheetDASHBOARD, buildDashboardEdits(data.Dashboard)); err != nil {
-		return fmt.Errorf("Dashboard befüllen: %w", err)
-	}
-
-	// 2. KMW-Mittel
-	if err := patchSheet(parts, sheetPart, constants.VPSheetKMW_MITTEL, buildKMWEdits(data.KMW)); err != nil {
-		return fmt.Errorf("KMW-Mittel befüllen: %w", err)
-	}
-
-	// 3. MA (Mittelanforderung)
-	if err := patchSheet(parts, sheetPart, constants.VPSheetMA, buildMAEdits(data.MA)); err != nil {
-		return fmt.Errorf("Mittelanforderung befüllen: %w", err)
-	}
-
-	// 4. FB (Finanzberichte)
-	if err := patchSheet(parts, sheetPart, constants.VPSheetFINANZBERICHTE, buildFBEdits(data.FB, data.Budget)); err != nil {
-		return fmt.Errorf("Finanzberichte befüllen: %w", err)
-	}
-
-	// 5. Budget
-	if err := patchSheet(parts, sheetPart, constants.VPSheetBUDGET, buildBudgetEdits(data.Budget)); err != nil {
-		return fmt.Errorf("Budget befüllen: %w", err)
-	}
-
-	if err := writeZip(filePath, order, parts); err != nil {
-		return fmt.Errorf("zieldatei schreiben: %w", err)
-	}
-
-	return nil
+	return f.Save()
 }
 
-func buildDashboardEdits(d DashboardData) []cellEdit {
-	var edits []cellEdit
-	c := func(row int) string { return cell(3, row) } // Spalte C
-	e := func(row int) string { return cell(5, row) } // Spalte E
-
-	vpFlag := "Nein"
-	if d.Vorprojekt {
-		vpFlag = "Ja"
-	}
-
-	edits = append(edits,
-		strEdit(c(5), d.Projektnummer),
-		strEdit(e(5), vpFlag),
-		strEdit(c(6), d.Projekttitel),
-		strEdit(c(7), d.Projekttraeger),
-		strEdit(e(7), d.Berichtswaehrung),
-	)
-
-	if !d.Projektstart.IsZero() {
-		edits = append(edits, dateEdit(c(8), d.Projektstart))
-	}
-	if !d.Projektende.IsZero() {
-		edits = append(edits, dateEdit(e(8), d.Projektende))
-	}
-
-	if d.Vorprojekt {
-		edits = append(edits,
-			strEdit(c(10), d.Vorprojektnummer),
-			strEdit(e(10), d.VPBerichtswaehrung),
-			numEdit(e(11), d.VPWechselkurs),
-			numEdit(c(12), d.VPSaldoLC),
-			numEdit(e(12), d.VPSaldoEUR),
-			numEdit(e(13), d.VPWechselkurs),
-			numEdit(c(14), d.VPSaldoLC),
-			numEdit(e(14), d.VPSaldoEUR),
-		)
-		if !d.Vorprojektende.IsZero() {
-			edits = append(edits, dateEdit(c(11), d.Vorprojektende))
+func setVal(f *excelize.File, sheet, cell string, val interface{}) {
+	switch v := val.(type) {
+	case time.Time:
+		if !v.IsZero() {
+			delta := v.Sub(time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC))
+			excelDate := float64(delta / (24 * time.Hour))
+			_ = f.SetCellValue(sheet, cell, excelDate)
 		}
-		if !d.VPFolgeprojektstart.IsZero() {
-			edits = append(edits, dateEdit(c(13), d.VPFolgeprojektstart))
+	case float64:
+		if v != 0 {
+			_ = f.SetCellValue(sheet, cell, v)
 		}
+	case string:
+		if v != "" {
+			_ = f.SetCellValue(sheet, cell, v)
+		}
+	case bool:
+		if v {
+			_ = f.SetCellValue(sheet, cell, "Ja")
+		} else {
+			_ = f.SetCellValue(sheet, cell, "Nein")
+		}
+	}
+}
+
+func fillDashboard(f *excelize.File, d DashboardData) {
+	sheet := constants.VPSheetDASHBOARD
+	setVal(f, sheet, "C5", d.Projektnummer)
+	setVal(f, sheet, "E5", d.Vorprojekt)
+	setVal(f, sheet, "C6", d.Projekttitel)
+	setVal(f, sheet, "C7", d.Projekttraeger)
+	setVal(f, sheet, "E7", d.Berichtswaehrung)
+	setVal(f, sheet, "C8", d.Projektstart)
+	setVal(f, sheet, "E8", d.Projektende)
+
+	if d.Vorprojekt {
+		setVal(f, sheet, "C10", d.Vorprojektnummer)
+		setVal(f, sheet, "E10", d.VPBerichtswaehrung)
+		setVal(f, sheet, "C11", d.Vorprojektende)
+		setVal(f, sheet, "E11", d.VPWechselkurs)
+		setVal(f, sheet, "C12", d.VPSaldoLC)
+		setVal(f, sheet, "E12", d.VPSaldoEUR)
+		setVal(f, sheet, "C13", d.VPFolgeprojektstart)
+		setVal(f, sheet, "E13", d.VPWechselkurs)
+		setVal(f, sheet, "C14", d.VPSaldoLC)
+		setVal(f, sheet, "E14", d.VPSaldoEUR)
 	}
 
 	for i, v := range d.DocChecklist {
 		if i >= 7 {
 			break
 		}
-		edits = append(edits, strEdit(cell(4, 16+i), v))
+		cell, _ := excelize.CoordinatesToCellName(4, 16+i)
+		setVal(f, sheet, cell, v)
 	}
-
-	return edits
 }
 
-func buildMAEdits(periods []MAPeriod) []cellEdit {
-	var edits []cellEdit
+func fillKMW(f *excelize.File, tranchen []KMWTranche) {
+	sheet := constants.VPSheetKMW_MITTEL
+	for i, kr := range tranchen {
+		row := 5 + i
+		if row > 22 {
+			break
+		}
+		cPeriode, _ := excelize.CoordinatesToCellName(2, row)
+		cWaehrung, _ := excelize.CoordinatesToCellName(3, row)
+		cBetrag, _ := excelize.CoordinatesToCellName(4, row)
+		cDatum, _ := excelize.CoordinatesToCellName(5, row)
 
-	// maCategories entspricht den Zeilen 10..17 im MA Sheet.
+		setVal(f, sheet, cPeriode, kr.Periode)
+		setVal(f, sheet, cWaehrung, kr.Waehrung)
+		setVal(f, sheet, cBetrag, kr.Betrag)
+		setVal(f, sheet, cDatum, kr.Datum)
+	}
+}
+
+func fillMA(f *excelize.File, periods []MAPeriod) {
+	sheet := constants.VPSheetMA
 	maCategories := []string{
 		"Bauausgaben", "Investitionen", "Personalkosten",
 		"Projektaktivitaeten", "Projektverwaltung",
@@ -264,424 +200,203 @@ func buildMAEdits(periods []MAPeriod) []cellEdit {
 	}
 
 	for p, mp := range periods {
-		// MA Start Col ist 2 (B) + 1 für die Eingabespalte = 3 (C)
-		// Der Stride ist 4 Spalten je Periode.
-		// p=0 -> C (3)
-		// p=1 -> G (7)
-		colS := 2 + p*4
-		cLC := colS + 1 // Eingabespalte "Angefordert (LC)"
+		col := 3 + p*4 // C, G, K...
 
-		if !mp.Von.IsZero() {
-			edits = append(edits, dateEdit(cell(cLC, 5), mp.Von))
-		}
-		if !mp.Bis.IsZero() {
-			edits = append(edits, dateEdit(cell(cLC, 6), mp.Bis))
-		}
-		edits = append(edits, numEdit(cell(cLC, 8), mp.OandaKurs))
+		cVON, _ := excelize.CoordinatesToCellName(col, 5)
+		cBIS, _ := excelize.CoordinatesToCellName(col, 6)
+		cKurs, _ := excelize.CoordinatesToCellName(col, 8)
+		setVal(f, sheet, cVON, mp.Von)
+		setVal(f, sheet, cBIS, mp.Bis)
+		setVal(f, sheet, cKurs, mp.OandaKurs)
 
 		for i, cat := range maCategories {
 			if v, ok := mp.KategorienLC[cat]; ok && v != 0 {
-				edits = append(edits, numEdit(cell(cLC, 10+i), v))
+				cData, _ := excelize.CoordinatesToCellName(col, 10+i)
+				setVal(f, sheet, cData, v)
 			}
 		}
 
-		if mp.EigenLC != 0 {
-			edits = append(edits, numEdit(cell(cLC, 21), mp.EigenLC))
-		}
-		if mp.DrittLC != 0 {
-			edits = append(edits, numEdit(cell(cLC, 22), mp.DrittLC))
-		}
+		cEigen, _ := excelize.CoordinatesToCellName(col, 21)
+		cDritt, _ := excelize.CoordinatesToCellName(col, 22)
+		setVal(f, sheet, cEigen, mp.EigenLC)
+		setVal(f, sheet, cDritt, mp.DrittLC)
 	}
-	return edits
 }
 
-func buildBudgetEdits(budget *BudgetData) []cellEdit {
-	var edits []cellEdit
+func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 	if budget == nil {
-		return edits
+		return
+	}
+	sheet := constants.VPSheetFINANZBERICHTE
+	tables, err := f.GetTables(sheet)
+	if err != nil {
+		return
 	}
 
-	const (
-		cLC  = 5
-		cY1  = 6
-		cY2  = 7
-		cY3  = 8
-		cEUR = 9
-	)
+	// Map TableName -> Range (e.g. "TblFB_Ausgaben_1" -> "B18:F25")
+	tableMap := make(map[string]string)
+	for _, t := range tables {
+		tableMap[t.Name] = t.Range
+	}
 
-	fillIncome := func(row int, inc *IncomeRow) {
+	for p, fp := range periods {
+		colStart := 2 + p*7
+		cInput, _ := excelize.ColumnNumberToName(colStart + 1) // C, J, Q...
+
+		setVal(f, sheet, fmt.Sprintf("%s5", cInput), fp.Von)
+		setVal(f, sheet, fmt.Sprintf("%s6", cInput), fp.Bis)
+
+		// 1. Ausgaben Tabelle
+		tNameAusg := fmt.Sprintf("TblFB_Ausgaben_%d", p+1)
+		if rng, ok := tableMap[tNameAusg]; ok {
+			coords := strings.Split(rng, ":")
+			col, row, _ := excelize.CellNameToCoordinates(coords[0])
+			// header = row, data starts at row + 1
+			for i, id := range budget.AusgabenIDs {
+				if v, exists := fp.AusgabenByID[id]; exists && v != 0 {
+					cell, _ := excelize.CoordinatesToCellName(col+1, row+1+i)
+					setVal(f, sheet, cell, v)
+				}
+			}
+			// Bank-Aufschlüsselung (liegt einige Zeilen unter der Ausgaben-Tabelle)
+			// Wir berechnen den Offset ab dem Tabellen-Ende
+			_, rowEnd, _ := excelize.CellNameToCoordinates(coords[1])
+			// layout: ausgTotalsRow = rowEnd.
+			// saldoRow = ausgTotalsRow + 2
+			// aufschLabelRow = saldoRow + 2
+			// aufschStart = aufschLabelRow + 1 -> rowEnd + 5
+			cellBank, _ := excelize.CoordinatesToCellName(col+1, rowEnd+5)
+			setVal(f, sheet, cellBank, fp.BankLC)
+		}
+
+		// 2. Einnahmen Tabelle 1 (KMW)
+		tNameT1 := fmt.Sprintf("TblFB_EinnahmenT1_%d", p+1)
+		if rng, ok := tableMap[tNameT1]; ok {
+			coords := strings.Split(rng, ":")
+			col, row, _ := excelize.CellNameToCoordinates(coords[0])
+			// row + 1 = Vorprojektsaldo, row + 2 = KMW-Mittel
+			cKmw, _ := excelize.CoordinatesToCellName(col+1, row+2)
+			setVal(f, sheet, cKmw, fp.KmwLC)
+		}
+
+		// 3. Einnahmen Tabelle 2 (Eigen/Dritt)
+		tNameT2 := fmt.Sprintf("TblFB_EinnahmenT2_%d", p+1)
+		if rng, ok := tableMap[tNameT2]; ok {
+			coords := strings.Split(rng, ":")
+			col, row, _ := excelize.CellNameToCoordinates(coords[0])
+			// row + 1 = Eigenmittel, row + 2 = Drittmittel
+			cEigen, _ := excelize.CoordinatesToCellName(col+1, row+1)
+			cDritt, _ := excelize.CoordinatesToCellName(col+1, row+2)
+			setVal(f, sheet, cEigen, fp.EigenLC)
+			setVal(f, sheet, cDritt, fp.DrittLC)
+		}
+	}
+}
+
+func fillBudget(f *excelize.File, budget *BudgetData) {
+	if budget == nil {
+		return
+	}
+	sheet := constants.VPSheetBUDGET
+
+	fillInc := func(row int, inc *IncomeRow) {
 		if inc == nil {
 			return
 		}
 		if inc.LC != nil {
-			edits = append(edits, numEdit(cell(cLC, row), *inc.LC))
+			c, _ := excelize.CoordinatesToCellName(5, row)
+			setVal(f, sheet, c, *inc.LC)
 		}
 		if inc.Y1 != nil {
-			edits = append(edits, numEdit(cell(cY1, row), *inc.Y1))
+			c, _ := excelize.CoordinatesToCellName(6, row)
+			setVal(f, sheet, c, *inc.Y1)
 		}
 		if inc.Y2 != nil {
-			edits = append(edits, numEdit(cell(cY2, row), *inc.Y2))
+			c, _ := excelize.CoordinatesToCellName(7, row)
+			setVal(f, sheet, c, *inc.Y2)
 		}
 		if inc.Y3 != nil {
-			edits = append(edits, numEdit(cell(cY3, row), *inc.Y3))
+			c, _ := excelize.CoordinatesToCellName(8, row)
+			setVal(f, sheet, c, *inc.Y3)
 		}
 		if inc.EUR != nil {
-			edits = append(edits, numEdit(cell(cEUR, row), *inc.EUR))
+			c, _ := excelize.CoordinatesToCellName(9, row)
+			setVal(f, sheet, c, *inc.EUR)
 		}
 	}
 
-	fillIncome(8, budget.Eigenmittel)
-	fillIncome(14, budget.KMWMittel)
+	fillInc(8, budget.Eigenmittel)
+	fillInc(14, budget.KMWMittel)
 
 	if budget.DrittmittelY1 != nil {
-		edits = append(edits, numEdit(cell(cY1, 11), *budget.DrittmittelY1))
+		setVal(f, sheet, "F11", *budget.DrittmittelY1)
 	}
 	if budget.DrittmittelY2 != nil {
-		edits = append(edits, numEdit(cell(cY2, 11), *budget.DrittmittelY2))
+		setVal(f, sheet, "G11", *budget.DrittmittelY2)
 	}
 	if budget.DrittmittelY3 != nil {
-		edits = append(edits, numEdit(cell(cY3, 11), *budget.DrittmittelY3))
+		setVal(f, sheet, "H11", *budget.DrittmittelY3)
 	}
 
-	// Ausgaben Tabelle (startet bei Zeile 19)
-	for i, a := range budget.Ausgaben {
-		r := 19 + i
-		if a.LC != nil {
-			edits = append(edits, numEdit(cell(cLC, r), *a.LC))
-		}
-		if a.Y1 != nil {
-			edits = append(edits, numEdit(cell(cY1, r), *a.Y1))
-		}
-		if a.Y2 != nil {
-			edits = append(edits, numEdit(cell(cY2, r), *a.Y2))
-		}
-		if a.Y3 != nil {
-			edits = append(edits, numEdit(cell(cY3, r), *a.Y3))
+	tables, _ := f.GetTables(sheet)
+	tableMap := make(map[string]string)
+	for _, t := range tables {
+		tableMap[t.Name] = t.Range
+	}
+
+	// TblBudgetAusgaben
+	if rng, ok := tableMap["TblBudgetAusgaben"]; ok {
+		coords := strings.Split(rng, ":")
+		col, row, _ := excelize.CellNameToCoordinates(coords[0])
+		for i, a := range budget.Ausgaben {
+			r := row + 1 + i
+			if a.LC != nil {
+				c, _ := excelize.CoordinatesToCellName(col+3, r)
+				setVal(f, sheet, c, *a.LC)
+			}
+			if a.Y1 != nil {
+				c, _ := excelize.CoordinatesToCellName(col+4, r)
+				setVal(f, sheet, c, *a.Y1)
+			}
+			if a.Y2 != nil {
+				c, _ := excelize.CoordinatesToCellName(col+5, r)
+				setVal(f, sheet, c, *a.Y2)
+			}
+			if a.Y3 != nil {
+				c, _ := excelize.CoordinatesToCellName(col+6, r)
+				setVal(f, sheet, c, *a.Y3)
+			}
 		}
 	}
 
-	// Drittmittel Tabelle (startet bei Zeile 19, Spalten 18 und 19)
-	geberRows := 10
-	if len(budget.DrittGeber) > 10 {
-		geberRows = len(budget.DrittGeber)
-	}
-
-	const (
-		cGeberName = 18 // R
-		cGeberLC   = 19 // S
-		cGeberEUR  = 20 // T
-	)
-
-	for i := 0; i < geberRows; i++ {
-		r := 19 + i
-		if i < len(budget.DrittGeber) {
+	// TblDrittmittel
+	if rng, ok := tableMap["TblDrittmittel"]; ok {
+		coords := strings.Split(rng, ":")
+		col, row, _ := excelize.CellNameToCoordinates(coords[0])
+		for i := 0; i < len(budget.DrittGeber); i++ {
 			geb := budget.DrittGeber[i]
-			edits = append(edits, strEdit(cell(cGeberName, r), geb.Geber))
+			r := row + 1 + i
+			cName, _ := excelize.CoordinatesToCellName(col, r)
+			cLC, _ := excelize.CoordinatesToCellName(col+1, r)
+			cEUR, _ := excelize.CoordinatesToCellName(col+2, r)
+			setVal(f, sheet, cName, geb.Geber)
 			if geb.LC != nil {
-				edits = append(edits, numEdit(cell(cGeberLC, r), *geb.LC))
+				setVal(f, sheet, cLC, *geb.LC)
 			}
 			if geb.EUR != nil {
-				edits = append(edits, numEdit(cell(cGeberEUR, r), *geb.EUR))
+				setVal(f, sheet, cEUR, *geb.EUR)
+			}
+		}
+		if budget.DrittSonstiges != nil {
+			r := row + 1 + len(budget.DrittGeber)
+			cLC, _ := excelize.CoordinatesToCellName(col+1, r)
+			cEUR, _ := excelize.CoordinatesToCellName(col+2, r)
+			if budget.DrittSonstiges.LC != nil {
+				setVal(f, sheet, cLC, *budget.DrittSonstiges.LC)
+			}
+			if budget.DrittSonstiges.EUR != nil {
+				setVal(f, sheet, cEUR, *budget.DrittSonstiges.EUR)
 			}
 		}
 	}
-
-	sonstigesRow := 19 + geberRows
-	if budget.DrittSonstiges != nil {
-		if budget.DrittSonstiges.LC != nil {
-			edits = append(edits, numEdit(cell(cGeberLC, sonstigesRow), *budget.DrittSonstiges.LC))
-		}
-		if budget.DrittSonstiges.EUR != nil {
-			edits = append(edits, numEdit(cell(cGeberEUR, sonstigesRow), *budget.DrittSonstiges.EUR))
-		}
-	}
-
-	// Reserve (checkAddr in Spalte cGeberEUR+1 ? Nein, in budget.go ist es:
-	// cCheck := BG_COL_BEGR_2 + 1. wait.
-	// In budget.go: BG_COL_BEGR_2 = 13. col = 15 für Reserve?
-	// Lasse ich erstmal aus, wenn ReserveFreigabe statisch beim Generieren gesetzt wird,
-	// oder ich finde die exakte Spalte (col=13).
-	// ...
-
-	return edits
-}
-
-type fbLayoutInfo struct {
-	aufschStartRow int
-	tbl1HeaderRow  int
-	tbl2HeaderRow  int
-}
-
-func getFBLayout(ausgDataRows int) fbLayoutInfo {
-	const ausgHdrRow = 18
-	ausgTotalsRow := ausgHdrRow + ausgDataRows + 1
-	saldoRow := ausgTotalsRow + 2
-	aufschLabelRow := saldoRow + 2
-	aufschStart := aufschLabelRow + 1
-	differenzRow := aufschStart + 4
-	tbl1Label := differenzRow + 3
-	tbl1Header := tbl1Label + 1
-	totalsRow1 := tbl1Header + 6
-	tbl2Label := totalsRow1 + 2
-	tbl2Header := tbl2Label + 1
-	return fbLayoutInfo{
-		aufschStartRow: aufschStart,
-		tbl1HeaderRow:  tbl1Header,
-		tbl2HeaderRow:  tbl2Header,
-	}
-}
-
-func buildFBEdits(periods []FBPeriod, budget *BudgetData) []cellEdit {
-	var edits []cellEdit
-	if budget == nil {
-		return edits
-	}
-
-	n := len(budget.AusgabenIDs)
-	l := getFBLayout(n)
-
-	for p, fp := range periods {
-		// FB Start Col ist 2 (B), Stride ist 7
-		colStart := 2 + p*7
-
-		if !fp.Von.IsZero() {
-			edits = append(edits, dateEdit(cell(colStart+1, 5), fp.Von))
-		}
-		if !fp.Bis.IsZero() {
-			edits = append(edits, dateEdit(cell(colStart+1, 6), fp.Bis))
-		}
-
-		for i, id := range budget.AusgabenIDs {
-			if v, ok := fp.AusgabenByID[id]; ok && v != 0 {
-				edits = append(edits, numEdit(cell(colStart+1, 19+i), v))
-			}
-		}
-
-		if fp.BankLC != 0 {
-			edits = append(edits, numEdit(cell(colStart+1, l.aufschStartRow), fp.BankLC))
-		}
-
-		kmwRowT1 := l.tbl1HeaderRow + 2
-		if fp.KmwLC != 0 {
-			// Es gibt den Wert LC und EUR für KMW, wir setzen hier nur LC,
-			// oder den Kurs, je nach Vorlage. In testfill war es:
-			// numEdit(..., fp.KmwLC) und numEdit(..., fp.KmwLC/exRate)
-			// Wenn wir exRate nicht haben, können wir ggf. EUR weglassen oder benötigen ihn.
-			// Der Einfachheit halber lassen wir hier EUR weg oder nehmen an es wird berechnet.
-			// Oder wir fügen KmwEUR zum Struct hinzu.
-			edits = append(edits, numEdit(cell(colStart+2, kmwRowT1), fp.KmwLC))
-		}
-
-		if fp.EigenLC != 0 {
-			edits = append(edits, numEdit(cell(colStart+2, l.tbl2HeaderRow+1), fp.EigenLC))
-		}
-		if fp.DrittLC != 0 {
-			edits = append(edits, numEdit(cell(colStart+2, l.tbl2HeaderRow+2), fp.DrittLC))
-		}
-	}
-	return edits
-}
-func buildKMWEdits(tranchen []KMWTranche) []cellEdit {
-	var edits []cellEdit
-	for i, kr := range tranchen {
-		row := 5 + i // erste Datenzeile = 5
-		if row > 22 {
-			break
-		} // Nur bis Zeile 22
-		edits = append(edits, strEdit(cell(2, row), kr.Periode))
-		edits = append(edits, strEdit(cell(3, row), kr.Waehrung))
-		edits = append(edits, numEdit(cell(4, row), kr.Betrag))
-		if !kr.Datum.IsZero() {
-			edits = append(edits, dateEdit(cell(5, row), kr.Datum))
-		}
-	}
-	return edits
-}
-
-// ─── XML-Patching Helpers ─────────────────────────────────────────────────────
-
-func patchSheet(parts map[string][]byte, sheetPart map[string]string, sheetName string, edits []cellEdit) error {
-	part, ok := sheetPart[sheetName]
-	if !ok {
-		return fmt.Errorf("blatt %q nicht in workbook.xml gefunden", sheetName)
-	}
-	data, ok := parts[part]
-	if !ok {
-		return fmt.Errorf("worksheet-part %q fehlt im Archiv", part)
-	}
-	xmlStr := string(data)
-	for _, e := range edits {
-		var inner, typeAttr string
-		switch e.kind {
-		case editStr:
-			inner = "<is><t>" + xmlEscape(e.str) + "</t></is>"
-			typeAttr = "inlineStr"
-		case editNum, editDate:
-			inner = "<v>" + strconv.FormatFloat(e.num, 'f', -1, 64) + "</v>"
-		}
-		patched, err := patchCell(xmlStr, e.ref, inner, typeAttr)
-		if err != nil {
-			return fmt.Errorf("%s!%s: %w", sheetName, e.ref, err)
-		}
-		xmlStr = patched
-	}
-	parts[part] = []byte(xmlStr)
-	return nil
-}
-
-func patchCell(xmlStr, ref, inner, typeAttr string) (string, error) {
-	marker := `<c r="` + ref + `"`
-	i := strings.Index(xmlStr, marker)
-	if i == -1 {
-		return xmlStr, fmt.Errorf("zelle nicht gefunden (oder nicht im xml angelegt)")
-	}
-
-	start := i + len(marker)
-	end := strings.Index(xmlStr[start:], ">")
-	if end == -1 {
-		return xmlStr, fmt.Errorf("fehlerhaftes xml bei %s", ref)
-	}
-	end += start
-
-	endTag := "</c>"
-	hasContent := false
-	if xmlStr[end-1] == '/' {
-		end = end - 1
-	} else {
-		hasContent = true
-	}
-
-	attrs := xmlStr[start:end]
-	attrs = strings.TrimSpace(attrs)
-
-	if typeAttr != "" {
-		if strings.Contains(attrs, ` t="`) {
-			parts := strings.Split(attrs, ` t="`)
-			rest := strings.SplitN(parts[1], `"`, 2)
-			attrs = parts[0] + ` t="` + typeAttr + `"`
-			if len(rest) > 1 {
-				attrs += rest[1]
-			}
-		} else {
-			attrs += ` t="` + typeAttr + `"`
-		}
-	} else {
-		if idx := strings.Index(attrs, ` t="`); idx != -1 {
-			endIdx := strings.Index(attrs[idx+4:], `"`)
-			if endIdx != -1 {
-				attrs = attrs[:idx] + attrs[idx+4+endIdx+1:]
-			}
-		}
-	}
-
-	var replaced string
-	if !hasContent {
-		replaced = xmlStr[:i] + marker + " " + strings.TrimSpace(attrs) + ">" + inner + "</c>" + xmlStr[end+2:]
-	} else {
-		endNode := strings.Index(xmlStr[end:], endTag)
-		if endNode == -1 {
-			return xmlStr, fmt.Errorf("schließendes tag fehlt bei %s", ref)
-		}
-		endNode += end
-		replaced = xmlStr[:i] + marker + " " + strings.TrimSpace(attrs) + ">" + inner + "</c>" + xmlStr[endNode+4:]
-	}
-	return replaced, nil
-}
-
-func xmlEscape(s string) string {
-	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
-	return r.Replace(s)
-}
-
-func readZip(filePath string) (map[string][]byte, []string, error) {
-	r, err := zip.OpenReader(filePath)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer r.Close()
-	parts := map[string][]byte{}
-	var order []string
-	for _, zf := range r.File {
-		rc, err := zf.Open()
-		if err != nil {
-			return nil, nil, err
-		}
-		data, err := io.ReadAll(rc)
-		rc.Close()
-		if err != nil {
-			return nil, nil, err
-		}
-		parts[zf.Name] = data
-		order = append(order, zf.Name)
-	}
-	return parts, order, nil
-}
-
-func writeZip(filePath string, order []string, parts map[string][]byte) error {
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	for _, name := range order {
-		w, err := zw.Create(name)
-		if err != nil {
-			return err
-		}
-		if _, err := w.Write(parts[name]); err != nil {
-			return err
-		}
-	}
-	if err := zw.Close(); err != nil {
-		return err
-	}
-	return os.WriteFile(filePath, buf.Bytes(), 0o644)
-}
-
-func mapSheetNamesToParts(parts map[string][]byte) (map[string]string, error) {
-	wbData, ok := parts["xl/workbook.xml"]
-	if !ok {
-		return nil, fmt.Errorf("xl/workbook.xml fehlt")
-	}
-
-	relsData, ok := parts["xl/_rels/workbook.xml.rels"]
-	if !ok {
-		return nil, fmt.Errorf("xl/_rels/workbook.xml.rels fehlt")
-	}
-
-	rels := make(map[string]string)
-	for _, line := range strings.Split(string(relsData), "<Relationship ") {
-		id := extractAttr(line, "Id")
-		target := extractAttr(line, "Target")
-		if id != "" && target != "" {
-			rels[id] = target
-		}
-	}
-
-	sheetPart := make(map[string]string)
-	for _, line := range strings.Split(string(wbData), "<sheet ") {
-		name := extractAttr(line, "name")
-		rId := extractAttr(line, "r:id")
-		if name != "" && rId != "" {
-			target := rels[rId]
-			if strings.HasPrefix(target, "/") {
-				target = target[1:]
-			} else {
-				target = "xl/" + target
-			}
-			sheetPart[name] = target
-		}
-	}
-	return sheetPart, nil
-}
-
-func extractAttr(xmlFrag, attr string) string {
-	marker := attr + `="`
-	i := strings.Index(xmlFrag, marker)
-	if i == -1 {
-		return ""
-	}
-	start := i + len(marker)
-	end := strings.Index(xmlFrag[start:], `"`)
-	if end == -1 {
-		return ""
-	}
-	return xmlFrag[start : start+end]
 }

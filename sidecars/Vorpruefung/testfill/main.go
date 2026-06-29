@@ -82,11 +82,11 @@ func main() {
 		budgetPath = filepath.Join(root, "testdata", "fixtures", "budget.example.json")
 	}
 
-	ausgIDs, err := loadAusgabenIDs(budgetPath)
+	budgetData, err := loadBudgetData(budgetPath)
 	if err != nil {
 		log.Fatalf("budget laden: %v", err)
 	}
-	if len(ausgIDs) == 0 {
+	if len(budgetData.AusgabenIDs) == 0 {
 		log.Fatalf("budget %q enthält keine Ausgaben – bitte eine -budget-Datei mit Positionen angeben", budgetPath)
 	}
 
@@ -108,12 +108,10 @@ func main() {
 			VPFolgeprojektstart: date(2025, 1, 1),
 			DocChecklist:        []string{"Ja", "Ja", "Ja", "Ja", "Ja", "Ja", "Ja"},
 		},
-		KMW: kmwRows,
-		MA:  maPeriods,
-		FB:  fbPeriods,
-		Budget: &api.BudgetData{
-			AusgabenIDs: ausgIDs,
-		},
+		KMW:    kmwRows,
+		MA:     maPeriods,
+		FB:     fbPeriods,
+		Budget: budgetData,
 	}
 
 	if err := copyFile(inPath, outPath); err != nil {
@@ -147,28 +145,60 @@ func copyFile(src, dst string) error {
 	return err
 }
 
-func loadAusgabenIDs(path string) ([]string, error) {
+func loadBudgetData(path string) (*api.BudgetData, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var cfg struct {
+	var scanned struct {
+		Financing struct {
+			Eigenmittel *api.IncomeRow `json:"eigenmittel"`
+			Drittmittel *api.IncomeRow `json:"drittmittel"`
+			KmwMittel   *api.IncomeRow `json:"kmw_mittel"`
+		} `json:"financing"`
 		Positions []struct {
-			Number    string `json:"number"`
-			Kategorie string `json:"kategorie"`
+			Number    string   `json:"number"`
+			Kategorie string   `json:"kategorie"`
+			LC        *float64 `json:"lc"`
+			Y1        *float64 `json:"y1"`
+			Y2        *float64 `json:"y2"`
+			Y3        *float64 `json:"y3"`
+			EUR       *float64 `json:"eur"`
 		} `json:"positions"`
 	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
+	if err := json.Unmarshal(data, &scanned); err != nil {
 		return nil, fmt.Errorf("%s ist kein gültiges JSON: %w", path, err)
 	}
-	var ids []string
-	for _, p := range cfg.Positions {
+
+	budget := &api.BudgetData{
+		Eigenmittel: scanned.Financing.Eigenmittel,
+		KMWMittel:   scanned.Financing.KmwMittel,
+	}
+
+	if scanned.Financing.Drittmittel != nil {
+		budget.DrittmittelY1 = scanned.Financing.Drittmittel.Y1
+		budget.DrittmittelY2 = scanned.Financing.Drittmittel.Y2
+		budget.DrittmittelY3 = scanned.Financing.Drittmittel.Y3
+		budget.DrittGeber = []api.GeberRow{
+			{Geber: "Beispiel-Geber 1", LC: scanned.Financing.Drittmittel.LC, EUR: scanned.Financing.Drittmittel.EUR},
+		}
+	}
+
+	for _, p := range scanned.Positions {
 		if p.Kategorie == "" {
 			continue
 		}
-		ids = append(ids, p.Number)
+		budget.AusgabenIDs = append(budget.AusgabenIDs, p.Number)
+		budget.Ausgaben = append(budget.Ausgaben, api.AusgabenRow{
+			ID:        p.Number,
+			Kategorie: p.Kategorie,
+			LC:        p.LC,
+			Y1:        p.Y1,
+			Y2:        p.Y2,
+			Y3:        p.Y3,
+		})
 	}
-	return ids, nil
+	return budget, nil
 }
 
 func date(y, m, d int) time.Time {
