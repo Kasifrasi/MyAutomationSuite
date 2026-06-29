@@ -148,11 +148,11 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	// ─── FB-Auswahlliste (FILTER der befüllten Perioden) ──────────────────────
 	fbLabelRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_LABEL), colLetter(EV_DTN_FB_META_LABEL), MA_PERIOD_COUNT)
 	fbFillRng := fmt.Sprintf("$%s$1:$%s$%d", colLetter(EV_DTN_FB_META_FILL), colLetter(EV_DTN_FB_META_FILL), MA_PERIOD_COUNT)
-	// Reihenfolge wie die Perioden (aufsteigend): "Projektbeginn"
+	// Reihenfolge wie die Perioden (aufsteigend): "Periode 0 (Projektbeginn)"
 	// als frühester Zustand oben (N=0 ⇒ MA der Periode 1 wählbar), darunter die
 	// befüllten Perioden, und der Auto-Eintrag "Neuester FB" ganz unten (= jüngster).
 	_ = g.setDynArrayFormula(ws, dc(EV_DTN_FB_LISTE, 1),
-		fmt.Sprintf(`_xlfn.VSTACK("Projektbeginn",_xlfn._xlws.FILTER(%s,%s=1,""),"Neuester FB")`, fbLabelRng, fbFillRng), StyleOptions{})
+		fmt.Sprintf(`_xlfn.VSTACK("Periode 0 (Projektbeginn)",_xlfn._xlws.FILTER(%s,%s=1,""),"Neuester FB")`, fbLabelRng, fbFillRng), StyleOptions{})
 	g.upsertNamedFormula(EVAL_NAME_FB_LISTE,
 		fmt.Sprintf(`OFFSET('%s'!%s,0,0,COUNTA('%s'!$%s:$%s),1)`,
 			ws, absName(EV_DTN_FB_LISTE, 1), ws, colLetter(EV_DTN_FB_LISTE), colLetter(EV_DTN_FB_LISTE)))
