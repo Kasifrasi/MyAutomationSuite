@@ -46,7 +46,7 @@ const (
 )
 
 // --- Dokumenten-Checkliste ---
-var AppVersion = "v1.0"
+var AppVersion = "v1.0.1"
 
 var DB_DOCS = []string{
 	"Vorprojektsaldo (Nachweis)",
