@@ -194,6 +194,7 @@ func loadBudgetData(path string) (*api.BudgetData, error) {
 		Positions []struct {
 			Number    string   `json:"number"`
 			Kategorie string   `json:"kategorie"`
+			Label     string   `json:"label"`
 			LC        *float64 `json:"lc"`
 			Y1        *float64 `json:"y1"`
 			Y2        *float64 `json:"y2"`
@@ -229,6 +230,7 @@ func loadBudgetData(path string) (*api.BudgetData, error) {
 		budget.Ausgaben = append(budget.Ausgaben, api.AusgabenRow{
 			ID:        p.Number,
 			Kategorie: p.Kategorie,
+			Position:  p.Label,
 			LC:        p.LC,
 			Y1:        p.Y1,
 			Y2:        p.Y2,

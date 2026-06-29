@@ -115,8 +115,27 @@ func runThreeOutputs() {
 		Vorprojekt:       &b,
 	}
 
+	maKategorie := "Bauausgaben"
+	if len(budgetData.Ausgaben) > 0 {
+		maKategorie = budgetData.Ausgaben[0].Kategorie
+	}
+
+	maPeriods := []api.MAPeriod{
+		{
+			Von:       date(2025, 1, 1),
+			Bis:       date(2025, 6, 30),
+			OandaKurs: 125.50,
+			KategorienLC: map[string]float64{
+				maKategorie: 150_000,
+			},
+			EigenLC: 10_000,
+			DrittLC: 20_000,
+		},
+	}
+
 	data3 := api.FillData{
 		FB:        fbPeriodsMitEinnahmen,
+		MA:        maPeriods,
 		Budget:    budgetData,
 		Dashboard: fullDashboard,
 		FBPruefung: &api.FBPruefungData{

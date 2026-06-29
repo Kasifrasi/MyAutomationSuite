@@ -268,7 +268,7 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 		setVal(f, sheet, cKurs, mp.OandaKurs)
 
 		// Ebene 1
-		tNameL1 := fmt.Sprintf("TblMA_L1_%d", p+1)
+		tNameL1 := fmt.Sprintf("MA_%d", p+1)
 		if rng, ok := tableMap[tNameL1]; ok {
 			coords := strings.Split(rng, ":")
 			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
@@ -299,7 +299,8 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 		// 3 Finanzierungsarten (Tabelle offsets depend on row calculation, easier is to just address them dynamically if possible)
 		// but since we only have fixed row references for EigenLC, we might need to find them or compute them.
 		// Actually, mp.EigenLC and mp.DrittLC are mapped in MAPeriod struct. Let's see what is there.
-		tNameL2 := fmt.Sprintf("TblMA_L2_%d", p+1)
+		// Ebene 2
+		tNameL2 := fmt.Sprintf("MA_%d", p+1+18)
 		if rng, ok := tableMap[tNameL2]; ok {
 			coords := strings.Split(rng, ":")
 			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
@@ -310,7 +311,7 @@ func fillMA(f *excelize.File, periods []MAPeriod, budget *BudgetData) {
 		}
 
 		// Ebene 3
-		tNameL3 := fmt.Sprintf("TblMA_L3_%d", p+1)
+		tNameL3 := fmt.Sprintf("MA_%d", p+1+36)
 		if rng, ok := tableMap[tNameL3]; ok {
 			coords := strings.Split(rng, ":")
 			colT, row, _ := excelize.CellNameToCoordinates(coords[0])
