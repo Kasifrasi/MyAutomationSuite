@@ -390,7 +390,7 @@ func (g *Generator) evalDeduct(ws, cell, formula string) {
 }
 
 func (g *Generator) evalDeductPlaceholder(ws, cell string) {
-	_ = g.setValue(ws, cell, 0, StyleOptions{
+	_ = g.setStyle(ws, cell, cell, StyleOptions{
 		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_DEDUCT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
