@@ -439,6 +439,18 @@ func (g *Generator) drawReportTable(
 		isLast := i == len(INFO_CATEGORIES)-1
 		currentLC := cellName(cValLC, r)
 
+		// Named Ranges für die gelben Eingabefelder (Bank, Kasse, Sonstiges) anlegen
+		var safeName string
+		switch cat {
+		case "Bank":
+			safeName = "Bank"
+		case "Kasse":
+			safeName = "Kasse"
+		default:
+			safeName = "Sonstiges"
+		}
+		g.dbUpsertNamedRange(ws, fmt.Sprintf("aufschl_%s_%d", safeName, periodenNr), cValLC, r)
+
 		var formulaEUR string
 		if !isLast {
 			remainingLCs := fmt.Sprintf(`SUM(%s:%s)`, cellName(cValLC, r+1), cellName(cValLC, rowEndAufsch))
