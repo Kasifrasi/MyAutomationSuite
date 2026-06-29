@@ -57,13 +57,15 @@ func (g *Generator) CreateMAPruefungSheet() error {
 	r = resMAExp.nextRow + EV_TABLE_GAP
 
 	// ── Nachgelagerte (sektionsübergreifende) Formeln der MA-Abzugsoptionen ──
-	// Mehreinnahmen der MA-Prüfung = identischer Wert wie in der FB-Prüfung.
-	g.evalDeduct(ws, maKMW.mehrCell, fmt.Sprintf("=%s", g.evalFBMehrCell))
+
+	realAct, realBud := g.evalFBMehreinnahmenParts(sel)
+	fbMehrFormula := fmt.Sprintf(`ROUND(MAX(0, (%s) - (%s)), 2)`, realAct, realBud)
+
+	// Mehreinnahmen der MA-Prüfung = berechnet aus FB-Ist und FB-Budget
+	g.evalDeduct(ws, maKMW.mehrCell, fmt.Sprintf("=IFERROR(%s, 0)", fbMehrFormula))
 
 	// Prognostizierte (zusätzliche) Mehreinnahmen:
 	if maKMW.prognCell != "" {
-		realAct := fmt.Sprintf("(SUM(%s)-%s)", g.evalFBResIncActEUR, g.evalFBResIncKmwActEUR)
-		realBud := fmt.Sprintf("(SUM(%s)-%s)", g.evalFBResIncBudEUR, g.evalFBResIncKmwBudEUR)
 		maEig := fmt.Sprintf(
 			`SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1")`,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_EIGDR, 1, MA_TABLE_COUNT),
@@ -71,7 +73,7 @@ func (g *Generator) CreateMAPruefungSheet() error {
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), maSelKCell,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT))
 		prognFormula := fmt.Sprintf(
-			`=ROUND(MAX(0,MAX(0,%s+%s-%s)-%s),2)`, realAct, maEig, realBud, g.evalFBMehrCell)
+			`=IFERROR(ROUND(MAX(0,MAX(0,(%s)+%s-(%s))-%s),2),0)`, realAct, maEig, realBud, fbMehrFormula)
 		g.evalDeduct(ws, maKMW.prognCell, prognFormula)
 	}
 
@@ -87,4 +89,94 @@ func (g *Generator) CreateMAPruefungSheet() error {
 	g.evalDrawMAMirrorPanel(ws, maSectionTop, sel)
 
 	return nil
+}
+
+// evalMAExpenseActual summiert die ausgewählten Mittelanforderungen (#1..#k) der
+// Periode P je Kategorie über das MA-Grid auf dem Daten-Blatt.
+func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
+	return fmt.Sprintf(
+		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,"%s",'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1"),2),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(valCol, 1, EV_DTN_MAG_ROWS),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS), cat,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS))
+}
+
+// evalMAChooseManBetrag liefert einen CHOOSE-Ausdruck über die MA_ManBetrag_<n>-Namen
+// aller 18 Perioden, gewählt per maSelP – analog zu evalMAChooseKurs.
+func evalMAChooseManBetrag(sel evalSelRefs) string {
+	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
+	parts := make([]string, MA_TABLE_COUNT)
+	for i := range parts {
+		parts[i] = fmt.Sprintf("MA_ManBetrag_%d", i+1)
+	}
+	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
+}
+
+// evalMAChooseKurs liefert einen nicht-volatilen CHOOSE-Ausdruck über alle 18
+// MA_Kurs_<n>-Namen. Ersatz für INDIRECT("MA_Kurs_"&maSelP), das Excel 365 mit
+// dem @-Operator (implizite Schnittmenge) versieht und dadurch falsch rendert.
+func evalMAChooseKurs(sel evalSelRefs) string {
+	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
+	parts := make([]string, MA_TABLE_COUNT)
+	for i := range parts {
+		parts[i] = fmt.Sprintf("MA_Kurs_%d", i+1)
+	}
+	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
+}
+
+// evalMACurrentKMWRequest summiert die KMW-Mittel-Anforderung der EINEN aktuell
+// gewählten Mittelanforderung (Periode P, Rang exakt = k) aus dem MA-Grid. Anders
+// als die Prognose (#1..#k) bewusst nicht zusammengesetzt – frühere Anforderungen
+// einer Periode sind bereits über die bereitgestellten KMW-Mittel erfasst.
+func evalMACurrentKMWRequest(sel evalSelRefs) string {
+	return fmt.Sprintf(
+		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%s),2),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, EV_DTN_MAG_ROWS),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK)
+}
+
+// evalMASelectedZeitraum liefert den Zeitraum (Monate) der aktuell gewählten
+// Mittelanforderung (Periode P, Rang k). Es wird – wie im Spiegel-Panel – der
+// Tabellenindex j der gewählten MA bestimmt und der Zeitraum (MA-Quellzeile 7,
+// Wertspalte = colS+1) per CHOOSE über alle 18 MA-Tabellen ausgelesen.
+func evalMASelectedZeitraum(sel evalSelRefs) string {
+	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
+	parts := make([]string, 0, MA_TABLE_COUNT)
+	for t := 1; t <= MA_TABLE_COUNT; t++ {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		offsetR := (level - 1) * 30
+		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
+		parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+1, 7+offsetR)))
+	}
+	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
+}
+
+// evalFBMehreinnahmenParts liefert die Summe der Ist- und Budget-Werte für Einnahmen
+// (in EUR) aus dem aktuell gewählten Finanzbericht, exklusive KMW-Mittel.
+func (g *Generator) evalFBMehreinnahmenParts(sel evalSelRefs) (string, string) {
+	var fbIstParts []string
+	var budParts []string
+	for i, name := range TYPE_NAMES {
+		if name == "KMW-Mittel" {
+			continue
+		}
+		fbIstParts = append(fbIstParts, evalFBChooseRef(sel.fbSelNum, 12+i, 4)[1:])
+		_, budName := g.evalBudgetNames(true, name)
+		budParts = append(budParts, fmt.Sprintf("IFERROR(%s,0)", budName))
+	}
+	return strings.Join(fbIstParts, "+"), strings.Join(budParts, "+")
 }

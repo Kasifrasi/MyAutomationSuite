@@ -9,7 +9,7 @@ import (
 )
 
 // ==================================================================================
-// Blatt "V. AUSWERTUNG"
+// Blatt "V. Prüfung FB"
 //
 //	A) MITTELANFORDERUNGSPRÜFUNG (Basis: ausgewählte Mittelanforderung / Prognose)
 //	B) FINANZBERICHTSPRÜFUNG     (Basis: ausgewählter Finanzbericht / kumulativ)
@@ -22,95 +22,8 @@ import (
 // ==================================================================================
 
 const (
-	EVAL_SHEET_NAME   = constants.VPSheetFB_PRUEFUNG
-	EVAL_TAB_COLOR    = "FF0000" // Rot
-	EVAL_DATEN_SHEET  = constants.VPSheetDATEN
-	EVAL_FB_SHEET     = constants.VPSheetFINANZBERICHTE
-	EVAL_STACK_MAXROW = 500
-
-	// Spalten der Vergleichstabellen (B … J)
-	EV_COL_LABEL   = 2
-	EV_COL_ACT_LC  = 3
-	EV_COL_BUD_LC  = 4
-	EV_COL_DIF_LC  = 5
-	EV_COL_ABW_LC  = 6
-	EV_COL_ACT_EUR = 7
-	EV_COL_BUD_EUR = 8
-	EV_COL_DIF_EUR = 9
-	EV_COL_ABW_EUR = 10
-
-	// Auswahl-Panel (zentriert, oben in der Sektion; Spalten C … G)
-	EV_PB_C1   = 3 // Box-/Label-Start (C)
-	EV_PB_L2   = 4 // Label-Ende (D)
-	EV_PB_V1   = 5 // Wert-/Slot-LC-Start (E)
-	EV_PB_SLC2 = 6 // Slot-LC-Ende (F)
-	EV_PB_SEU1 = 7 // Slot-EUR-Start (G)
-	EV_PB_C2   = 7 // Box-/Wert-Ende (G)
-
-	EV_TABLE_GAP = 2
-	EV_MA_SLOTS  = 6 // max. gleichzeitig anzeigbare Anforderungen je Periode
-
-	// Daten-Helfer (Spaltennummern auf dem Blatt "Daten")
-	EV_DTN_MA_META_J     = 53 // BA  Tabellenindex j
-	EV_DTN_MA_META_PER   = 54 // BB  Periode von MA_j
-	EV_DTN_MA_META_FILL  = 55 // BC  befüllt?
-	EV_DTN_MA_META_RANK  = 56 // BD  Rang innerhalb der Periode
-	EV_DTN_MA_META_LABEL = 57 // BE  "Periode X (#k)"
-	EV_DTN_MA_META_SUMLC = 58 // BF  Summe Angefordert (LC)
-	EV_DTN_MA_META_SUMEU = 59 // BG  Summe Angefordert (EUR)
-	EV_DTN_MA_META_EIGDR = 60 // BH  Eigen+Dritt (EUR)
-	EV_DTN_FB_META_PER   = 62 // BJ  Periode
-	EV_DTN_FB_META_FILL  = 63 // BK  befüllt?
-	EV_DTN_FB_META_LABEL = 64 // BL  "Periode X"
-	EV_DTN_MA_LISTE      = 66 // BN  FILTER-Spill (Auswahlliste MA)
-	EV_DTN_FB_LISTE      = 68 // BP  FILTER-Spill (Auswahlliste FB)
-	EV_DTN_MAG_PER       = 70 // BR  Grid: Periode
-	EV_DTN_MAG_RANK      = 71 // BS  Grid: Rang
-	EV_DTN_MAG_CAT       = 72 // BT  Grid: Kategorie
-	EV_DTN_MAG_LC        = 73 // BU  Grid: LC
-	EV_DTN_MAG_EUR       = 74 // BV  Grid: EUR
-	// Grid-Block je MA-Tabelle: 8 Kostenkategorien (len(MA_CATEGORIES)) + 4
-	// Finanzierungsarten (Eigenmittel/Drittmittel/KMW-Mittel/Manueller Betrag) für die Prognose
-	// der Finanzierungsanteile. Muss zu gridEntries in daten.go passen.
-	EV_DTN_MAG_BLOCK = 8 + 4
-	EV_DTN_MAG_ROWS  = MA_TABLE_COUNT * EV_DTN_MAG_BLOCK
-
-	EVAL_NAME_MA_LISTE = "MA_Auswahl_Liste"
-	EVAL_NAME_FB_LISTE = "FB_Auswahl_Liste"
-
-	// Farben
-	EV_CLR_BANNER     = "212F3D"
-	EV_CLR_BANNER_TXT = "FFFFFF"
-	EV_CLR_BANNER_SUB = "B4BEC8"
-	EV_CLR_HEADER     = "D3D3D3"
-	EV_CLR_TOTAL      = "212F3D"
-	EV_CLR_TOTAL_TXT  = "FFFFFF"
-	EV_CLR_INPUT      = "FFFAE5" // nur für bearbeitbare Felder
-	EV_CLR_DEDUCT     = "EAF2F8" // abzuziehende (berechnete) Beträge
-	EV_CLR_DEDUCT_OFF = "D9D9D9" // deaktivierte Abzugszelle ("Kein Abzug")
-	EV_CLR_CALC       = "F2F2F2" // sonstige berechnete Felder
-	EV_CLR_BORDER     = "808080"
-	EV_CLR_GRID       = "D3D3D3"
-	EV_CLR_BLACK      = "000000"
-	EV_CLR_GOOD       = "C6EFCE"
-	EV_CLR_GOOD_TXT   = "006100"
-	EV_CLR_BAD        = "FFC7CE"
-	EV_CLR_BAD_TXT    = "9C0006"
-	EV_CLR_WARN       = "FCF3CF"
-	EV_CLR_WARN_TXT   = "9C640C"
-	EV_CLR_PANEL_REV  = "D6EAF8" // Hintergrund aktiver (eingeblendeter) Slots
-
-	EV_FMT_LC  = "#,##0.00"
-	EV_FMT_EUR = `#,##0.00" €"`
-	EV_FMT_PCT = "0.0%"
+	EVAL_SHEET_NAME = constants.VPSheetFB_PRUEFUNG
 )
-
-// evalSelRefs bündelt die Adressen der Auswahl-Steuerzellen.
-type evalSelRefs struct {
-	fbSelNum string // Periodennummer des gewählten Finanzberichts (N)
-	maSelP   string // Periode der gewählten Mittelanforderung (N+1)
-	maSelK   string // Rang (#k) der gewählten Mittelanforderung
-}
 
 type evalCompResult struct {
 	nextRow     int
@@ -127,7 +40,6 @@ type evalKMWResult struct {
 	saldoCell string // Wertzelle "Saldovortrag"
 }
 
-// CreateAuswertungSheet baut das Blatt "V. AUSWERTUNG".
 // CreateFBPruefungSheet baut das Blatt "V. Prüfung FB".
 func (g *Generator) CreateFBPruefungSheet() error {
 	ws := constants.VPSheetFB_PRUEFUNG
@@ -170,14 +82,8 @@ func (g *Generator) CreateFBPruefungSheet() error {
 		resFBInc.actEURRange, resFBInc.kmwActEUR, resFBInc.budEURRange, resFBInc.kmwBudEUR)
 	g.evalDeduct(ws, fbKMW.mehrCell, mehrFormula)
 
-	g.evalFBMehrCell = fmt.Sprintf("'%s'!%s", ws, fbKMW.mehrCell)
-	g.evalFBResIncActEUR = fmt.Sprintf("'%s'!%s", ws, resFBInc.actEURRange)
-	g.evalFBResIncKmwActEUR = fmt.Sprintf("'%s'!%s", ws, resFBInc.kmwActEUR)
-	g.evalFBResIncBudEUR = fmt.Sprintf("'%s'!%s", ws, resFBInc.budEURRange)
-	g.evalFBResIncKmwBudEUR = fmt.Sprintf("'%s'!%s", ws, resFBInc.kmwBudEUR)
-
 	resFBExp := g.evalDrawComparisonTable(ws, r, "Soll-Ist Abweichungsprüfung", false, false, sel)
-	r = resFBExp.nextRow
+	r = resFBExp.nextRow + EV_TABLE_GAP
 
 	for _, cell := range []string{
 		fbKMW.saldoCell, fbKMW.mehrCell,
@@ -646,14 +552,13 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 
 // evalActualFormulas: Ist-/Prognose-Formeln je Zeile.
 func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int, sel evalSelRefs) (string, string) {
-	cleanName := strings.ReplaceAll(name, " ", "_")
-	cleanName = strings.ReplaceAll(cleanName, "-", "_")
-
 	if isIncome && isMA {
 		maL := evalMAExpenseActual(sel, name, EV_DTN_MAG_LC)
 		maE := evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
-		return fmt.Sprintf("=%s + AW_FB_ActLC_%s", maL[1:], cleanName),
-			fmt.Sprintf("=%s + AW_FB_ActEUR_%s", maE[1:], cleanName)
+		fbL := evalFBChooseRef(sel.fbSelNum, 12+idx, 3)
+		fbE := evalFBChooseRef(sel.fbSelNum, 12+idx, 4)
+		return fmt.Sprintf("=%s + %s", maL[1:], fbL[1:]),
+			fmt.Sprintf("=%s + %s", maE[1:], fbE[1:])
 	}
 	if isIncome {
 		return evalFBChooseRef(sel.fbSelNum, 12+idx, 3), evalFBChooseRef(sel.fbSelNum, 12+idx, 4)
@@ -661,8 +566,11 @@ func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int
 	if isMA {
 		maL := evalMAExpenseActual(sel, name, EV_DTN_MAG_LC)
 		maE := evalMAExpenseActual(sel, name, EV_DTN_MAG_EUR)
-		return fmt.Sprintf("=%s + AW_FB_ActLC_%s", maL[1:], cleanName),
-			fmt.Sprintf("=%s + AW_FB_ActEUR_%s", maE[1:], cleanName)
+		rows := g.fbExpenseRowsForCategory(name)
+		fbL := evalFBChooseRefRows(sel.fbSelNum, rows, 3)
+		fbE := evalFBChooseRefRows(sel.fbSelNum, rows, 4)
+		return fmt.Sprintf("=%s + %s", maL[1:], fbL[1:]),
+			fmt.Sprintf("=%s + %s", maE[1:], fbE[1:])
 	}
 	rows := g.fbExpenseRowsForCategory(name)
 	return evalFBChooseRefRows(sel.fbSelNum, rows, 3), evalFBChooseRefRows(sel.fbSelNum, rows, 4)
@@ -792,83 +700,4 @@ func fbRowsSumExpr(col int, rows []int) string {
 	}
 	flush(start, prev)
 	return fmt.Sprintf("SUM(%s)", strings.Join(segs, ","))
-}
-
-// evalMAExpenseActual summiert die ausgewählten Mittelanforderungen (#1..#k) der
-// Periode P je Kategorie über das MA-Grid auf dem Daten-Blatt.
-func evalMAExpenseActual(sel evalSelRefs, cat string, valCol int) string {
-	return fmt.Sprintf(
-		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,"%s",'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1"),2),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(valCol, 1, EV_DTN_MAG_ROWS),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS), cat,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS))
-}
-
-// evalMAChooseManBetrag liefert einen CHOOSE-Ausdruck über die MA_ManBetrag_<n>-Namen
-// aller 18 Perioden, gewählt per maSelP – analog zu evalMAChooseKurs.
-func evalMAChooseManBetrag(sel evalSelRefs) string {
-	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
-	parts := make([]string, MA_TABLE_COUNT)
-	for i := range parts {
-		parts[i] = fmt.Sprintf("MA_ManBetrag_%d", i+1)
-	}
-	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
-}
-
-// evalMAChooseKurs liefert einen nicht-volatilen CHOOSE-Ausdruck über alle 18
-// MA_Kurs_<n>-Namen. Ersatz für INDIRECT("MA_Kurs_"&maSelP), das Excel 365 mit
-// dem @-Operator (implizite Schnittmenge) versieht und dadurch falsch rendert.
-func evalMAChooseKurs(sel evalSelRefs) string {
-	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
-	parts := make([]string, MA_TABLE_COUNT)
-	for i := range parts {
-		parts[i] = fmt.Sprintf("MA_Kurs_%d", i+1)
-	}
-	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
-}
-
-// evalMACurrentKMWRequest summiert die KMW-Mittel-Anforderung der EINEN aktuell
-// gewählten Mittelanforderung (Periode P, Rang exakt = k) aus dem MA-Grid. Anders
-// als die Prognose (#1..#k) bewusst nicht zusammengesetzt – frühere Anforderungen
-// einer Periode sind bereits über die bereitgestellten KMW-Mittel erfasst.
-func evalMACurrentKMWRequest(sel evalSelRefs) string {
-	return fmt.Sprintf(
-		`=IFERROR(ROUND(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%s),2),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, EV_DTN_MAG_ROWS),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), sel.maSelK)
-}
-
-// evalMASelectedZeitraum liefert den Zeitraum (Monate) der aktuell gewählten
-// Mittelanforderung (Periode P, Rang k). Es wird – wie im Spiegel-Panel – der
-// Tabellenindex j der gewählten MA bestimmt und der Zeitraum (MA-Quellzeile 7,
-// Wertspalte = colS+1) per CHOOSE über alle 18 MA-Tabellen ausgelesen.
-func evalMASelectedZeitraum(sel evalSelRefs) string {
-	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
-	parts := make([]string, 0, MA_TABLE_COUNT)
-	for t := 1; t <= MA_TABLE_COUNT; t++ {
-		p := ((t - 1) % MA_PERIOD_COUNT) + 1
-		level := ((t - 1) / MA_PERIOD_COUNT) + 1
-		offsetR := (level - 1) * 30
-		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
-		parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+1, 7+offsetR)))
-	}
-	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
-}
-
-// evalAbsCol liefert einen absoluten Spaltenbereich, z. B. "$BU$1:$BU$144".
-func evalAbsCol(col, r1, r2 int) string {
-	return fmt.Sprintf("$%s$%d:$%s$%d", colLetter(col), r1, colLetter(col), r2)
 }
