@@ -45,9 +45,9 @@ const (
 	BG_W_YEAR   = 14.0
 	BG_W_EUR    = 18.0
 	BG_W_GAP    = 3.0
-	BG_W_STATUS = 50.0
-	BG_W_CHECK  = 30.0
-	BG_W_BEGR   = 50.0
+	BG_W_STATUS = 37.0
+	BG_W_CHECK  = 24.0
+	BG_W_BEGR   = 24.0
 
 	BG_FMT_LC   = "#,##0.00"
 	BG_FMT_EUR  = `#,##0.00" €"`
