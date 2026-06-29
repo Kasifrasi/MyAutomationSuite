@@ -121,6 +121,7 @@ func (g *Generator) CreateKMWMittelSheet() error {
 			BorderRight:  1,
 			BorderColor:  KMW_CLR_GRID,
 		})
+		_ = g.bindInputField(ws, row, KMW_COL_PERIODE, FieldKMWPeriode(row-4))
 
 		// C: Waehrung
 		_ = g.setStyle(ws, cellName(KMW_COL_WAEHRUNG, row), cellName(KMW_COL_WAEHRUNG, row), StyleOptions{
@@ -132,31 +133,35 @@ func (g *Generator) CreateKMWMittelSheet() error {
 			BorderRight:  1,
 			BorderColor:  KMW_CLR_GRID,
 		})
+		_ = g.bindInputField(ws, row, KMW_COL_WAEHRUNG, FieldKMWWaehrung(row-4))
 
 		// D: Betrag
 		_ = g.setStyle(ws, cellName(KMW_COL_BETRAG, row), cellName(KMW_COL_BETRAG, row), StyleOptions{
 			FillColor:    KMW_CLR_INPUT,
-			VAlign:       "center",
 			NumFormat:    "#,##0.00",
+			HAlign:       "right",
+			VAlign:       "center",
 			BorderTop:    1,
 			BorderBottom: 1,
 			BorderLeft:   1,
 			BorderRight:  1,
 			BorderColor:  KMW_CLR_GRID,
 		})
+		_ = g.bindInputField(ws, row, KMW_COL_BETRAG, FieldKMWBetrag(row-4))
 
 		// E: Datum
 		_ = g.setStyle(ws, cellName(KMW_COL_DATUM, row), cellName(KMW_COL_DATUM, row), StyleOptions{
 			FillColor:    KMW_CLR_INPUT,
-			VAlign:       "center",
+			NumFmtID:     14, // Excel built-in kurzes Datum
 			HAlign:       "center",
-			NumFmtID:     14, // Excel built-in kurzes Datum, lokalsensitiv
+			VAlign:       "center",
 			BorderTop:    1,
 			BorderBottom: 1,
 			BorderLeft:   1,
 			BorderRight:  1,
 			BorderColor:  KMW_CLR_GRID,
 		})
+		_ = g.bindInputField(ws, row, KMW_COL_DATUM, FieldKMWDatum(row-4))
 	}
 
 	// ─── Kopfzeile formatieren (B4:E4) ────────────────────────────────────────

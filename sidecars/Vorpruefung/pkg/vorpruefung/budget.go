@@ -67,7 +67,7 @@ const (
 	BG_CLR_BAD        = "FFC7CE"
 	BG_CLR_BAD_TXT    = "9C0006"
 
-	BG_NAME_RESERVE    = "Reserve_Freigabe"
+	BG_NAME_RESERVE    = "Inp_Budget_ReserveFreigabe"
 	BG_NAME_KURS       = "Budget_Kurs"
 	BG_NAME_EIGEN_LW   = "Eigenmittel_LW"
 	BG_NAME_EIGEN_EUR  = "Eigenmittel_EUR"

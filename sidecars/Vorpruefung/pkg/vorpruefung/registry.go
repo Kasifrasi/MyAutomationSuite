@@ -123,3 +123,19 @@ func FieldMASaldoLC(tableId int) InputField {
 func FieldDashChecklist(index int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_Dash_Checklist_%d", index), Validation: ListJaNein}
 }
+
+func FieldKMWPeriode(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Periode_%d", index)}
+}
+
+func FieldKMWWaehrung(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Waehrung_%d", index)}
+}
+
+func FieldKMWBetrag(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Betrag_%d", index)}
+}
+
+func FieldKMWDatum(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Datum_%d", index)}
+}

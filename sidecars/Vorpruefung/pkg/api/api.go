@@ -288,21 +288,13 @@ func fillDashboard(f *excelize.File, d DashboardData) {
 }
 
 func fillKMW(f *excelize.File, tranchen []KMWTranche) {
-	sheet := constants.VPSheetKMW_MITTEL
 	for i, kr := range tranchen {
-		row := RowKMWStart + i
-		if row > RowKMWEnd {
-			break
-		}
-		cPeriode, _ := excelize.CoordinatesToCellName(ColKMWPeriode, row)
-		cWaehrung, _ := excelize.CoordinatesToCellName(ColKMWWaehrung, row)
-		cBetrag, _ := excelize.CoordinatesToCellName(ColKMWBetrag, row)
-		cDatum, _ := excelize.CoordinatesToCellName(ColKMWDatum, row)
-
-		setVal(f, sheet, cPeriode, kr.Periode)
-		setVal(f, sheet, cWaehrung, kr.Waehrung)
-		setVal(f, sheet, cBetrag, kr.Betrag)
-		setVal(f, sheet, cDatum, kr.Datum)
+		// table row index starts at 1, so index is i+1
+		idx := i + 1
+		_ = setValByNamedRange(f, vorpruefung.FieldKMWPeriode(idx), kr.Periode)
+		_ = setValByNamedRange(f, vorpruefung.FieldKMWWaehrung(idx), kr.Waehrung)
+		_ = setValByNamedRange(f, vorpruefung.FieldKMWBetrag(idx), kr.Betrag)
+		_ = setValByNamedRange(f, vorpruefung.FieldKMWDatum(idx), kr.Datum)
 	}
 }
 
