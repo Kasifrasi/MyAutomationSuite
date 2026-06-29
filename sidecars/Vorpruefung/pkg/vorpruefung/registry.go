@@ -18,6 +18,11 @@ type InputField struct {
 	Validation ValidationList
 }
 
+type OutputField struct {
+	NamedRange string
+	Validation ValidationList
+}
+
 // Registry aller skalaren gelben Felder
 var (
 	// Dashboard
@@ -72,6 +77,71 @@ var (
 	FieldMAPruefungMonateY3      = InputField{NamedRange: "Inp_MAPruefung_MonateY3", Validation: ListMonate}
 )
 
+// ─────────────────────────────────────────────────────────────
+// Dashboard
+// ─────────────────────────────────────────────────────────────
+
+// Output Fields
+// ─────────────────────────────────────────────────────────────
+
+
+// Input Fields
+// ─────────────────────────────────────────────────────────────
+func FieldDashChecklist(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_Dash_Checklist_%d", index), Validation: ListJaNein}
+}
+
+func FieldKMWPeriode(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Periode_%d", index)}
+}
+
+func FieldKMWWaehrung(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Waehrung_%d", index)}
+}
+
+func FieldKMWBetrag(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Betrag_%d", index)}
+}
+
+func FieldKMWDatum(index int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Datum_%d", index)}
+}
+
+// ─────────────────────────────────────────────────────────────
+// I. Budget
+// ─────────────────────────────────────────────────────────────
+
+// Output Fields
+// ─────────────────────────────────────────────────────────────
+
+
+// Input Fields
+// ─────────────────────────────────────────────────────────────
+
+
+// ─────────────────────────────────────────────────────────────
+// II. KMW-Mittel
+// ─────────────────────────────────────────────────────────────
+
+// Output Fields
+// ─────────────────────────────────────────────────────────────
+
+
+// Input Fields
+// ─────────────────────────────────────────────────────────────
+
+
+
+// ─────────────────────────────────────────────────────────────
+// III. Finanzberichte
+// ─────────────────────────────────────────────────────────────
+
+// Output Fields
+// ─────────────────────────────────────────────────────────────
+
+
+// Input Fields
+// ─────────────────────────────────────────────────────────────
 func FieldFBVon(period int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_FB_Von_%d", period)}
 }
@@ -92,45 +162,19 @@ func FieldFBAufschlSonstiges(period int) InputField {
 	return InputField{NamedRange: fmt.Sprintf("Inp_FB_aufschl_Sonstiges_%d", period)}
 }
 
-func FieldMAVon(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Von_%d", tableId)}
-}
-
-func FieldMABis(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Bis_%d", tableId)}
-}
-
-func FieldMAKurs(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Kurs_%d", tableId)}
-}
-
-func FieldMAManBetrag(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_ManBetrag_%d", tableId)}
-}
-
-func FieldMAEigenmittelLC(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_EigenmittelLC_%d", tableId)}
-}
-
-func FieldMAEigenmittelEUR(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_EigenmittelEUR_%d", tableId)}
-}
-
-func FieldMADrittmittelEUR(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_DrittmittelEUR_%d", tableId)}
-}
-
-func FieldMADrittmittelLC(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_DrittmittelLC_%d", tableId)}
-}
-
-func FieldMASaldoLC(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_SaldoLC_%d", tableId)}
-}
-
 // ─────────────────────────────────────────────────────────────
-// Output Fields (for Sums & Calculated EUR values)
+// IV. MA
 // ─────────────────────────────────────────────────────────────
+
+// Output Fields
+// ─────────────────────────────────────────────────────────────
+func FieldMAPeriode(tableId int) string {
+	return fmt.Sprintf("Out_MA_Periode_%d", tableId)
+}
+
+func FieldMAZeitraum(tableId int) string {
+	return fmt.Sprintf("Out_MA_Zeitraum_%d", tableId)
+}
 
 func FieldMASumLC(tableId int) string {
 	return fmt.Sprintf("Out_MA_SumLC_%d", tableId)
@@ -146,41 +190,58 @@ func FieldMAKatEUR(tableId, rowIdx int) string {
 	return fmt.Sprintf("Out_MA_KatEUR_%d_%d_%d", period, slot, rowIdx)
 }
 
-// KMW-Mittel inputs
+// Input Fields
+// ─────────────────────────────────────────────────────────────
+func FieldMAVon(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Von_%d", tableId)}
+}
+
+func FieldMABis(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Bis_%d", tableId)}
+}
+
+func FieldMAKurs(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Kurs_%d", tableId)}
+}
+
+func FieldMAEigenmittelLC(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_EigenmittelLC_%d", tableId)}
+}
+
+func FieldMAEigenmittelEUR(tableId int) string {
+	return fmt.Sprintf("Out_MA_EigenmittelEUR_%d", tableId)
+}
+
+func FieldMADrittmittelEUR(tableId int) string {
+	return fmt.Sprintf("Out_MA_DrittmittelEUR_%d", tableId)
+}
+
+func FieldMADrittmittelLC(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_DrittmittelLC_%d", tableId)}
+}
+
+func FieldMASaldoLC(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_SaldoLC_%d", tableId)}
+}
+
+func FieldMAManBetrag(tableId int) InputField {
+	return InputField{NamedRange: fmt.Sprintf("Inp_MA_ManBetrag_%d", tableId)}
+}
+
 func FieldMAKmwLC(tableId int) InputField {
 	period := ((tableId - 1) % 18) + 1
 	slot := ((tableId - 1) / 18) + 1
 	return InputField{NamedRange: fmt.Sprintf("Inp_MA_KmwLC_%d_%d", period, slot)}
 }
 
-func FieldMAKmwEUR(tableId int) InputField {
+func FieldMAKmwEUR(tableId int) string {
 	period := ((tableId - 1) % 18) + 1
 	slot := ((tableId - 1) / 18) + 1
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_KmwEUR_%d_%d", period, slot)}
+	return fmt.Sprintf("Out_MA_KmwEUR_%d_%d", period, slot)
 }
 
 func FieldMAKat(tableId, rowIdx int) InputField {
 	period := ((tableId - 1) % 18) + 1
 	slot := ((tableId - 1) / 18) + 1
 	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Kat_%d_%d_%d", period, slot, rowIdx)}
-}
-
-func FieldDashChecklist(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_Dash_Checklist_%d", index), Validation: ListJaNein}
-}
-
-func FieldKMWPeriode(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Periode_%d", index)}
-}
-
-func FieldKMWWaehrung(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Waehrung_%d", index)}
-}
-
-func FieldKMWBetrag(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Betrag_%d", index)}
-}
-
-func FieldKMWDatum(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Datum_%d", index)}
 }

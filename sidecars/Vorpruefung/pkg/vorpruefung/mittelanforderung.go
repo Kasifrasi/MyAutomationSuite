@@ -303,7 +303,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 	eigenEUR := cellName(cEUR, r)
 	_ = f.SetCellFormula(ws, eigenEUR, fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, addrEigenLC, rateAddr))
 	_ = g.setStyle(ws, eigenEUR, eigenEUR, StyleOptions{NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	_ = g.bindInputField(ws, r, cEUR, FieldMAEigenmittelEUR(tableId))
+	g.upsertNamedFormula(FieldMAEigenmittelEUR(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, r)))
 	addrEigenEUR := absName(cEUR, r)
 	r++
 
@@ -318,7 +318,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 	drittEUR := cellName(cEUR, r)
 	_ = f.SetCellFormula(ws, drittEUR, fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, addrDrittLC, rateAddr))
 	_ = g.setStyle(ws, drittEUR, drittEUR, StyleOptions{NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	_ = g.bindInputField(ws, r, cEUR, FieldMADrittmittelEUR(tableId))
+	g.upsertNamedFormula(FieldMADrittmittelEUR(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, r)))
 	addrDrittEUR := absName(cEUR, r)
 	r++
 
@@ -372,7 +372,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 	kmwEUR := cellName(cEUR, r)
 	_ = f.SetCellFormula(ws, kmwEUR, fmt.Sprintf(`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`, addrSumGE, addrEigenEUR, addrDrittEUR, addrSaldoEUR))
 	_ = g.setStyle(ws, kmwEUR, kmwEUR, StyleOptions{Bold: true, Size: 12.0, FillColor: MA_CLR_KMW, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 6, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080"})
-	_ = g.bindInputField(ws, r, cEUR, FieldMAKmwEUR(tableId))
+	g.upsertNamedFormula(FieldMAKmwEUR(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, r)))
 	r += 2
 
 	// ─── Manueller Betrag (EUR) – zwei Zeilen unter KMW-Mittel Anforderung ────

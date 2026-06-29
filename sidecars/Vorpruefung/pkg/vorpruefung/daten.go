@@ -98,7 +98,7 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_PER, j), p)
 
 		kmwCellLC := FieldMAKmwLC(j).NamedRange
-		kmwCellEUR := FieldMAKmwEUR(j).NamedRange
+		kmwCellEUR := FieldMAKmwEUR(j)
 		manCellEUR := FieldMAManBetrag(j).NamedRange
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_FILL, j),
@@ -125,8 +125,8 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j), labelFormula)
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j), fmt.Sprintf(`=IFERROR(%s,0)`, FieldMASumLC(j)))
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j), fmt.Sprintf(`=IFERROR(%s,0)`, FieldMASumEUR(j)))
-		eigCellEUR := FieldMAEigenmittelEUR(j).NamedRange
-		drittCellEUR := FieldMADrittmittelEUR(j).NamedRange
+		eigCellEUR := FieldMAEigenmittelEUR(j)
+		drittCellEUR := FieldMADrittmittelEUR(j)
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_EIGDR, j),
 			fmt.Sprintf(`=IFERROR(ROUND(%s+%s,2),0)`, eigCellEUR, drittCellEUR))
@@ -233,13 +233,13 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 			var maValLC, maValEUR string
 			if e.cat == "Eigenmittel" {
 				maValLC = FieldMAEigenmittelLC(j).NamedRange
-				maValEUR = FieldMAEigenmittelEUR(j).NamedRange
+				maValEUR = FieldMAEigenmittelEUR(j)
 			} else if e.cat == "Drittmittel" {
 				maValLC = FieldMADrittmittelLC(j).NamedRange
-				maValEUR = FieldMADrittmittelEUR(j).NamedRange
+				maValEUR = FieldMADrittmittelEUR(j)
 			} else if e.cat == "KMW-Mittel" {
 				maValLC = FieldMAKmwLC(j).NamedRange
-				maValEUR = FieldMAKmwEUR(j).NamedRange
+				maValEUR = FieldMAKmwEUR(j)
 			} else if e.cat == "Manueller Betrag" {
 				// Manueller Betrag hat kein LC-Feld, wir nehmen 0
 				maValLC = "0"
