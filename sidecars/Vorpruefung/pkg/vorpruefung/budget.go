@@ -513,11 +513,7 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 
 	g.setValue(ws, cellName(col, rCapt), "Reserve freigeben:", StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, Italic: true, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 
-	reserveChoice := "Nein"
-	if g.budget != nil && g.budget.ReserveFreigabe {
-		reserveChoice = "Ja"
-	}
-	g.setValue(ws, cellName(col, rCheck), reserveChoice, StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+	g.setStyle(ws, cellName(col, rCheck), cellName(col, rCheck), StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
 	checkAddr := absName(c, rCheck)
 
 	// Dropdown-Auswahl Ja/Nein hinzufügen

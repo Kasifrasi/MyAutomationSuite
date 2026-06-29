@@ -124,7 +124,7 @@ func (g *Generator) drawDashboardHeader(ws string) error {
 		FillColor:    DB_CLR_HEADER_BG,
 		VAlign:       "center",
 		HAlign:       "left",
-		BorderBottom: 5, 
+		BorderBottom: 5,
 		BorderColor:  DB_CLR_HEADER_ACCENT,
 	}
 	err := g.mergeCells(ws, cellName(DB_C_LBL1, DB_HEADER_ROW), cellName(DB_C_IN2, DB_HEADER_ROW), "  DASHBOARD ("+AppVersion+")", headerOpts)
@@ -173,7 +173,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
-	err = g.dbDropdownJaNein(ws, r, DB_C_IN2, "Ja", DB_CLR_INPUT)
+	err = g.dbDropdownJaNein(ws, r, DB_C_IN2, "", DB_CLR_INPUT)
 	if err != nil {
 		return err
 	}
@@ -486,7 +486,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 		_ = g.file.SetRowHeight(ws, row, 22.0)
 
 		// Ja/Nein Dropdown (Spalte D)
-		err = g.dbDropdownJaNein(ws, row, DB_C_LBL2, "Nein", DB_CLR_INPUT)
+		err = g.dbDropdownJaNein(ws, row, DB_C_LBL2, "", DB_CLR_INPUT)
 		if err != nil {
 			return err
 		}
@@ -619,12 +619,18 @@ func (g *Generator) dbDropdownJaNein(sheet string, row, col int, defaultValue st
 		BorderRight:  1,
 		BorderColor:  DB_CLR_BORDER,
 	}
-	err := g.setValue(sheet, cellName(col, row), defaultValue, opts)
+	cell := cellName(col, row)
+	var err error
+	if defaultValue != "" {
+		err = g.setValue(sheet, cell, defaultValue, opts)
+	} else {
+		err = g.setStyle(sheet, cell, cell, opts)
+	}
 	if err != nil {
 		return err
 	}
 	dv := excelize.NewDataValidation(true)
-	dv.Sqref = cellName(col, row)
+	dv.Sqref = cell
 	dv.SetDropList([]string{"Ja", "Nein"})
 	return g.file.AddDataValidation(sheet, dv)
 }

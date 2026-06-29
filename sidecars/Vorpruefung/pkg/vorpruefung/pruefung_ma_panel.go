@@ -19,7 +19,8 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 
 	g.evalSelLabel(ws, r, "Auswahl:")
 	labelCell := cellName(EV_PB_V1, r)
-	g.evalMergedValue(ws, labelCell, cellName(EV_PB_C2, r), "Neuste MA", inputCtr)
+	g.mergeCells(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
+
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
 	dv.Type = "list"
@@ -202,7 +203,7 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	// Mittiges Eingabefeld (Monatsanteil je Jahr, 0..12).
 	monthsInput := func(row, val int) string {
 		cell := cellName(vMID, row)
-		_ = g.setValue(ws, cell, val, StyleOptions{
+		_ = g.setStyle(ws, cell, cell, StyleOptions{
 			HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_INPUT,
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 		})

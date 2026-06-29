@@ -356,7 +356,7 @@ func (g *Generator) evalKmwCalc(ws, cell, formula string, bold bool) {
 }
 
 func (g *Generator) evalKmwInput(ws, cell string) {
-	_ = g.setValue(ws, cell, 0, StyleOptions{
+	_ = g.setStyle(ws, cell, cell, StyleOptions{
 		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_INPUT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
@@ -372,7 +372,7 @@ func (g *Generator) evalKmwInputEmpty(ws, cell string) {
 }
 
 func (g *Generator) evalToggle(ws, cell string) {
-	_ = g.setValue(ws, cell, "Abzug", StyleOptions{
+	_ = g.setStyle(ws, cell, cell, StyleOptions{
 		Size: 9.0, HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
@@ -444,7 +444,8 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 
 	g.evalSelLabel(ws, r, "Auswahl:")
 	labelCell := cellName(EV_PB_V1, r)
-	g.evalMergedValue(ws, labelCell, cellName(EV_PB_C2, r), "Neuester FB", inputCtr)
+	g.mergeCells(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
+
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
 	dv.Type = "list"
