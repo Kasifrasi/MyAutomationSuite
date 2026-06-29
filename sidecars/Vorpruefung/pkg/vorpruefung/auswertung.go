@@ -69,10 +69,10 @@ const (
 	EV_DTN_MAG_CAT       = 72 // BT  Grid: Kategorie
 	EV_DTN_MAG_LC        = 73 // BU  Grid: LC
 	EV_DTN_MAG_EUR       = 74 // BV  Grid: EUR
-	// Grid-Block je MA-Tabelle: 8 Kostenkategorien (len(MA_CATEGORIES)) + 3
-	// Finanzierungsarten (Eigenmittel/Drittmittel/KMW-Mittel) für die Prognose
+	// Grid-Block je MA-Tabelle: 8 Kostenkategorien (len(MA_CATEGORIES)) + 4
+	// Finanzierungsarten (Eigenmittel/Drittmittel/KMW-Mittel/Manueller Betrag) für die Prognose
 	// der Finanzierungsanteile. Muss zu gridEntries in daten.go passen.
-	EV_DTN_MAG_BLOCK = 8 + 3
+	EV_DTN_MAG_BLOCK = 8 + 4
 	EV_DTN_MAG_ROWS  = MA_TABLE_COUNT * EV_DTN_MAG_BLOCK
 
 	EVAL_NAME_MA_LISTE = "MA_Auswahl_Liste"
@@ -587,7 +587,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	_ = g.file.AddDataValidation(ws, dv)
 	r++
 
-	g.evalSelLabel(ws, r, "Geprüfte Periode")
+	g.evalSelLabel(ws, r, "Ausgewählte Periode")
 	pCell := cellName(EV_PB_V1, r)
 	g.evalMergedValue(ws, pCell, cellName(EV_PB_C2, r), 0, num0) // Formel (=N+1) wird nachgelagert gesetzt
 	r++
@@ -608,17 +608,29 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
 	r++
 
-	_ = g.mergeCells(ws, cellName(EV_PB_C1, r), cellName(EV_PB_C2, r), "Einbezogene Anforderungen", StyleOptions{
+	_ = g.mergeCells(ws, cellName(EV_PB_C1, r), cellName(EV_PB_L2, r), "Einbezogene Anforderungen", StyleOptions{
 		Bold: true, Size: 9.0, FontColor: EV_CLR_BLACK, FillColor: EV_CLR_HEADER, HAlign: "left", VAlign: "center",
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+	})
+	_ = g.setValue(ws, cellName(EV_PB_V1, r), "Angefragt (LC)", StyleOptions{
+		Bold: true, Size: 9.0, FontColor: EV_CLR_BLACK, FillColor: EV_CLR_HEADER, HAlign: "center", VAlign: "center",
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+	})
+	_ = g.setValue(ws, cellName(EV_PB_SLC2, r), "Angefragt (EUR)", StyleOptions{
+		Bold: true, Size: 9.0, FontColor: EV_CLR_BLACK, FillColor: EV_CLR_HEADER, HAlign: "center", VAlign: "center",
+		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+	})
+	_ = g.setValue(ws, cellName(EV_PB_SEU1, r), "Manuell (EUR)", StyleOptions{
+		Bold: true, Size: 9.0, FontColor: EV_CLR_BLACK, FillColor: EV_CLR_HEADER, HAlign: "center", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
 	r++
 
-	// Slots: bei Bedarf (s ≤ k) eingeblendet, sonst leer (Struktur im Hintergrund).
+	// Slots: bei Bedarf (s <= k) eingeblendet, sonst leer (Struktur im Hintergrund).
 	firstSlot := r
 	lblSt := StyleOptions{Size: 9.0, HAlign: "left", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
-	lcSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_LC,
+	valSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_LC,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
 	euSt := StyleOptions{HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
@@ -633,7 +645,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), pCell,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), s)
-		g.evalMergedFormula(ws, cellName(EV_PB_V1, row), cellName(EV_PB_SLC2, row), lcF, lcSt)
+		_ = g.setFormula(ws, cellName(EV_PB_V1, row), lcF, valSt)
 
 		euF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
 			s, kCell,
@@ -641,7 +653,15 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), pCell,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), s)
-		g.evalMergedFormula(ws, cellName(EV_PB_SEU1, row), cellName(EV_PB_C2, row), euF, euSt)
+		_ = g.setFormula(ws, cellName(EV_PB_SLC2, row), euF, euSt)
+
+		manF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"Manueller Betrag",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
+			s, kCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, EV_DTN_MAG_ROWS),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, EV_DTN_MAG_ROWS),
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, EV_DTN_MAG_ROWS), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, EV_DTN_MAG_ROWS), s)
+		_ = g.setFormula(ws, cellName(EV_PB_SEU1, row), manF, euSt)
 
 		labelAddr := absName(EV_PB_C1, row)
 		cond := fmt.Sprintf(`%s<>""`, labelAddr)
@@ -649,11 +669,15 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 			cond, StyleOptions{
 				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 2, BorderRight: 1, BorderColor: EV_CLR_BORDER,
 			})
-		g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(EV_PB_V1, row), cellName(EV_PB_SLC2, row)),
+		g.addConditionalFormat(ws, cellName(EV_PB_V1, row),
 			cond, StyleOptions{
 				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
 			})
-		g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(EV_PB_SEU1, row), cellName(EV_PB_C2, row)),
+		g.addConditionalFormat(ws, cellName(EV_PB_SLC2, row),
+			cond, StyleOptions{
+				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+			})
+		g.addConditionalFormat(ws, cellName(EV_PB_SEU1, row),
 			cond, StyleOptions{
 				FillColor: EV_CLR_PANEL_REV, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 2, BorderColor: EV_CLR_BORDER,
 			})
@@ -684,7 +708,7 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 	_ = g.file.AddDataValidation(ws, dv)
 	r++
 
-	g.evalSelLabel(ws, r, "Geprüfte Periode")
+	g.evalSelLabel(ws, r, "Ausgewählte Periode")
 	numCell := cellName(EV_PB_V1, r)
 	// Höchste befüllte FB-Periode. SUMPRODUCT(MAX(...)) statt MAXIFS (siehe maxMAK).
 	maxFBPer := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=1)*'%s'!%s)),0)`,

@@ -189,6 +189,7 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		maGridEntry{"Eigenmittel", 21},
 		maGridEntry{"Drittmittel", 22},
 		maGridEntry{"KMW-Mittel", 25},
+		maGridEntry{"Manueller Betrag", 27},
 	)
 	for j := 1; j <= MA_TABLE_COUNT; j++ {
 		p := ((j - 1) % MA_PERIOD_COUNT) + 1
