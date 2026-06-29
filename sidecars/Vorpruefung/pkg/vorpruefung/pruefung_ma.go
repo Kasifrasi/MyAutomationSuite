@@ -145,7 +145,7 @@ func evalMAChooseKurs(sel evalSelRefs) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
-		parts[i] = fmt.Sprintf("MA_Kurs_%d", i+1)
+		parts[i] = FieldMAKurs(i + 1).NamedRange
 	}
 	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }

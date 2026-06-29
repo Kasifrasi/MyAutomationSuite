@@ -2,24 +2,6 @@ package api
 
 // Dashboard Layout
 const (
-	CellDashProjektnummer       = "C5"
-	CellDashVorprojekt          = "E5"
-	CellDashProjekttitel        = "C6"
-	CellDashProjekttraeger      = "C7"
-	CellDashBerichtswaehrung    = "E7"
-	CellDashProjektstart        = "C8"
-	CellDashProjektende         = "E8"
-	CellDashVPNummer            = "C10"
-	CellDashVPBerichtswaehrung  = "E10"
-	CellDashVPEnde              = "C11"
-	CellDashVPWechselkurs       = "E11"
-	CellDashVPSaldoLC           = "C12"
-	CellDashVPSaldoEUR          = "E12"
-	CellDashVPFolgeprojektstart = "C13"
-	CellDashVPFolgeWechselkurs  = "E13"
-	CellDashVPFolgeSaldoLC      = "C14"
-	CellDashVPFolgeSaldoEUR     = "E14"
-
 	ColDashChecklist      = 4 // Spalte D
 	RowDashChecklistStart = 16
 	RowDashChecklistEnd   = 22
@@ -27,11 +9,6 @@ const (
 
 // Budget Layout
 const (
-	CellBudgetReserveFreigabe = "K5"
-	CellBudgetDrittmittelY1   = "F10"
-	CellBudgetDrittmittelY2   = "G10"
-	CellBudgetDrittmittelY3   = "H10"
-
 	RowBudgetEigenmittel = 7
 	RowBudgetKMWMittel   = 13
 
@@ -83,19 +60,4 @@ const (
 	OffsetFBBank      = 6
 	OffsetFBKasse     = 7
 	OffsetFBSonstiges = 8
-)
-
-// Pruefung Layout
-const (
-	CellFBPruefungAuswahl    = "E9"
-	CellFBPruefungAbzugSaldo = "F15"
-	CellFBPruefungAbzugMehr  = "F16"
-
-	CellMAPruefungAuswahl       = "E9"
-	CellMAPruefungAbzugSaldo    = "F20"
-	CellMAPruefungAbzugMehr     = "F21"
-	CellMAPruefungAbzugPrognose = "F22"
-	CellMAPruefungMonateY1      = "D37"
-	CellMAPruefungMonateY2      = "D38"
-	CellMAPruefungMonateY3      = "D39"
 )

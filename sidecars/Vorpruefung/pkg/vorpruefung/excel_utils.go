@@ -514,3 +514,23 @@ func (g *Generator) addConditionalFormat(sheet, cell, formula string, opts Style
 		},
 	})
 }
+
+func (g *Generator) bindInputField(sheet string, row, col int, field InputField) error {
+	// Name setzen
+	err := g.file.SetDefinedName(&excelize.DefinedName{
+		Name:     field.NamedRange,
+		RefersTo: fmt.Sprintf("'%s'!%s", sheet, absName(col, row)),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Validierung setzen, falls vorhanden
+	if len(field.Validation) > 0 {
+		dv := excelize.NewDataValidation(true)
+		dv.Sqref = cellName(col, row)
+		dv.SetDropList(field.Validation)
+		return g.file.AddDataValidation(sheet, dv)
+	}
+	return nil
+}

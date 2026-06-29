@@ -141,9 +141,9 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		ausgName := fmt.Sprintf("Ausgaben_%d", p)
 		incCol := colLetter(3 + (p-1)*7) // laufende Einnahmen (LC) je FB-Periode
 
-		aufschlBank := fmt.Sprintf("aufschl_Bank_%d", p)
-		aufschlKasse := fmt.Sprintf("aufschl_Kasse_%d", p)
-		aufschlSonstiges := fmt.Sprintf("aufschl_Sonstiges_%d", p)
+		aufschlBank := FieldFBAufschlBank(p).NamedRange
+		aufschlKasse := FieldFBAufschlKasse(p).NamedRange
+		aufschlSonstiges := FieldFBAufschlSonstiges(p).NamedRange
 
 		_ = f.SetCellValue(ws, dc(EV_DTN_FB_META_PER, p), p)
 

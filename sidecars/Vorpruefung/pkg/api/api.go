@@ -141,63 +141,63 @@ func FillTemplate(filePath string, data FillData) error {
 	fillBudget(f, data.Budget)
 
 	// Optionale Werte für die Prüfungs-Auswahl
-	sheetFB := constants.VPSheetFB_PRUEFUNG
+	// 6. FB Prüfung defaults/data
 	if data.FBPruefung != nil {
 		if data.FBPruefung.Auswahl != nil {
-			setVal(f, sheetFB, CellFBPruefungAuswahl, data.FBPruefung.Auswahl)
+			_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAuswahl, data.FBPruefung.Auswahl)
 		} else {
-			setVal(f, sheetFB, CellFBPruefungAuswahl, "Neuester FB")
+			_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAuswahl, "Neuester FB")
 		}
 		if data.FBPruefung.AbzugSaldovortrag != nil {
-			setVal(f, sheetFB, CellFBPruefungAbzugSaldo, data.FBPruefung.AbzugSaldovortrag)
+			_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAbzugSaldo, data.FBPruefung.AbzugSaldovortrag)
 		} else {
-			setVal(f, sheetFB, CellFBPruefungAbzugSaldo, "Abzug")
+			_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAbzugSaldo, vorpruefung.ListAbzug[0])
 		}
 		if data.FBPruefung.AbzugMehreinnahmen != nil {
-			setVal(f, sheetFB, CellFBPruefungAbzugMehr, data.FBPruefung.AbzugMehreinnahmen)
+			_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAbzugMehr, data.FBPruefung.AbzugMehreinnahmen)
 		} else {
-			setVal(f, sheetFB, CellFBPruefungAbzugMehr, "Abzug")
+			_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAbzugMehr, vorpruefung.ListAbzug[0])
 		}
 	} else {
-		setVal(f, sheetFB, CellFBPruefungAuswahl, "Neuester FB")
-		setVal(f, sheetFB, CellFBPruefungAbzugSaldo, "Abzug")
-		setVal(f, sheetFB, CellFBPruefungAbzugMehr, "Abzug")
+		_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAuswahl, "Neuester FB")
+		_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAbzugSaldo, vorpruefung.ListAbzug[0])
+		_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAbzugMehr, vorpruefung.ListAbzug[0])
 	}
 
-	sheetMA := constants.VPSheetMA_PRUEFUNG
+	// 7. MA Prüfung defaults/data
 	if data.MAPruefung != nil {
 		if data.MAPruefung.Auswahl != nil {
-			setVal(f, sheetMA, CellMAPruefungAuswahl, data.MAPruefung.Auswahl)
+			_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAuswahl, data.MAPruefung.Auswahl)
 		} else {
-			setVal(f, sheetMA, CellMAPruefungAuswahl, "Neueste MA")
+			_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAuswahl, "Neueste MA")
 		}
 		if data.MAPruefung.MonateY1 != nil {
-			setVal(f, sheetMA, CellMAPruefungMonateY1, data.MAPruefung.MonateY1)
+			_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY1, data.MAPruefung.MonateY1)
 		} else {
-			setVal(f, sheetMA, CellMAPruefungMonateY1, 8)
+			_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY1, 8)
 		}
 		if data.MAPruefung.MonateY2 != nil {
-			setVal(f, sheetMA, CellMAPruefungMonateY2, data.MAPruefung.MonateY2)
+			_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY2, data.MAPruefung.MonateY2)
 		} else {
-			setVal(f, sheetMA, CellMAPruefungMonateY2, 0)
+			_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY2, 0)
 		}
 		if data.MAPruefung.MonateY3 != nil {
-			setVal(f, sheetMA, CellMAPruefungMonateY3, data.MAPruefung.MonateY3)
+			_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY3, data.MAPruefung.MonateY3)
 		} else {
-			setVal(f, sheetMA, CellMAPruefungMonateY3, 0)
+			_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY3, 0)
 		}
 		// NOTE: Toggles are not yet exposed in MAPruefungData in fill.go but let's default them
-		setVal(f, sheetMA, CellMAPruefungAbzugSaldo, "Abzug")
-		setVal(f, sheetMA, CellMAPruefungAbzugMehr, "Abzug")
-		setVal(f, sheetMA, CellMAPruefungAbzugPrognose, "Abzug")
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugSaldo, vorpruefung.ListAbzug[0])
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugMehr, vorpruefung.ListAbzug[0])
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugPrognose, vorpruefung.ListAbzug[0])
 	} else {
-		setVal(f, sheetMA, CellMAPruefungAuswahl, "Neueste MA")
-		setVal(f, sheetMA, CellMAPruefungMonateY1, 8)
-		setVal(f, sheetMA, CellMAPruefungMonateY2, 0)
-		setVal(f, sheetMA, CellMAPruefungMonateY3, 0)
-		setVal(f, sheetMA, CellMAPruefungAbzugSaldo, "Abzug")
-		setVal(f, sheetMA, CellMAPruefungAbzugMehr, "Abzug")
-		setVal(f, sheetMA, CellMAPruefungAbzugPrognose, "Abzug")
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAuswahl, "Neueste MA")
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY1, 8)
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY2, 0)
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY3, 0)
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugSaldo, vorpruefung.ListAbzug[0])
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugMehr, vorpruefung.ListAbzug[0])
+		_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugPrognose, vorpruefung.ListAbzug[0])
 	}
 
 	return f.Save()
@@ -238,27 +238,44 @@ func setVal(f *excelize.File, sheet, cell string, val interface{}) {
 	}
 }
 
+func setValByNamedRange(f *excelize.File, field vorpruefung.InputField, val interface{}) error {
+	names := f.GetDefinedName()
+	for _, n := range names {
+		if n.Name == field.NamedRange {
+			// n.RefersTo looks like "'I. Dashboard'!$C$5" or "I. Dashboard!$C$5"
+			parts := strings.Split(n.RefersTo, "!")
+			if len(parts) == 2 {
+				sheet := strings.Trim(parts[0], "'")
+				cell := strings.ReplaceAll(parts[1], "$", "")
+				setVal(f, sheet, cell, val)
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("NamedRange %s nicht gefunden", field.NamedRange)
+}
+
 func fillDashboard(f *excelize.File, d DashboardData) {
 	sheet := constants.VPSheetDASHBOARD
-	setVal(f, sheet, CellDashProjektnummer, d.Projektnummer)
-	setVal(f, sheet, CellDashVorprojekt, d.Vorprojekt)
-	setVal(f, sheet, CellDashProjekttitel, d.Projekttitel)
-	setVal(f, sheet, CellDashProjekttraeger, d.Projekttraeger)
-	setVal(f, sheet, CellDashBerichtswaehrung, d.Berichtswaehrung)
-	setVal(f, sheet, CellDashProjektstart, d.Projektstart)
-	setVal(f, sheet, CellDashProjektende, d.Projektende)
+	_ = setValByNamedRange(f, vorpruefung.FieldDashProjektnummer, d.Projektnummer)
+	_ = setValByNamedRange(f, vorpruefung.FieldDashVorprojekt, d.Vorprojekt)
+	_ = setValByNamedRange(f, vorpruefung.FieldDashProjekttitel, d.Projekttitel)
+	_ = setValByNamedRange(f, vorpruefung.FieldDashProjekttraeger, d.Projekttraeger)
+	_ = setValByNamedRange(f, vorpruefung.FieldDashBerichtswaehrung, d.Berichtswaehrung)
+	_ = setValByNamedRange(f, vorpruefung.FieldDashProjektstart, d.Projektstart)
+	_ = setValByNamedRange(f, vorpruefung.FieldDashProjektende, d.Projektende)
 
 	if d.Vorprojekt != nil && *d.Vorprojekt {
-		setVal(f, sheet, CellDashVPNummer, d.Vorprojektnummer)
-		setVal(f, sheet, CellDashVPBerichtswaehrung, d.VPBerichtswaehrung)
-		setVal(f, sheet, CellDashVPEnde, d.Vorprojektende)
-		setVal(f, sheet, CellDashVPWechselkurs, d.VPWechselkurs)
-		setVal(f, sheet, CellDashVPSaldoLC, d.VPSaldoLC)
-		setVal(f, sheet, CellDashVPSaldoEUR, d.VPSaldoEUR)
-		setVal(f, sheet, CellDashVPFolgeprojektstart, d.VPFolgeprojektstart)
-		setVal(f, sheet, CellDashVPFolgeWechselkurs, d.VPWechselkurs)
-		setVal(f, sheet, CellDashVPFolgeSaldoLC, d.VPSaldoLC)
-		setVal(f, sheet, CellDashVPFolgeSaldoEUR, d.VPSaldoEUR)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPNummer, d.Vorprojektnummer)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPBerichtswaehrung, d.VPBerichtswaehrung)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPEnde, d.Vorprojektende)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPWechselkurs, d.VPWechselkurs)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPSaldoLC, d.VPSaldoLC)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPSaldoEUR, d.VPSaldoEUR)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPFolgeprojektstart, d.VPFolgeprojektstart)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPFolgeWechselkurs, d.VPWechselkurs)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPFolgeSaldoLC, d.VPSaldoLC)
+		_ = setValByNamedRange(f, vorpruefung.FieldDashVPFolgeSaldoEUR, d.VPSaldoEUR)
 	}
 
 	for i, v := range d.DocChecklist {
@@ -515,46 +532,41 @@ func fillBudget(f *excelize.File, budget *BudgetData) {
 	}
 	sheet := constants.VPSheetBUDGET
 
-	fillInc := func(row int, inc *IncomeRow) {
+	fillIncFields := func(inc *IncomeRow, lc, y1, y2, y3, eur vorpruefung.InputField) {
 		if inc == nil {
 			return
 		}
 		if inc.LC != nil {
-			c, _ := excelize.CoordinatesToCellName(ColBudgetLC, row)
-			setVal(f, sheet, c, *inc.LC)
+			_ = setValByNamedRange(f, lc, *inc.LC)
 		}
 		if inc.Y1 != nil {
-			c, _ := excelize.CoordinatesToCellName(ColBudgetY1, row)
-			setVal(f, sheet, c, *inc.Y1)
+			_ = setValByNamedRange(f, y1, *inc.Y1)
 		}
 		if inc.Y2 != nil {
-			c, _ := excelize.CoordinatesToCellName(ColBudgetY2, row)
-			setVal(f, sheet, c, *inc.Y2)
+			_ = setValByNamedRange(f, y2, *inc.Y2)
 		}
 		if inc.Y3 != nil {
-			c, _ := excelize.CoordinatesToCellName(ColBudgetY3, row)
-			setVal(f, sheet, c, *inc.Y3)
+			_ = setValByNamedRange(f, y3, *inc.Y3)
 		}
 		if inc.EUR != nil {
-			c, _ := excelize.CoordinatesToCellName(ColBudgetEUR, row)
-			setVal(f, sheet, c, *inc.EUR)
+			_ = setValByNamedRange(f, eur, *inc.EUR)
 		}
 	}
 
-	fillInc(RowBudgetEigenmittel, budget.Eigenmittel)
-	fillInc(RowBudgetKMWMittel, budget.KMWMittel)
+	fillIncFields(budget.Eigenmittel, vorpruefung.FieldBudgetEigenmittelLC, vorpruefung.FieldBudgetEigenmittelY1, vorpruefung.FieldBudgetEigenmittelY2, vorpruefung.FieldBudgetEigenmittelY3, vorpruefung.FieldBudgetEigenmittelEUR)
+	fillIncFields(budget.KMWMittel, vorpruefung.FieldBudgetKMWLC, vorpruefung.FieldBudgetKMWY1, vorpruefung.FieldBudgetKMWY2, vorpruefung.FieldBudgetKMWY3, vorpruefung.FieldBudgetKMWEUR)
 
 	if budget.DrittmittelY1 != nil {
-		setVal(f, sheet, CellBudgetDrittmittelY1, *budget.DrittmittelY1)
+		_ = setValByNamedRange(f, vorpruefung.FieldBudgetDrittmittelY1, *budget.DrittmittelY1)
 	}
 	if budget.DrittmittelY2 != nil {
-		setVal(f, sheet, CellBudgetDrittmittelY2, *budget.DrittmittelY2)
+		_ = setValByNamedRange(f, vorpruefung.FieldBudgetDrittmittelY2, *budget.DrittmittelY2)
 	}
 	if budget.DrittmittelY3 != nil {
-		setVal(f, sheet, CellBudgetDrittmittelY3, *budget.DrittmittelY3)
+		_ = setValByNamedRange(f, vorpruefung.FieldBudgetDrittmittelY3, *budget.DrittmittelY3)
 	}
 
-	setVal(f, sheet, CellBudgetReserveFreigabe, budget.ReserveFreigabe)
+	_ = setValByNamedRange(f, vorpruefung.FieldBudgetReserveFreigabe, budget.ReserveFreigabe)
 
 	tables, _ := f.GetTables(sheet)
 	tableMap := make(map[string]string)

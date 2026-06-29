@@ -100,10 +100,10 @@ func (g *Generator) CreateKMWMittelSheet() error {
 		return fmt.Errorf("fehler beim Hinzufügen der Periode-Validierung: %w", err)
 	}
 
-	// Validierung 'Waehrung': EUR, USD
+	// Validierung 'Waehrung'
 	dvWaehrung := excelize.NewDataValidation(true)
 	dvWaehrung.Sqref = "C5:C76"
-	dvWaehrung.SetDropList([]string{"EUR", "USD"})
+	dvWaehrung.SetDropList(ListWaehrung)
 	err = f.AddDataValidation(ws, dvWaehrung)
 	if err != nil {
 		return fmt.Errorf("fehler beim Hinzufügen der Waehrung-Validierung: %w", err)

@@ -149,7 +149,7 @@ func (g *Generator) drawReportTable(
 
 	// ─── ZEITRAUM (Von / Bis) ───
 	vonRow := r
-	for _, zlbl := range []string{"Von:", "Bis:"} {
+	for i, zlbl := range []string{"Von:", "Bis:"} {
 		_ = g.drawMergedCell(ws, r, cLabel, cLabel, zlbl, true, "", false)
 		_ = f.MergeCell(ws, cellName(cValLC, r), cellName(cValEUR, r))
 		_ = g.setStyle(ws, cellName(cValLC, r), cellName(cValEUR, r), StyleOptions{
@@ -160,6 +160,11 @@ func (g *Generator) drawReportTable(
 			FillColor:    COLOR_INPUT,
 			NumFmtID:     14,
 		})
+		if i == 0 {
+			_ = g.bindInputField(ws, r, cValLC, FieldFBVon(periodenNr))
+		} else {
+			_ = g.bindInputField(ws, r, cValLC, FieldFBBis(periodenNr))
+		}
 		r++
 	}
 
@@ -449,16 +454,16 @@ func (g *Generator) drawReportTable(
 		currentLC := cellName(cValLC, r)
 
 		// Named Ranges für die gelben Eingabefelder (Bank, Kasse, Sonstiges) anlegen
-		var safeName string
+		var field InputField
 		switch cat {
 		case "Bank":
-			safeName = "Bank"
+			field = FieldFBAufschlBank(periodenNr)
 		case "Kasse":
-			safeName = "Kasse"
+			field = FieldFBAufschlKasse(periodenNr)
 		default:
-			safeName = "Sonstiges"
+			field = FieldFBAufschlSonstiges(periodenNr)
 		}
-		g.dbUpsertNamedRange(ws, fmt.Sprintf("aufschl_%s_%d", safeName, periodenNr), cValLC, r)
+		_ = g.bindInputField(ws, r, cValLC, field)
 
 		var formulaEUR string
 		if !isLast {

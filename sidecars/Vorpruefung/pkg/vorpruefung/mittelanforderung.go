@@ -24,11 +24,7 @@ const (
 	MA_CLR_KMW   = "DCE6F1"
 )
 
-var MA_CATEGORIES = []string{
-	"Bauausgaben", "Investitionen", "Personalkosten",
-	"Projektaktivitaeten", "Projektverwaltung",
-	"Evaluierung", "Audit", "Reserve",
-}
+var MA_CATEGORIES = ListKostenkategorien
 
 // CreateMittelanforderungSheet initialisiert das Blatt "IV. MA" und zeichnet 18 Perioden.
 func (g *Generator) CreateMittelanforderungSheet() error {
@@ -163,7 +159,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 
 	// ─── Zeile 2/3: Zeitraum (Von / Bis) ──────────────────────────────────────
 	vonRow := r
-	for _, zlbl := range []string{"Von:", "Bis:"} {
+	for i, zlbl := range []string{"Von:", "Bis:"} {
 		lblZeit := cellName(cLbl, r)
 		_ = f.SetCellValue(ws, lblZeit, zlbl)
 		_ = g.setStyle(ws, lblZeit, lblZeit, StyleOptions{Bold: true, HAlign: "left", VAlign: "center"})
@@ -174,6 +170,11 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 		_ = g.setStyle(ws, rngZeitStart, rngZeitEnd, StyleOptions{
 			HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFmtID: 14,
 		})
+		if i == 0 {
+			_ = g.bindInputField(ws, r, cLC, FieldMAVon(tableId))
+		} else {
+			_ = g.bindInputField(ws, r, cLC, FieldMABis(tableId))
+		}
 		r++
 	}
 
@@ -193,9 +194,9 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 	})
 	r++
 
-	// ─── Zeile 5: OANDA-Kurs-Eingabe (benannt MA_Kurs_<p>) ────────────────────
+	// ─── Zeile 5: OANDA-Kurs-Eingabe (benannt Inp_MA_Kurs_<p>) ────────────────────
 	rateAddr := absName(cLC, r)
-	maKursName := fmt.Sprintf("MA_Kurs_%d", tableId)
+	maKursName := FieldMAKurs(tableId).NamedRange
 
 	lblRate := cellName(cLbl, r)
 	_ = f.SetCellValue(ws, lblRate, "OANDA-Kurs:")
@@ -207,7 +208,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 	_ = g.setStyle(ws, rngRateStart, rngRateEnd, StyleOptions{
 		HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFormat: "0.0000",
 	})
-	g.dbUpsertNamedRange(ws, maKursName, cLC, r)
+	_ = g.bindInputField(ws, r, cLC, FieldMAKurs(tableId))
 	r++ // Tabellenkopf folgt direkt (Periode/Von/Bis/Kurs belegen Zeilen 5–8)
 
 	// ─── Zeile 9: Tabelle MA_<p> (Kostenkategorie | LC | EUR) ──────────────────
@@ -304,6 +305,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 
 	eigenLC := cellName(cLC, r)
 	_ = g.setStyle(ws, eigenLC, eigenLC, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
+	_ = g.bindInputField(ws, r, cLC, FieldMAEigenmittelLC(tableId))
 	addrEigenLC := absName(cLC, r)
 
 	eigenEUR := cellName(cEUR, r)
@@ -317,6 +319,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 
 	drittLC := cellName(cLC, r)
 	_ = g.setStyle(ws, drittLC, drittLC, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
+	_ = g.bindInputField(ws, r, cLC, FieldMADrittmittelLC(tableId))
 	addrDrittLC := absName(cLC, r)
 
 	drittEUR := cellName(cEUR, r)
@@ -348,10 +351,12 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (FB):")
 			}
 			_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
+			_ = g.bindInputField(ws, r, cLC, FieldMASaldoLC(tableId))
 		}
 	} else {
 		_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (manuell):")
 		_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
+		_ = g.bindInputField(ws, r, cLC, FieldMASaldoLC(tableId))
 	}
 
 	addrSaldoEUR := absName(cEUR, r)
@@ -379,7 +384,7 @@ func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, 
 	_ = f.SetCellValue(ws, cellName(cLbl, r), "Manueller Betrag (EUR):")
 	_ = g.setStyle(ws, cellName(cLbl, r), cellName(cLC, r), StyleOptions{HAlign: "left", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
 	_ = g.setStyle(ws, cellName(cEUR, r), cellName(cEUR, r), StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	g.dbUpsertNamedRange(ws, fmt.Sprintf("MA_ManBetrag_%d", tableId), cEUR, r)
+	_ = g.bindInputField(ws, r, cEUR, FieldMAManBetrag(tableId))
 
 	return nil
 }

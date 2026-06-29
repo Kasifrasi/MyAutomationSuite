@@ -2,6 +2,7 @@ package api
 
 import (
 	"shared/constants"
+	"vorpruefung/pkg/vorpruefung"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -11,31 +12,28 @@ import (
 func FillDefaults(f *excelize.File) error {
 	// 1. Dashboard
 	sheetDash := constants.VPSheetDASHBOARD
-	_ = setValSafe(f, sheetDash, CellDashVorprojekt, "Ja")
+	_ = setValByNamedRange(f, vorpruefung.FieldDashVorprojekt, vorpruefung.ListJaNein[0]) // Ja
 	for row := RowDashChecklistStart; row <= RowDashChecklistEnd; row++ {
 		cell, _ := excelize.CoordinatesToCellName(ColDashChecklist, row)
-		_ = setValSafe(f, sheetDash, cell, "Nein")
+		_ = setValSafe(f, sheetDash, cell, vorpruefung.ListJaNein[1]) // Nein
 	}
 
 	// 2. Budget
-	sheetBudget := constants.VPSheetBUDGET
-	_ = setValSafe(f, sheetBudget, CellBudgetReserveFreigabe, "Nein")
+	_ = setValByNamedRange(f, vorpruefung.FieldBudgetReserveFreigabe, vorpruefung.ListJaNein[1]) // Nein
 
 	// 3. FB Prüfung
-	sheetFBPruefung := constants.VPSheetFB_PRUEFUNG
-	_ = setValSafe(f, sheetFBPruefung, CellFBPruefungAuswahl, "Neuester FB")
-	_ = setValSafe(f, sheetFBPruefung, CellFBPruefungAbzugSaldo, "Abzug")
-	_ = setValSafe(f, sheetFBPruefung, CellFBPruefungAbzugMehr, "Abzug")
+	_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAuswahl, "Neuester FB")
+	_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAbzugSaldo, vorpruefung.ListAbzug[0])
+	_ = setValByNamedRange(f, vorpruefung.FieldFBPruefungAbzugMehr, vorpruefung.ListAbzug[0])
 
 	// 4. MA Prüfung
-	sheetMAPruefung := constants.VPSheetMA_PRUEFUNG
-	_ = setValSafe(f, sheetMAPruefung, CellMAPruefungAuswahl, "Neueste MA")
-	_ = setValSafe(f, sheetMAPruefung, CellMAPruefungAbzugSaldo, "Abzug")
-	_ = setValSafe(f, sheetMAPruefung, CellMAPruefungAbzugMehr, "Abzug")
-	_ = setValSafe(f, sheetMAPruefung, CellMAPruefungAbzugPrognose, "Abzug")
-	_ = setValSafe(f, sheetMAPruefung, CellMAPruefungMonateY1, "8")
-	_ = setValSafe(f, sheetMAPruefung, CellMAPruefungMonateY2, "0")
-	_ = setValSafe(f, sheetMAPruefung, CellMAPruefungMonateY3, "0")
+	_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAuswahl, "Neueste MA")
+	_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugSaldo, vorpruefung.ListAbzug[0])
+	_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugMehr, vorpruefung.ListAbzug[0])
+	_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungAbzugPrognose, vorpruefung.ListAbzug[0])
+	_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY1, "8")
+	_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY2, "0")
+	_ = setValByNamedRange(f, vorpruefung.FieldMAPruefungMonateY3, "0")
 
 	return nil
 }

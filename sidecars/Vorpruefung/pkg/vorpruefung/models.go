@@ -125,14 +125,14 @@ type ExpensePos struct {
 }
 
 func (c *BudgetConfig) Validate() error {
-	valid := make(map[string]bool, len(BG_CATEGORIES))
-	for _, cat := range BG_CATEGORIES {
+	valid := make(map[string]bool, len(ListKostenkategorien))
+	for _, cat := range ListKostenkategorien {
 		valid[cat] = true
 	}
 	seenID := make(map[string]bool, len(c.Ausgaben))
 	for i, p := range c.Ausgaben {
 		if !valid[p.Kategorie] {
-			return fmt.Errorf("ausgaben[%d]: unbekannte kategorie %q (erlaubt: %v)", i, p.Kategorie, BG_CATEGORIES)
+			return fmt.Errorf("ausgaben[%d]: unbekannte kategorie %q (erlaubt: %v)", i, p.Kategorie, ListKostenkategorien)
 		}
 		if p.ID == "" {
 			return fmt.Errorf("ausgaben[%d] (%s): id fehlt", i, p.Position)

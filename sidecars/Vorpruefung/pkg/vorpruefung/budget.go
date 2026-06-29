@@ -81,11 +81,6 @@ const (
 	BG_NAME_AUSG_EUR   = "Gesamtausgaben_EUR"
 )
 
-var BG_CATEGORIES = []string{
-	"Bauausgaben", "Investitionen", "Personalkosten", "Projektaktivitaeten",
-	"Projektverwaltung", "Evaluierung", "Audit", "Reserve",
-}
-
 var BG_YEARS = []string{"Jahr 1", "Jahr 2", "Jahr 3"}
 
 func bgKostenName(cat string, cur string) string {
@@ -166,7 +161,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	r += 1
 	eigenRow := r
 	g.setValue(ws, cellName(BG_COL_LABEL, r), "Eigenmittel", StyleOptions{Size: 10})
-	g.bgYearRow(ws, r)
+	g.bgYearRow(ws, r, []InputField{FieldBudgetEigenmittelLC, FieldBudgetEigenmittelY1, FieldBudgetEigenmittelY2, FieldBudgetEigenmittelY3, FieldBudgetEigenmittelEUR})
 	g.upsertNamedRange(BG_NAME_EIGEN_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_EIGEN_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -180,9 +175,12 @@ func (g *Generator) CreateBudgetSheet() error {
 	g.setValue(ws, cellName(BG_COL_POS, r), "Aufstellung je Geber → Tabelle rechts", StyleOptions{Size: 8, Italic: true, FontColor: BG_CLR_RES_TXT})
 	g.bgSummeCell(ws, r, BG_COL_LC, fmt.Sprintf(`=SUM(%s[Betrag (LC)])`, BG_TABLE_NAME), BG_FMT_LC)
 	g.bgSummeCell(ws, r, BG_COL_EUR, fmt.Sprintf(`=SUM(%s[Betrag (EUR)])`, BG_TABLE_NAME), BG_FMT_EUR)
-	for _, c := range []int{BG_COL_Y1, BG_COL_Y2, BG_COL_Y3} {
-		g.bgInput(ws, cellName(c, r), BG_FMT_LC)
-	}
+	g.bgInput(ws, cellName(BG_COL_Y1, r), BG_FMT_LC)
+	_ = g.bindInputField(ws, r, BG_COL_Y1, FieldBudgetDrittmittelY1)
+	g.bgInput(ws, cellName(BG_COL_Y2, r), BG_FMT_LC)
+	_ = g.bindInputField(ws, r, BG_COL_Y2, FieldBudgetDrittmittelY2)
+	g.bgInput(ws, cellName(BG_COL_Y3, r), BG_FMT_LC)
+	_ = g.bindInputField(ws, r, BG_COL_Y3, FieldBudgetDrittmittelY3)
 	g.upsertNamedRange(BG_NAME_DRITT_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_DRITT_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -193,7 +191,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	r += 1
 	kmwRow := r
 	g.setValue(ws, cellName(BG_COL_LABEL, r), "KMW-Mittel", StyleOptions{Size: 10})
-	g.bgYearRow(ws, r)
+	g.bgYearRow(ws, r, []InputField{FieldBudgetKMWLC, FieldBudgetKMWY1, FieldBudgetKMWY2, FieldBudgetKMWY3, FieldBudgetKMWEUR})
 	g.upsertNamedRange(BG_NAME_KMW_LW, BG_COL_LC, r)
 	g.upsertNamedRange(BG_NAME_KMW_EUR, BG_COL_EUR, r)
 	_ = f.SetRowHeight(ws, r, 22)
@@ -231,14 +229,14 @@ func (g *Generator) CreateBudgetSheet() error {
 	g.bgValueHeaderCells(ws, r)
 	r += 1
 
-	ausgDataRows := len(BG_CATEGORIES)
+	ausgDataRows := len(ListKostenkategorien)
 	if g.cfg.ExpensePositionsCount > 0 {
 		ausgDataRows = g.cfg.ExpensePositionsCount
 	}
 	catCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
 	idCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", NumFormat: "@", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
 	posCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID, WrapText: true}
-	catArrayStr := `{"` + strings.Join(BG_CATEGORIES, `","`) + `"}`
+	catArrayStr := `{"` + strings.Join(ListKostenkategorien, `","`) + `"}`
 	for i := 0; i < ausgDataRows; i++ {
 		row := r + i
 		_ = f.SetRowHeight(ws, row, 30)
@@ -259,7 +257,7 @@ func (g *Generator) CreateBudgetSheet() error {
 		}
 
 		// Leeres Template: Kategorie vorbelegt, ID per Formel, Werte leer.
-		g.setValue(ws, cellName(BG_COL_LABEL, row), BG_CATEGORIES[i], catCellOpts)
+		g.setValue(ws, cellName(BG_COL_LABEL, row), ListKostenkategorien[i], catCellOpts)
 
 		formulaID := fmt.Sprintf(`=IF(B%d="","",MATCH(B%d,%s,0)&"."&COUNTIF(B$%d:B%d,B%d))`, row, row, catArrayStr, r, row, row)
 		g.setFormula(ws, cellName(BG_COL_ID, row), formulaID, idCellOpts)
@@ -276,7 +274,7 @@ func (g *Generator) CreateBudgetSheet() error {
 
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, r), cellName(BG_COL_LABEL, r+ausgDataRows-1))
-	dv.SetDropList(BG_CATEGORIES)
+	dv.SetDropList(ListKostenkategorien)
 	_ = f.AddDataValidation(ws, dv)
 
 	r += ausgDataRows
@@ -301,7 +299,7 @@ func (g *Generator) CreateBudgetSheet() error {
 	ausgLastRow := ausgTotalsRow
 
 	reserveEurAddr := ""
-	for i, cat := range BG_CATEGORIES {
+	for i, cat := range ListKostenkategorien {
 		hr := 4 + i
 		g.setFormula(ws, cellName(BG_HELP_LC, hr), fmt.Sprintf(`=SUMIFS(%s[Betrag (LC)],%s[Kostenkategorie],"%s")`, BG_TABLE_AUSG, BG_TABLE_AUSG, cat), StyleOptions{})
 		g.setFormula(ws, cellName(BG_HELP_EUR, hr), fmt.Sprintf(`=SUMIFS(%s[Betrag (EUR)],%s[Kostenkategorie],"%s")`, BG_TABLE_AUSG, BG_TABLE_AUSG, cat), StyleOptions{})
@@ -312,7 +310,7 @@ func (g *Generator) CreateBudgetSheet() error {
 		}
 	}
 
-	gesHr := 4 + len(BG_CATEGORIES)
+	gesHr := 4 + len(ListKostenkategorien)
 	g.setFormula(ws, cellName(BG_HELP_LC, gesHr), fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{})
 	g.setFormula(ws, cellName(BG_HELP_EUR, gesHr), fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BG_TABLE_AUSG), StyleOptions{})
 	g.upsertNamedRange(BG_NAME_AUSG_LW, BG_HELP_LC, gesHr)
@@ -433,11 +431,17 @@ func (g *Generator) bgTableHeader(ws string, r int, c1 int, c2 int) {
 	}
 }
 
-func (g *Generator) bgYearRow(ws string, r int) {
-	for _, c := range []int{BG_COL_LC, BG_COL_Y1, BG_COL_Y2, BG_COL_Y3} {
+func (g *Generator) bgYearRow(ws string, r int, fields []InputField) {
+	for i, c := range []int{BG_COL_LC, BG_COL_Y1, BG_COL_Y2, BG_COL_Y3} {
 		g.bgInput(ws, cellName(c, r), BG_FMT_LC)
+		if i < len(fields) {
+			_ = g.bindInputField(ws, r, c, fields[i])
+		}
 	}
 	g.bgInput(ws, cellName(BG_COL_EUR, r), BG_FMT_EUR)
+	if len(fields) > 4 {
+		_ = g.bindInputField(ws, r, BG_COL_EUR, fields[4])
+	}
 }
 
 // bgFillIncomeRow trägt LC / Jahr 1–3 / EUR einer Finanzierungszeile aus der Config ein.
@@ -510,10 +514,8 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 	checkAddr := absName(c, rCheck)
 
 	// Dropdown-Auswahl Ja/Nein hinzufügen
-	dv := excelize.NewDataValidation(true)
-	dv.Sqref = cellName(col, rCheck)
-	dv.SetDropList([]string{"Ja", "Nein"})
-	_ = g.file.AddDataValidation(ws, dv)
+	// The validation is handled via bindInputField using FieldBudgetReserveFreigabe
+	_ = g.bindInputField(ws, rCheck, c, FieldBudgetReserveFreigabe)
 
 	statusFormula := fmt.Sprintf(`=IF(%s="Ja","FREIGEGEBEN","NICHT FREIGEGEBEN")`, checkAddr)
 	statusStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
@@ -534,7 +536,6 @@ func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
 	g.addConditionalFormat(ws, cellName(col, rStatus), fmt.Sprintf(`%s="Ja"`, checkAddr), onStyleOpts)
 
 	g.styleOuterBorder(ws, rHead, col, rStatus, col, 2, BG_CLR_BORDER)
-	g.upsertNamedRange(BG_NAME_RESERVE, c, rCheck)
 	return checkAddr
 }
 

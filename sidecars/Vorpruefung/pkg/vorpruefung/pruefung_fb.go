@@ -188,7 +188,11 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	var deds []dedRow
 
 	// Saldovortrag (berechnet)
-	g.evalToggle(ws, cellName(tog, rr))
+	if isMA {
+		g.evalToggle(ws, cellName(tog, rr), FieldMAPruefungAbzugSaldo)
+	} else {
+		g.evalToggle(ws, cellName(tog, rr), FieldFBPruefungAbzugSaldo)
+	}
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Saldovortrag", false)
 	g.evalDeduct(ws, cellName(valR, rr), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", DB_NAME_SALDOVORTRAG_EUR))
 	saldoCell := cellName(valR, rr)
@@ -196,7 +200,11 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	rr++
 
 	// Mehreinnahmen (Formel wird nachgelagert gesetzt)
-	g.evalToggle(ws, cellName(tog, rr))
+	if isMA {
+		g.evalToggle(ws, cellName(tog, rr), FieldMAPruefungAbzugMehr)
+	} else {
+		g.evalToggle(ws, cellName(tog, rr), FieldFBPruefungAbzugMehr)
+	}
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Mehreinnahmen", false)
 	g.evalDeductPlaceholder(ws, cellName(valR, rr))
 	mehrCell := cellName(valR, rr)
@@ -205,7 +213,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 
 	prognCell := ""
 	if isMA {
-		g.evalToggle(ws, cellName(tog, rr))
+		g.evalToggle(ws, cellName(tog, rr), FieldMAPruefungAbzugPrognose)
 		g.evalKmwLabel(ws, rr, lblR1, lblR2, "Prognostizierte Mehreinnahmen", false)
 		g.evalDeductPlaceholder(ws, cellName(valR, rr))
 		prognCell = cellName(valR, rr)
@@ -371,15 +379,13 @@ func (g *Generator) evalKmwInputEmpty(ws, cell string) {
 	})
 }
 
-func (g *Generator) evalToggle(ws, cell string) {
+func (g *Generator) evalToggle(ws, cell string, field InputField) {
 	_ = g.setStyle(ws, cell, cell, StyleOptions{
 		Size: 9.0, HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 	})
-	dv := excelize.NewDataValidation(true)
-	dv.Sqref = cell
-	dv.SetDropList([]string{"Abzug", "Kein Abzug"})
-	_ = g.file.AddDataValidation(ws, dv)
+	col, row, _ := excelize.CellNameToCoordinates(cell)
+	_ = g.bindInputField(ws, row, col, field)
 }
 
 func (g *Generator) evalDeduct(ws, cell, formula string) {
@@ -445,6 +451,8 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 	g.evalSelLabel(ws, r, "Auswahl:")
 	labelCell := cellName(EV_PB_V1, r)
 	g.mergeCells(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
+	col, row, _ := excelize.CellNameToCoordinates(labelCell)
+	_ = g.bindInputField(ws, row, col, FieldFBPruefungAuswahl)
 
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell

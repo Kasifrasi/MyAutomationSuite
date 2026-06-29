@@ -20,6 +20,8 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	g.evalSelLabel(ws, r, "Auswahl:")
 	labelCell := cellName(EV_PB_V1, r)
 	g.mergeCells(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
+	col, row, _ := excelize.CellNameToCoordinates(labelCell)
+	_ = g.bindInputField(ws, row, col, FieldMAPruefungAuswahl)
 
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
@@ -201,16 +203,14 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 		_ = g.file.SetCellFormula(ws, c1, formula)
 	}
 	// Mittiges Eingabefeld (Monatsanteil je Jahr, 0..12).
-	monthsInput := func(row, val int) string {
+	monthsInput := func(row, val int, field InputField) string {
 		cell := cellName(vMID, row)
 		_ = g.setStyle(ws, cell, cell, StyleOptions{
 			HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_INPUT,
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
 		})
-		dv := excelize.NewDataValidation(true)
-		dv.Sqref = cell
-		_ = dv.SetRange(0, 12, excelize.DataValidationTypeWhole, excelize.DataValidationOperatorBetween)
-		_ = g.file.AddDataValidation(ws, dv)
+		c, r, _ := excelize.CellNameToCoordinates(cell)
+		_ = g.bindInputField(ws, r, c, field)
 		return absName(vMID, row)
 	}
 	// Leere (aber gerahmte) Mittelzelle für reine Währungs-Paarzeilen.
@@ -260,6 +260,7 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	yearBudLCAddrs := make([]string, len(BG_YEARS))
 	yearBudEURAddrs := make([]string, len(BG_YEARS))
 	defaultMonths := []int{8, 0, 0} // bisheriges 8-Monats-Verhalten als Ausgangswert
+	fields := []InputField{FieldMAPruefungMonateY1, FieldMAPruefungMonateY2, FieldMAPruefungMonateY3}
 	for i, year := range BG_YEARS {
 		label(r, "Jahresbudget "+year, false)
 		budF := fmt.Sprintf("=IFERROR(ROUND(SUBTOTAL(109,%s[%s]),2),0)", BG_TABLE_AUSG, year)
@@ -269,7 +270,7 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 		if i < len(defaultMonths) {
 			dm = defaultMonths[i]
 		}
-		yearMonthAddrs[i] = monthsInput(r, dm)
+		yearMonthAddrs[i] = monthsInput(r, dm, fields[i])
 		g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", yearBudLCAddrs[i], rate), EV_FMT_EUR, false)
 		yearBudEURAddrs[i] = absName(vEUR, r)
 		r++

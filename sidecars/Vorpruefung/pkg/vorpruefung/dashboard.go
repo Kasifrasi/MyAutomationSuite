@@ -153,10 +153,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	_ = g.file.SetRowHeight(ws, DB_TITLE_ROW, 24.0)
 
 	// Ausgeblendete Währungs-Auswahlliste bereitstellen
-	err = g.dbEnsureCurrencyList(ws)
-	if err != nil {
-		return err
-	}
+	// err = g.dbEnsureCurrencyList(ws) (removed)
 
 	r := DB_TITLE_ROW + 1
 
@@ -169,6 +166,8 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashProjektnummer)
+
 	err = g.dbLabel(ws, r, DB_C_LBL2, "Vorprojekt vorhanden")
 	if err != nil {
 		return err
@@ -177,6 +176,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVorprojekt)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -199,6 +199,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashProjekttitel)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -211,6 +212,8 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashProjekttraeger)
+
 	err = g.dbLabel(ws, r, DB_C_LBL2, "Berichtswaehrung")
 	if err != nil {
 		return err
@@ -223,6 +226,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashBerichtswaehrung)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -236,6 +240,8 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashProjektstart)
+
 	err = g.dbLabel(ws, r, DB_C_LBL2, "Projektende")
 	if err != nil {
 		return err
@@ -244,6 +250,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashProjektende)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -329,6 +336,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPNummer)
 	err = g.setValue(ws, cellName(DB_C_LBL2, r), "VP-Berichtswaehrung", StyleOptions{
 		Bold:         true,
 		Size:         10.0,
@@ -362,6 +370,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPBerichtswaehrung)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -374,6 +383,8 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPEnde)
+
 	err = g.dbLabel(ws, r, DB_C_LBL2, "Wechselkurs")
 	if err != nil {
 		return err
@@ -382,6 +393,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPWechselkurs)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -395,6 +407,8 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPSaldoLC)
+
 	err = g.dbLabel(ws, r, DB_C_LBL2, "Saldo (EUR)")
 	if err != nil {
 		return err
@@ -407,6 +421,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPSaldoEUR)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
@@ -419,6 +434,8 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPFolgeprojektstart)
+
 	err = g.dbLabel(ws, r, DB_C_LBL2, "Wechselkurs")
 	if err != nil {
 		return err
@@ -427,6 +444,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPFolgeWechselkurs)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	rFolgeKurs := r
 	r++
@@ -441,6 +459,8 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPFolgeSaldoLC)
+
 	err = g.dbLabel(ws, r, DB_C_LBL2, "Saldovortrag (EUR)")
 	if err != nil {
 		return err
@@ -453,6 +473,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 	if err != nil {
 		return err
 	}
+	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPFolgeSaldoEUR)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	vpEnd := r
 	r++ // Skip Row 14 (r=14)
@@ -490,6 +511,7 @@ func (g *Generator) drawStaticProjectInfo(ws string) error {
 		if err != nil {
 			return err
 		}
+		_ = g.bindInputField(ws, row, DB_C_LBL2, FieldDashChecklist(i+1))
 
 		// Text (Spalte E)
 		txtOpts := StyleOptions{
@@ -631,14 +653,14 @@ func (g *Generator) dbDropdownJaNein(sheet string, row, col int, defaultValue st
 	}
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = cell
-	dv.SetDropList([]string{"Ja", "Nein"})
+	dv.SetDropList(ListJaNein)
 	return g.file.AddDataValidation(sheet, dv)
 }
 
 func (g *Generator) dbCurrencyValidation(sheet string, row, col int) error {
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = cellName(col, row)
-	dv.SetSqrefDropList(fmt.Sprintf("'%s'!$%s$1:$%s$%d", DB_SHEET_NAME, colLetter(DB_CCY_COL), colLetter(DB_CCY_COL), len(DB_WAEHRUNGEN)))
+	dv.SetDropList(ListWaehrung)
 	return g.file.AddDataValidation(sheet, dv)
 }
 
