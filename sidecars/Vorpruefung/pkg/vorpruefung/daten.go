@@ -124,7 +124,8 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	// ─── FB-Meta (Zeilen 1..18) ───────────────────────────────────────────────
 	// "Befüllt" = es kam bei den Ausgaben ODER den laufenden Einnahmen (Typzeilen
 	// 12..15, ohne Vorperiodensaldo) zu Eingaben ODER in den gelben Eingabefeldern
-	// der Saldenaufschlüsselung (Bank, Kasse, Sonstiges) wurde etwas eingetragen.
+	// der Saldenaufschlüsselung (Bank, Kasse, Sonstiges) wurde etwas eingetragen
+	// ODER das "Von" / "Bis" Datum wurde in Zeile 5 / 6 ausgefüllt.
 	for p := 1; p <= MA_PERIOD_COUNT; p++ {
 		ausgName := fmt.Sprintf("Ausgaben_%d", p)
 		incCol := colLetter(3 + (p-1)*7) // laufende Einnahmen (LC) je FB-Periode
@@ -134,9 +135,11 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		aufschlSonstiges := fmt.Sprintf("aufschl_Sonstiges_%d", p)
 
 		_ = f.SetCellValue(ws, dc(EV_DTN_FB_META_PER, p), p)
-		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_FILL, p),
-			fmt.Sprintf(`=IF((IFERROR(SUBTOTAL(109,%s[Ausgaben (LC)]),0)<>0)+(IFERROR(SUM('%s'!%s12:%s15),0)<>0)+(IFERROR(COUNT(%s, %s, %s),0)>0)>0,1,0)`,
-				ausgName, fbSheet, incCol, incCol, aufschlBank, aufschlKasse, aufschlSonstiges))
+
+		fillFormula := fmt.Sprintf(`=IF((IFERROR(SUBTOTAL(109,%s[Ausgaben (LC)]),0)<>0)+(IFERROR(SUM('%s'!%s12:%s15),0)<>0)+(IFERROR(COUNT(%s, %s, %s),0)>0)+('%s'!%s5<>"")+('%s'!%s6<>"")>0,1,0)`,
+			ausgName, fbSheet, incCol, incCol, aufschlBank, aufschlKasse, aufschlSonstiges, fbSheet, incCol, fbSheet, incCol)
+		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_FILL, p), fillFormula)
+
 		_ = f.SetCellFormula(ws, dc(EV_DTN_FB_META_LABEL, p),
 			fmt.Sprintf(`=IF(%s=1,"Periode "&%s,"")`, dc(EV_DTN_FB_META_FILL, p), dc(EV_DTN_FB_META_PER, p)))
 	}
