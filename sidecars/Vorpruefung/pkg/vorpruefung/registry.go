@@ -1,6 +1,10 @@
 package vorpruefung
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+	"shared/constants"
+)
 
 type ValidationList []string
 
@@ -13,235 +17,198 @@ var (
 	ListKostenkategorien ValidationList = []string{"Bauausgaben", "Investitionen", "Personalkosten", "Projektaktivitaeten", "Projektverwaltung", "Evaluierung", "Audit", "Reserve"}
 )
 
+// 1. Structs
 type InputField struct {
-	NamedRange string
+	namedRange string
+	sheet      string 
 	Validation ValidationList
 }
+
+func (i InputField) NamedRange() string { return i.namedRange }
+func (i InputField) Sheet() string      { return i.sheet }
 
 type OutputField struct {
-	NamedRange string
-	Validation ValidationList
+	namedRange string 
+	sheet      string
 }
 
-// Registry aller skalaren gelben Felder
+func (o OutputField) NamedRange() string { return o.namedRange }
+func (o OutputField) Sheet() string      { return o.sheet }
+
+// 2. Constructors
+func NewInputField(sheet string, baseName string, val ValidationList) InputField {
+	namedRange := "Inp_" + baseName
+	if strings.HasPrefix(baseName, "Inp_") {
+		panic(fmt.Sprintf("[Developer Error] Bitte kein 'Inp_' mehr angeben. Das wird automatisch hinzugefügt für: %s", namedRange))
+	}
+	return InputField{namedRange: namedRange, sheet: sheet, Validation: val}
+}
+
+func NewOutputField(sheet string, baseName string) OutputField {
+	namedRange := "Out_" + baseName
+	if strings.HasPrefix(baseName, "Out_") {
+		panic(fmt.Sprintf("[Developer Error] Bitte kein 'Out_' mehr angeben. Das wird automatisch hinzugefügt für: %s", namedRange))
+	}
+	return OutputField{namedRange: namedRange, sheet: sheet}
+}
+
+// 3. Factories
+type InputFactory struct {
+	Sheet  string
+	Format string
+	Val    ValidationList
+}
+
+func (f InputFactory) Get(args ...any) InputField {
+	namedRange := fmt.Sprintf(f.Format, args...)
+	return NewInputField(f.Sheet, namedRange, f.Val)
+}
+
+type OutputFactory struct {
+	Sheet  string
+	Format string
+}
+
+func (f OutputFactory) Get(args ...any) OutputField {
+	namedRange := fmt.Sprintf(f.Format, args...)
+	return NewOutputField(f.Sheet, namedRange)
+}
+
+// 4. SheetBuilder (Die geniale Erweiterung zur Gruppierung)
+type SheetBuilder struct {
+	Sheet  string
+	Prefix string
+}
+
+func (b SheetBuilder) Inp(baseName string, val ValidationList) InputField {
+	return NewInputField(b.Sheet, b.Prefix+baseName, val)
+}
+
+func (b SheetBuilder) Out(baseName string) OutputField {
+	return NewOutputField(b.Sheet, b.Prefix+baseName)
+}
+
+func (b SheetBuilder) InpFact(format string, val ValidationList) InputFactory {
+	return InputFactory{Sheet: b.Sheet, Format: b.Prefix + format, Val: val}
+}
+
+func (b SheetBuilder) OutFact(format string) OutputFactory {
+	return OutputFactory{Sheet: b.Sheet, Format: b.Prefix + format}
+}
+
+// 5. Instanziierung der SheetBuilder für jedes Sheet
 var (
-	// Dashboard
-	FieldDashProjektnummer       = InputField{NamedRange: "Inp_Dash_Projektnummer"}
-	FieldDashVorprojekt          = InputField{NamedRange: "Inp_Dash_Vorprojekt", Validation: ListJaNein}
-	FieldDashProjekttitel        = InputField{NamedRange: "Inp_Dash_Projekttitel"}
-	FieldDashProjekttraeger      = InputField{NamedRange: "Inp_Dash_Projekttraeger"}
-	FieldDashBerichtswaehrung    = InputField{NamedRange: "Inp_Dash_Berichtswaehrung"}
-	FieldDashProjektstart        = InputField{NamedRange: "Inp_Dash_Projektstart"}
-	FieldDashProjektende         = InputField{NamedRange: "Inp_Dash_Projektende"}
-	FieldDashVPNummer            = InputField{NamedRange: "Inp_Dash_VPNummer"}
-	FieldDashVPBerichtswaehrung  = InputField{NamedRange: "Inp_Dash_VPBerichtswaehrung"}
-	FieldDashVPEnde              = InputField{NamedRange: "Inp_Dash_VPEnde"}
-	FieldDashVPWechselkurs       = InputField{NamedRange: "Inp_Dash_VPWechselkurs"}
-	FieldDashVPSaldoLC           = InputField{NamedRange: "Inp_Dash_VPSaldoLC"}
-	FieldDashVPSaldoEUR          = InputField{NamedRange: "Inp_Dash_VPSaldoEUR"}
-	FieldDashVPFolgeprojektstart = InputField{NamedRange: "Inp_Dash_VPFolgeprojektstart"}
-	FieldDashVPFolgeWechselkurs  = InputField{NamedRange: "Inp_Dash_VPFolgeWechselkurs"}
-	FieldDashVPFolgeSaldoLC      = InputField{NamedRange: "Inp_Dash_VPFolgeSaldoLC"}
-	FieldDashVPFolgeSaldoEUR     = InputField{NamedRange: "Inp_Dash_VPFolgeSaldoEUR"}
-
-	// Budget
-	FieldBudgetReserveFreigabe = InputField{NamedRange: "Inp_Budget_ReserveFreigabe", Validation: ListJaNein}
-	FieldBudgetDrittmittelY1   = InputField{NamedRange: "Inp_Budget_DrittmittelY1"}
-	FieldBudgetDrittmittelY2   = InputField{NamedRange: "Inp_Budget_DrittmittelY2"}
-	FieldBudgetDrittmittelY3   = InputField{NamedRange: "Inp_Budget_DrittmittelY3"}
-
-	FieldBudgetEigenmittelLC  = InputField{NamedRange: "Inp_Budget_EigenmittelLC"}
-	FieldBudgetEigenmittelY1  = InputField{NamedRange: "Inp_Budget_EigenmittelY1"}
-	FieldBudgetEigenmittelY2  = InputField{NamedRange: "Inp_Budget_EigenmittelY2"}
-	FieldBudgetEigenmittelY3  = InputField{NamedRange: "Inp_Budget_EigenmittelY3"}
-	FieldBudgetEigenmittelEUR = InputField{NamedRange: "Inp_Budget_EigenmittelEUR"}
-
-	FieldBudgetKMWLC  = InputField{NamedRange: "Inp_Budget_KMWLC"}
-	FieldBudgetKMWY1  = InputField{NamedRange: "Inp_Budget_KMWY1"}
-	FieldBudgetKMWY2  = InputField{NamedRange: "Inp_Budget_KMWY2"}
-	FieldBudgetKMWY3  = InputField{NamedRange: "Inp_Budget_KMWY3"}
-	FieldBudgetKMWEUR = InputField{NamedRange: "Inp_Budget_KMWEUR"}
-
-	// Pruefung FB
-	FieldFBPruefungAuswahl    = InputField{NamedRange: "Inp_FBPruefung_Auswahl"}
-	FieldFBPruefungAbzugSaldo = InputField{NamedRange: "Inp_FBPruefung_AbzugSaldo", Validation: ListAbzug}
-	FieldFBPruefungAbzugMehr  = InputField{NamedRange: "Inp_FBPruefung_AbzugMehr", Validation: ListAbzug}
-
-	// Pruefung MA
-	FieldMAPruefungAuswahl       = InputField{NamedRange: "Inp_MAPruefung_Auswahl"}
-	FieldMAPruefungAbzugSaldo    = InputField{NamedRange: "Inp_MAPruefung_AbzugSaldo", Validation: ListAbzug}
-	FieldMAPruefungAbzugMehr     = InputField{NamedRange: "Inp_MAPruefung_AbzugMehr", Validation: ListAbzug}
-	FieldMAPruefungAbzugPrognose = InputField{NamedRange: "Inp_MAPruefung_AbzugPrognose", Validation: ListAbzug}
-	FieldMAPruefungMonateY1      = InputField{NamedRange: "Inp_MAPruefung_MonateY1", Validation: ListMonate}
-	FieldMAPruefungMonateY2      = InputField{NamedRange: "Inp_MAPruefung_MonateY2", Validation: ListMonate}
-	FieldMAPruefungMonateY3      = InputField{NamedRange: "Inp_MAPruefung_MonateY3", Validation: ListMonate}
+	dash   = SheetBuilder{Sheet: constants.VPSheetDASHBOARD, Prefix: "Dash_"}
+	budget = SheetBuilder{Sheet: constants.VPSheetBUDGET, Prefix: "Budget_"}
+	kmw    = SheetBuilder{Sheet: constants.VPSheetKMW_MITTEL, Prefix: "KMW_"}
+	fb     = SheetBuilder{Sheet: constants.VPSheetFINANZBERICHTE, Prefix: "FB_"}
+	fbPrue = SheetBuilder{Sheet: constants.VPSheetFB_PRUEFUNG, Prefix: "FBPruef_"}
+	ma     = SheetBuilder{Sheet: constants.VPSheetMA, Prefix: "MA_"}
+	maPrue = SheetBuilder{Sheet: constants.VPSheetMA_PRUEFUNG, Prefix: "MAPruef_"}
 )
 
-// ─────────────────────────────────────────────────────────────
-// Dashboard
-// ─────────────────────────────────────────────────────────────
+// Registry aller Felder (statisch und dynamisch)
+var (
+	// ─────────────────────────────────────────────────────────────
+	// Dashboard
+	// ─────────────────────────────────────────────────────────────
+	FieldDashProjektnummer       = dash.Inp("Projektnummer", nil)
+	FieldDashVorprojekt          = dash.Inp("Vorprojekt", ListJaNein)
+	FieldDashProjekttitel        = dash.Inp("Projekttitel", nil)
+	FieldDashProjekttraeger      = dash.Inp("Projekttraeger", nil)
+	FieldDashBerichtswaehrung    = dash.Inp("Berichtswaehrung", nil)
+	FieldDashProjektstart        = dash.Inp("Projektstart", nil)
+	FieldDashProjektende         = dash.Inp("Projektende", nil)
+	FieldDashVPNummer            = dash.Inp("VPNummer", nil)
+	FieldDashVPBerichtswaehrung  = dash.Inp("VPBerichtswaehrung", nil)
+	FieldDashVPEnde              = dash.Inp("VPEnde", nil)
+	FieldDashVPWechselkurs       = dash.Inp("VPWechselkurs", nil)
+	FieldDashVPSaldoLC           = dash.Inp("VPSaldoLC", nil)
+	FieldDashVPSaldoEUR          = dash.Inp("VPSaldoEUR", nil)
+	FieldDashVPFolgeprojektstart = dash.Inp("VPFolgeprojektstart", nil)
+	FieldDashVPFolgeWechselkurs  = dash.Inp("VPFolgeWechselkurs", nil)
+	FieldDashVPFolgeSaldoLC      = dash.Inp("VPFolgeSaldoLC", nil)
+	FieldDashVPFolgeSaldoEUR     = dash.Inp("VPFolgeSaldoEUR", nil)
+	
+	// Dynamische Dashboard-Felder (Checkliste)
+	FieldDashChecklist           = dash.InpFact("Checklist_%d", ListJaNein)
 
-// Output Fields
-// ─────────────────────────────────────────────────────────────
+	// ─────────────────────────────────────────────────────────────
+	// I. Budget
+	// ─────────────────────────────────────────────────────────────
+	FieldBudgetReserveFreigabe = budget.Inp("ReserveFreigabe", ListJaNein)
+	FieldBudgetDrittmittelY1   = budget.Inp("DrittmittelY1", nil)
+	FieldBudgetDrittmittelY2   = budget.Inp("DrittmittelY2", nil)
+	FieldBudgetDrittmittelY3   = budget.Inp("DrittmittelY3", nil)
 
+	FieldBudgetEigenmittelLC  = budget.Inp("EigenmittelLC", nil)
+	FieldBudgetEigenmittelY1  = budget.Inp("EigenmittelY1", nil)
+	FieldBudgetEigenmittelY2  = budget.Inp("EigenmittelY2", nil)
+	FieldBudgetEigenmittelY3  = budget.Inp("EigenmittelY3", nil)
+	FieldBudgetEigenmittelEUR = budget.Inp("EigenmittelEUR", nil)
 
-// Input Fields
-// ─────────────────────────────────────────────────────────────
-func FieldDashChecklist(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_Dash_Checklist_%d", index), Validation: ListJaNein}
-}
+	FieldBudgetKMWLC  = budget.Inp("KMWLC", nil)
+	FieldBudgetKMWY1  = budget.Inp("KMWY1", nil)
+	FieldBudgetKMWY2  = budget.Inp("KMWY2", nil)
+	FieldBudgetKMWY3  = budget.Inp("KMWY3", nil)
+	FieldBudgetKMWEUR = budget.Inp("KMWEUR", nil)
 
-func FieldKMWPeriode(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Periode_%d", index)}
-}
+	// ─────────────────────────────────────────────────────────────
+	// II. KMW-Mittel
+	// ─────────────────────────────────────────────────────────────
+	FieldKMWPeriode  = kmw.InpFact("Periode_%d", nil)
+	FieldKMWWaehrung = kmw.InpFact("Waehrung_%d", nil)
+	FieldKMWBetrag   = kmw.InpFact("Betrag_%d", nil)
+	FieldKMWDatum    = kmw.InpFact("Datum_%d", nil)
 
-func FieldKMWWaehrung(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Waehrung_%d", index)}
-}
+	// ─────────────────────────────────────────────────────────────
+	// III. Finanzberichte
+	// ─────────────────────────────────────────────────────────────
+	FieldFBVon              = fb.InpFact("Von_%d", nil)
+	FieldFBBis              = fb.InpFact("Bis_%d", nil)
+	FieldFBAufschlBank      = fb.InpFact("aufschl_Bank_%d", nil)
+	FieldFBAufschlKasse     = fb.InpFact("aufschl_Kasse_%d", nil)
+	FieldFBAufschlSonstiges = fb.InpFact("aufschl_Sonstiges_%d", nil)
 
-func FieldKMWBetrag(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Betrag_%d", index)}
-}
+	// ─────────────────────────────────────────────────────────────
+	// Pruefung FB
+	// ─────────────────────────────────────────────────────────────
+	FieldFBPruefungAuswahl    = fbPrue.Inp("Auswahl", nil)
+	FieldFBPruefungAbzugSaldo = fbPrue.Inp("AbzugSaldo", ListAbzug)
+	FieldFBPruefungAbzugMehr  = fbPrue.Inp("AbzugMehr", ListAbzug)
 
-func FieldKMWDatum(index int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_KMW_Datum_%d", index)}
-}
+	// ─────────────────────────────────────────────────────────────
+	// IV. MA
+	// ─────────────────────────────────────────────────────────────
+	// Input Fields
+	FieldMAVon              = ma.InpFact("Von_%d", nil)
+	FieldMABis              = ma.InpFact("Bis_%d", nil)
+	FieldMAKurs             = ma.InpFact("Kurs_%d", nil)
+	FieldMAEigenmittelLC    = ma.InpFact("EigenmittelLC_%d", nil)
+	FieldMADrittmittelLC    = ma.InpFact("DrittmittelLC_%d", nil)
+	FieldMASaldoLC          = ma.InpFact("SaldoLC_%d", nil)
+	FieldMAManBetrag        = ma.InpFact("ManBetrag_%d", nil)
+	FieldMAKat              = ma.InpFact("Kat_%d_%d_%d", nil)
+	FieldMAKmwLC            = ma.InpFact("KmwLC_%d_%d", nil)
 
-// ─────────────────────────────────────────────────────────────
-// I. Budget
-// ─────────────────────────────────────────────────────────────
+	// Output Fields
+	FieldMAPeriode          = ma.OutFact("Periode_%d")
+	FieldMAZeitraum         = ma.OutFact("Zeitraum_%d")
+	FieldMASumLC            = ma.OutFact("SumLC_%d")
+	FieldMASumEUR           = ma.OutFact("SumEUR_%d")
+	FieldMAEigenmittelEUR   = ma.OutFact("EigenmittelEUR_%d")
+	FieldMADrittmittelEUR   = ma.OutFact("DrittmittelEUR_%d")
+	FieldMAKatEUR           = ma.OutFact("KatEUR_%d_%d_%d")
+	FieldMAKmwEUR           = ma.OutFact("KmwEUR_%d_%d")
 
-// Output Fields
-// ─────────────────────────────────────────────────────────────
-
-
-// Input Fields
-// ─────────────────────────────────────────────────────────────
-
-
-// ─────────────────────────────────────────────────────────────
-// II. KMW-Mittel
-// ─────────────────────────────────────────────────────────────
-
-// Output Fields
-// ─────────────────────────────────────────────────────────────
-
-
-// Input Fields
-// ─────────────────────────────────────────────────────────────
-
-
-
-// ─────────────────────────────────────────────────────────────
-// III. Finanzberichte
-// ─────────────────────────────────────────────────────────────
-
-// Output Fields
-// ─────────────────────────────────────────────────────────────
-
-
-// Input Fields
-// ─────────────────────────────────────────────────────────────
-func FieldFBVon(period int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_FB_Von_%d", period)}
-}
-
-func FieldFBBis(period int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_FB_Bis_%d", period)}
-}
-
-func FieldFBAufschlBank(period int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_FB_aufschl_Bank_%d", period)}
-}
-
-func FieldFBAufschlKasse(period int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_FB_aufschl_Kasse_%d", period)}
-}
-
-func FieldFBAufschlSonstiges(period int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_FB_aufschl_Sonstiges_%d", period)}
-}
-
-// ─────────────────────────────────────────────────────────────
-// IV. MA
-// ─────────────────────────────────────────────────────────────
-
-// Output Fields
-// ─────────────────────────────────────────────────────────────
-func FieldMAPeriode(tableId int) string {
-	return fmt.Sprintf("Out_MA_Periode_%d", tableId)
-}
-
-func FieldMAZeitraum(tableId int) string {
-	return fmt.Sprintf("Out_MA_Zeitraum_%d", tableId)
-}
-
-func FieldMASumLC(tableId int) string {
-	return fmt.Sprintf("Out_MA_SumLC_%d", tableId)
-}
-
-func FieldMASumEUR(tableId int) string {
-	return fmt.Sprintf("Out_MA_SumEUR_%d", tableId)
-}
-
-func FieldMAKatEUR(tableId, rowIdx int) string {
-	period := ((tableId - 1) % 18) + 1
-	slot := ((tableId - 1) / 18) + 1
-	return fmt.Sprintf("Out_MA_KatEUR_%d_%d_%d", period, slot, rowIdx)
-}
-
-// Input Fields
-// ─────────────────────────────────────────────────────────────
-func FieldMAVon(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Von_%d", tableId)}
-}
-
-func FieldMABis(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Bis_%d", tableId)}
-}
-
-func FieldMAKurs(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Kurs_%d", tableId)}
-}
-
-func FieldMAEigenmittelLC(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_EigenmittelLC_%d", tableId)}
-}
-
-func FieldMAEigenmittelEUR(tableId int) string {
-	return fmt.Sprintf("Out_MA_EigenmittelEUR_%d", tableId)
-}
-
-func FieldMADrittmittelEUR(tableId int) string {
-	return fmt.Sprintf("Out_MA_DrittmittelEUR_%d", tableId)
-}
-
-func FieldMADrittmittelLC(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_DrittmittelLC_%d", tableId)}
-}
-
-func FieldMASaldoLC(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_SaldoLC_%d", tableId)}
-}
-
-func FieldMAManBetrag(tableId int) InputField {
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_ManBetrag_%d", tableId)}
-}
-
-func FieldMAKmwLC(tableId int) InputField {
-	period := ((tableId - 1) % 18) + 1
-	slot := ((tableId - 1) / 18) + 1
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_KmwLC_%d_%d", period, slot)}
-}
-
-func FieldMAKmwEUR(tableId int) string {
-	period := ((tableId - 1) % 18) + 1
-	slot := ((tableId - 1) / 18) + 1
-	return fmt.Sprintf("Out_MA_KmwEUR_%d_%d", period, slot)
-}
-
-func FieldMAKat(tableId, rowIdx int) InputField {
-	period := ((tableId - 1) % 18) + 1
-	slot := ((tableId - 1) / 18) + 1
-	return InputField{NamedRange: fmt.Sprintf("Inp_MA_Kat_%d_%d_%d", period, slot, rowIdx)}
-}
+	// ─────────────────────────────────────────────────────────────
+	// Pruefung MA
+	// ─────────────────────────────────────────────────────────────
+	FieldMAPruefungAuswahl       = maPrue.Inp("Auswahl", nil)
+	FieldMAPruefungAbzugSaldo    = maPrue.Inp("AbzugSaldo", ListAbzug)
+	FieldMAPruefungAbzugMehr     = maPrue.Inp("AbzugMehr", ListAbzug)
+	FieldMAPruefungAbzugPrognose = maPrue.Inp("AbzugPrognose", ListAbzug)
+	FieldMAPruefungMonateY1      = maPrue.Inp("MonateY1", ListMonate)
+	FieldMAPruefungMonateY2      = maPrue.Inp("MonateY2", ListMonate)
+	FieldMAPruefungMonateY3      = maPrue.Inp("MonateY3", ListMonate)
+)
