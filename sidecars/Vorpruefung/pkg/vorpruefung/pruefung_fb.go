@@ -20,6 +20,21 @@ import (
 // Gibt es mehrere Mittelanforderungen einer Periode, erscheinen "Periode X (#k)";
 // die Auswahl von "(#k)" addiert in der Prognoseprüfung alle Anforderungen #1..#k.
 // ==================================================================================
+//
+// Teil A (Grid-Konstanten): Die Spalten der Vergleichstabellen (EV_COL_*), das
+// Auswahl-Panel (EV_PB_*) sowie Farben/Formate (EV_CLR_*, EV_FMT_*) sind zentral
+// in pruefung_shared.go definiert; die Styles liegen in styles.go (EV*Style).
+//
+// Teil B (Layout): Der Aufbau ist rein vertikal (r läuft von oben nach unten):
+//   Banner → FINANZBERICHTSPRÜFUNG-Kopf → FB-Auswahl-Panel → KMW-Mittelprüfung →
+//   Finanzierungsanteile (4 Einnahme-Kategorien) → Soll-Ist-Abweichungsprüfung
+//   (8 Kostenkategorien). Rechts daneben spiegelt das FB-Panel (pruefung_fb_panel.go)
+//   den gewählten Finanzbericht.
+//
+// Kategorien (wie in registry.go definiert):
+//   Finanzierungsanteile → TYPE_NAMES (Eigenmittel, Drittmittel, KMW-Mittel, Zinsertraege)
+//   Soll-Ist-Abweichung  → EXPENSE_CATEGORIES (Bauausgaben … Reserve)
+// ==================================================================================
 
 const (
 	EVAL_SHEET_NAME = constants.VPSheetFB_PRUEFUNG
@@ -103,31 +118,20 @@ func (g *Generator) CreateFBPruefungSheet() error {
 // ==================================================================================
 
 func (g *Generator) evalBanner(ws string, row int, title, subtitle string) {
-	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row), cellName(EV_COL_ABW_EUR, row), title, StyleOptions{
-		Bold: true, Size: 18.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "left", VAlign: "center",
-	})
+	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row), cellName(EV_COL_ABW_EUR, row), title, EVBannerTitleStyle)
 	_ = g.file.SetRowHeight(ws, row, 30.0)
-	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row+1), cellName(EV_COL_ABW_EUR, row+1), subtitle, StyleOptions{
-		Italic: true, Size: 9.0, FontColor: EV_CLR_BANNER_SUB, FillColor: EV_CLR_BANNER, HAlign: "left", VAlign: "center",
-	})
+	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row+1), cellName(EV_COL_ABW_EUR, row+1), subtitle, EVBannerSubStyle)
 	_ = g.file.SetRowHeight(ws, row+1, 18.0)
 }
 
 func (g *Generator) evalMainHeader(ws string, row int, title, subtitle string) {
-	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row), cellName(EV_COL_ABW_EUR, row), title, StyleOptions{
-		Bold: true, Size: 13.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
-	})
+	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row), cellName(EV_COL_ABW_EUR, row), title, EVMainHeaderStyle)
 	_ = g.file.SetRowHeight(ws, row, 26.0)
-	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row+1), cellName(EV_COL_ABW_EUR, row+1), subtitle, StyleOptions{
-		Italic: true, Size: 9.0, FontColor: "595959", HAlign: "center", VAlign: "center",
-	})
+	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row+1), cellName(EV_COL_ABW_EUR, row+1), subtitle, EVMainSubStyle)
 }
 
 func (g *Generator) evalSectionTitle(ws string, row int, title string) {
-	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row), cellName(EV_COL_ABW_EUR, row), title, StyleOptions{
-		Bold: true, Size: 11.0, FontColor: EV_CLR_BLACK, FillColor: EV_CLR_HEADER,
-		HAlign: "left", VAlign: "center", BorderTop: 2, BorderBottom: 1, BorderColor: EV_CLR_BORDER,
-	})
+	_ = g.mergeCells(ws, cellName(EV_COL_LABEL, row), cellName(EV_COL_ABW_EUR, row), title, EVSectionTitleStyle)
 	_ = g.file.SetRowHeight(ws, row, 22.0)
 }
 
@@ -160,8 +164,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	rOp := r
 	g.evalMergedFormula(ws, cellName(lblL1, r), cellName(lblL2, r),
 		fmt.Sprintf(`=IF(%s="Ja","Operatives Budget (Reserve freigegeben)","Operatives Budget (abzgl. Reserve)")`, BudgetNameReserve),
-		StyleOptions{Size: 10.0, HAlign: "left", VAlign: "center",
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID})
+		EVKmwLabelStyle)
 	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf(
 		`=IF(%s="Ja",ROUND(%s,2),ROUND(%s-%s,2))`,
 		BudgetNameReserve, absName(valL, rBew), absName(valL, rBew), absName(valL, rRes)), false)
@@ -178,10 +181,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 
 	// --- RECHTER BLOCK (Abzugsoptionen, mit Abzug/Kein-Abzug-Schaltern) ---
 	rr := startRow
-	_ = g.mergeCells(ws, cellName(tog, rr), cellName(valR, rr), "Abzugsoptionen KMW-Mittel", StyleOptions{
-		Bold: true, Size: 10.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-	})
+	_ = g.mergeCells(ws, cellName(tog, rr), cellName(valR, rr), "Abzugsoptionen KMW-Mittel", EVAbzugHeaderStyle)
 	rr++
 
 	type dedRow struct{ togCell, valCell string }
@@ -227,14 +227,8 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	// Regel 2 – dicker rechter Außenrahmen (passend zu styleOuterBorder)
 	for _, d := range deds {
 		cond := fmt.Sprintf(`%s="Kein Abzug"`, d.togCell)
-		g.addConditionalFormat(ws, d.valCell, cond, StyleOptions{
-			HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR,
-			FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderColor: EV_CLR_GRID,
-		})
-		g.addConditionalFormat(ws, d.valCell, cond, StyleOptions{
-			BorderRight: 2, BorderColor: EV_CLR_BORDER,
-		})
+		g.addConditionalFormat(ws, d.valCell, cond, EVDeductOffCFStyle)
+		g.addConditionalFormat(ws, d.valCell, cond, EVRightBorderCFStyle)
 	}
 
 	// Abzugsoptionen KMW insgesamt
@@ -317,18 +311,10 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 
 		applyGreyCF := func(rStart, rEnd int, cond string) {
 			for row := rStart; row <= rEnd; row++ {
-				g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(lblL1, row), cellName(lblL2, row)), cond, StyleOptions{
-					FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
-				})
-				g.addConditionalFormat(ws, cellName(valL, row), cond, StyleOptions{
-					FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
-				})
-				g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(tog, row), cellName(lblR2, row)), cond, StyleOptions{
-					FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
-				})
-				g.addConditionalFormat(ws, cellName(valR, row), cond, StyleOptions{
-					FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
-				})
+				g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(lblL1, row), cellName(lblL2, row)), cond, EVGreyCFStyle)
+				g.addConditionalFormat(ws, cellName(valL, row), cond, EVGreyCFStyle)
+				g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(tog, row), cellName(lblR2, row)), cond, EVGreyCFStyle)
+				g.addConditionalFormat(ws, cellName(valR, row), cond, EVGreyCFStyle)
 			}
 		}
 
@@ -336,10 +322,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		applyGreyCF(p2Top, p2Bottom, condManGrey)
 
 		// Negativ-Formatierung (rot), nur wenn nicht ausgegraut
-		redStyle := StyleOptions{
-			Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD,
-			BorderTop: 1, BorderBottom: 2, BorderLeft: 1, BorderRight: 2, BorderColor: EV_CLR_BORDER,
-		}
+		redStyle := EVNegativeStyle
 		g.addConditionalFormat(ws, cellName(valL, p1Bottom), fmt.Sprintf(`AND(%s<0, %s=0)`, addrVerblL1, addrManL), redStyle)
 		g.addConditionalFormat(ws, cellName(valR, p1Bottom), fmt.Sprintf(`AND(%s<0, %s=0)`, addrVerblR1, addrManL), redStyle)
 		g.addConditionalFormat(ws, cellName(valL, p2Bottom), fmt.Sprintf(`AND(%s<0, %s<>0)`, addrVerblL2, addrManL), redStyle)
@@ -350,56 +333,43 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 }
 
 func (g *Generator) evalKmwLabel(ws string, row, c1, c2 int, text string, bold bool) {
-	_ = g.mergeCells(ws, cellName(c1, row), cellName(c2, row), text, StyleOptions{
-		Bold: bold, Size: 10.0, HAlign: "left", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	style := EVKmwLabelStyle
+	if bold {
+		style = EVKmwLabelBoldStyle
+	}
+	_ = g.mergeCells(ws, cellName(c1, row), cellName(c2, row), text, style)
 }
 
 func (g *Generator) evalKmwCalc(ws, cell, formula string, bold bool) {
-	_ = g.setFormula(ws, cell, formula, StyleOptions{
-		Bold: bold, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	style := EVKmwCalcStyle
+	if bold {
+		style = EVKmwCalcBoldStyle
+	}
+	_ = g.setFormula(ws, cell, formula, style)
 }
 
 func (g *Generator) evalKmwInput(ws, cell string) {
-	_ = g.setStyle(ws, cell, cell, StyleOptions{
-		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_INPUT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	_ = g.setStyle(ws, cell, cell, EVKmwInputStyle)
 }
 
 // evalKmwInputEmpty entspricht evalKmwInput (gelbe Eingabezelle, EUR-Format),
 // lässt die Zelle aber leer statt mit einer 0 vorzubelegen.
 func (g *Generator) evalKmwInputEmpty(ws, cell string) {
-	_ = g.setStyle(ws, cell, cell, StyleOptions{
-		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_INPUT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	_ = g.setStyle(ws, cell, cell, EVKmwInputStyle)
 }
 
 func (g *Generator) evalToggle(ws, cell string, field InputField) {
-	_ = g.setStyle(ws, cell, cell, StyleOptions{
-		Size: 9.0, HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	_ = g.setStyle(ws, cell, cell, EVToggleStyle)
 	col, row, _ := excelize.CellNameToCoordinates(cell)
 	_ = g.bindInputField(ws, row, col, field)
 }
 
 func (g *Generator) evalDeduct(ws, cell, formula string) {
-	_ = g.setFormula(ws, cell, formula, StyleOptions{
-		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_DEDUCT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	_ = g.setFormula(ws, cell, formula, EVDeductStyle)
 }
 
 func (g *Generator) evalDeductPlaceholder(ws, cell string) {
-	_ = g.setStyle(ws, cell, cell, StyleOptions{
-		HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_DEDUCT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	_ = g.setStyle(ws, cell, cell, EVDeductStyle)
 }
 
 // ==================================================================================
@@ -408,19 +378,13 @@ func (g *Generator) evalDeductPlaceholder(ws, cell string) {
 
 // evalSelTitle zeichnet die zentrierte Titelzeile einer Auswahlbox (Spalten C..I).
 func (g *Generator) evalSelTitle(ws string, row int, text string) {
-	_ = g.mergeCells(ws, cellName(EV_PB_C1, row), cellName(EV_PB_C2, row), text, StyleOptions{
-		Bold: true, Size: 11.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-	})
+	_ = g.mergeCells(ws, cellName(EV_PB_C1, row), cellName(EV_PB_C2, row), text, EVSelTitleStyle)
 	_ = g.file.SetRowHeight(ws, row, 22.0)
 }
 
 // evalSelLabel zeichnet die Beschriftungsspalte (C..E) einer Auswahlzeile.
 func (g *Generator) evalSelLabel(ws string, row int, text string) {
-	_ = g.mergeCells(ws, cellName(EV_PB_C1, row), cellName(EV_PB_L2, row), text, StyleOptions{
-		Size: 10.0, HAlign: "left", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-	})
+	_ = g.mergeCells(ws, cellName(EV_PB_C1, row), cellName(EV_PB_L2, row), text, EVSelLabelStyle)
 }
 
 // evalMergedFormula/evalMergedValue: zusammengeführte Zelle, die über den GESAMTEN
@@ -440,10 +404,8 @@ func (g *Generator) evalMergedValue(ws, c1, c2 string, val interface{}, st Style
 // evalDrawMAPanel zeichnet die zentrierte Mittelanforderungs-Auswahlbox und liefert
 // die P-/k-Steuerzellen sowie die letzte belegte Zeile.
 func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
-	num0 := StyleOptions{Bold: true, HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_CALC,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
-	inputCtr := StyleOptions{HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
+	num0 := EVPanelNumStyle
+	inputCtr := EVPanelInputStyle
 	r := top
 	g.evalSelTitle(ws, r, "Finanzbericht auswählen")
 	r++
@@ -497,47 +459,33 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 	}
 	hdrRow := r
 	for i, h := range headers {
-		_ = g.setValue(ws, cellName(EV_COL_LABEL+i, hdrRow), h, StyleOptions{
-			Bold: true, Size: 9.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER,
-			HAlign: "center", VAlign: "center", WrapText: true,
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-		})
+		_ = g.setValue(ws, cellName(EV_COL_LABEL+i, hdrRow), h, EVCompHeaderStyle)
 	}
 	_ = g.file.SetRowHeight(ws, hdrRow, 28.0)
 	r++
 
-	nRows := g.budgetIncomeCount()
-	if !isIncome {
-		nRows = g.budgetExpenseCount()
-	}
+	// Zeilen sind kategoriebasiert:
+	//   Finanzierungsanteile  → 4 Einnahme-Kategorien (TYPE_NAMES)
+	//   Soll-Ist-Abweichung   → 8 Kostenkategorien (EXPENSE_CATEGORIES)
+	// Nur die MA-Ausgabenprognose bleibt positionsbasiert (eigene Grid-Quelle).
+	labels := g.evalComparisonLabels(isIncome, isMA)
+	nRows := len(labels)
 	dataStart := r
 	kmwActEUR, kmwBudEUR := "", ""
 
 	for i := 0; i < nRows; i++ {
 		row := dataStart + i
+		name := labels[i]
 
-		// Label wird von der API gefüllt. Nur formatiert bereitstellen.
-		labelVal := ""
-		if g.cfg.IncomeTypesCount == 0 && g.cfg.ExpensePositionsCount == 0 {
-			if isIncome && i < len(TYPE_NAMES) {
-				labelVal = TYPE_NAMES[i]
-			} else if !isIncome && i < len(EXPENSE_CATEGORIES) {
-				labelVal = EXPENSE_CATEGORIES[i]
-			}
-		}
-
-		_ = g.setValue(ws, cellName(EV_COL_LABEL, row), labelVal, StyleOptions{
-			HAlign: "left", VAlign: "center",
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
-		})
+		_ = g.setValue(ws, cellName(EV_COL_LABEL, row), name, EVCompLabelStyle)
 
 		actLC := cellName(EV_COL_ACT_LC, row)
 		actEUR := cellName(EV_COL_ACT_EUR, row)
-		lcF, eurF := g.evalActualFormulas(isIncome, isMA, i, sel)
+		lcF, eurF := g.evalActualFormulas(isIncome, isMA, name, i, sel)
 		g.evalCellFormula(ws, actLC, lcF, EV_FMT_LC, EV_CLR_CALC)
 		g.evalCellFormula(ws, actEUR, eurF, EV_FMT_EUR, EV_CLR_CALC)
 
-		budLCName, budEURName := g.evalBudgetNames(isIncome, i)
+		budLCName, budEURName := g.evalComparisonBudgetNames(isIncome, isMA, name, i)
 		g.evalCellFormula(ws, cellName(EV_COL_BUD_LC, row), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", budLCName), EV_FMT_LC, EV_CLR_CALC)
 		g.evalCellFormula(ws, cellName(EV_COL_BUD_EUR, row), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", budEURName), EV_FMT_EUR, EV_CLR_CALC)
 
@@ -550,18 +498,14 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 		g.evalCellFormula(ws, cellName(EV_COL_ABW_EUR, row),
 			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", absName(EV_COL_ACT_EUR, row), absName(EV_COL_BUD_EUR, row)), EV_FMT_PCT, "")
 
+		// Ist-Werte je Kategorie benennen (nur FB, nicht MA-Prognose).
 		if !isMA {
-			// cleanName war für AW_FB_ActLC_Bauausgaben. Jetzt ohne festen Namen einfach Index?
-			// Da Named Ranges keine Leerzeichen etc. mögen, nutzen wir einen generischen Index.
-			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActLC_%s_%d", map[bool]string{true: "Inc", false: "Exp"}[isIncome], i), EV_COL_ACT_LC, row)
-			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActEUR_%s_%d", map[bool]string{true: "Inc", false: "Exp"}[isIncome], i), EV_COL_ACT_EUR, row)
+			clean := evalCleanName(name)
+			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActLC_%s", clean), EV_COL_ACT_LC, row)
+			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActEUR_%s", clean), EV_COL_ACT_EUR, row)
 		}
 
-		// Hack for KMW comparison later
-		// Since we don't know the exact row for KMW anymore from hardcoded strings, we will
-		// just assume KMW is the 3rd row for backward compatibility or let the API figure it out.
-		// Wait, KMW is usually Income Type 3 (index 2). Let's use index 2 for now.
-		if isIncome && i == 2 {
+		if isIncome && name == "KMW-Mittel" {
 			kmwActEUR = absName(EV_COL_ACT_EUR, row)
 			kmwBudEUR = absName(EV_COL_BUD_EUR, row)
 		}
@@ -587,32 +531,92 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 	}
 }
 
+// evalComparisonLabels liefert die Zeilenbeschriftungen der Vergleichstabelle.
+// Einnahmen (Finanzierungsanteile) und FB-Ausgaben (Soll-Ist) sind kategoriebasiert;
+// nur die MA-Ausgabenprognose bleibt positionsbasiert (Anzahl folgt dem Budget).
+func (g *Generator) evalComparisonLabels(isIncome, isMA bool) []string {
+	if isIncome {
+		return TYPE_NAMES
+	}
+	if !isMA {
+		return EXPENSE_CATEGORIES
+	}
+	n := g.budgetExpenseCount()
+	labels := make([]string, n)
+	for i := range labels {
+		if g.cfg.ExpensePositionsCount == 0 && i < len(EXPENSE_CATEGORIES) {
+			labels[i] = EXPENSE_CATEGORIES[i]
+		}
+	}
+	return labels
+}
+
 // evalActualFormulas: Ist-/Prognose-Formeln je Zeile.
-func (g *Generator) evalActualFormulas(isIncome, isMA bool, idx int, sel evalSelRefs) (string, string) {
+func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int, sel evalSelRefs) (string, string) {
 	if isIncome && isMA {
 		maL := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_LC, isIncome)
 		maE := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_EUR, isIncome)
-		fbL := evalFBChooseRef(sel.fbSelNum, 12+idx, 3)
-		fbE := evalFBChooseRef(sel.fbSelNum, 12+idx, 4)
+		fbL := evalFBChooseRef(sel.fbSelNum, FB_INCOME_FIRST_ROW+idx, FBOffKumLC)
+		fbE := evalFBChooseRef(sel.fbSelNum, FB_INCOME_FIRST_ROW+idx, FBOffKumEUR)
 		return fmt.Sprintf("=%s + %s", maL[1:], fbL[1:]),
 			fmt.Sprintf("=%s + %s", maE[1:], fbE[1:])
 	}
 	if isIncome {
-		return evalFBChooseRef(sel.fbSelNum, 12+idx, 3), evalFBChooseRef(sel.fbSelNum, 12+idx, 4)
+		return evalFBChooseRef(sel.fbSelNum, FB_INCOME_FIRST_ROW+idx, FBOffKumLC),
+			evalFBChooseRef(sel.fbSelNum, FB_INCOME_FIRST_ROW+idx, FBOffKumEUR)
 	}
 	if isMA {
+		// MA-Ausgabenprognose bleibt positionsbasiert (1:1 auf FB-Ausgabenzeile).
 		maL := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_LC, isIncome)
 		maE := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_EUR, isIncome)
-		// 1 to 1 mapping: FB row is FB_AUSG_FIRST_ROW + idx
 		row := FB_AUSG_FIRST_ROW + idx
-		fbL := evalFBChooseRef(sel.fbSelNum, row, 3)
-		fbE := evalFBChooseRef(sel.fbSelNum, row, 4)
+		fbL := evalFBChooseRef(sel.fbSelNum, row, FBOffKumLC)
+		fbE := evalFBChooseRef(sel.fbSelNum, row, FBOffKumEUR)
 		return fmt.Sprintf("=%s + %s", maL[1:], fbL[1:]),
 			fmt.Sprintf("=%s + %s", maE[1:], fbE[1:])
 	}
+	// FB-Ausgaben (Soll-Ist): kumulierte Ist-Werte je Kostenkategorie.
+	return g.evalFBExpenseActualByCategory(sel.fbSelNum, name, FBOffKumLC),
+		g.evalFBExpenseActualByCategory(sel.fbSelNum, name, FBOffKumEUR)
+}
 
-	row := FB_AUSG_FIRST_ROW + idx
-	return evalFBChooseRef(sel.fbSelNum, row, 3), evalFBChooseRef(sel.fbSelNum, row, 4)
+// evalFBExpenseActualByCategory summiert die kumulierten FB-Ausgaben einer
+// Kostenkategorie per SUMPRODUCT: die Kategoriespalte des Budgets (gleiche
+// Positionsreihenfolge wie die FB-Ausgabenzeilen) mal die per CHOOSE gewählte
+// Periodenspalte des Finanzberichts. colOffset = FBOffKumLC/FBOffKumEUR.
+func (g *Generator) evalFBExpenseActualByCategory(selNum, cat string, colOffset int) string {
+	nPos := g.budgetExpenseCount()
+	catRange := fmt.Sprintf("'%s'!%s:%s", BudgetSheetName,
+		absName(BudgetColLabel, BudgetRowAusgStart), absName(BudgetColLabel, BudgetRowAusgStart+nPos-1))
+	parts := make([]string, 0, FBPeriodenAnzahl)
+	for p := 1; p <= FBPeriodenAnzahl; p++ {
+		col := FBStartCol + (p-1)*(FBTableCols+FBTableSpacing) + colOffset
+		parts = append(parts, fmt.Sprintf("'%s'!%s:%s", EVAL_FB_SHEET,
+			absName(col, FB_AUSG_FIRST_ROW), absName(col, FB_AUSG_FIRST_ROW+nPos-1)))
+	}
+	return fmt.Sprintf(`=IFERROR(ROUND(SUMPRODUCT((%s="%s")*CHOOSE(%s,%s)),2),0)`,
+		catRange, cat, selNum, strings.Join(parts, ","))
+}
+
+// evalComparisonBudgetNames liefert die Budget-Named-Ranges je Zeile. FB-Ausgaben
+// nutzen die kategorienbasierten Budgetsummen (Kosten_<Kat>_…); Einnahmen und die
+// positionsbasierte MA-Prognose greifen auf evalBudgetNames zu.
+func (g *Generator) evalComparisonBudgetNames(isIncome, isMA bool, name string, idx int) (string, string) {
+	if isIncome || isMA {
+		return g.evalBudgetNames(isIncome, idx)
+	}
+	lc := bgKostenName(name, "LW")
+	eur := bgKostenName(name, "EUR")
+	if name == "Reserve" {
+		eur = Registry.OutputBudgetReserveEUR.NamedRange
+	}
+	return lc, eur
+}
+
+// evalCleanName macht einen Kategorienamen für Named Ranges nutzbar.
+func evalCleanName(name string) string {
+	s := strings.ReplaceAll(name, " ", "_")
+	return strings.ReplaceAll(s, "-", "_")
 }
 
 func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {
@@ -628,48 +632,30 @@ func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {
 			return "0", "0"
 		}
 	}
-
-	// Budget table has rows starting at ausgHdrRow + 1. We don't have Named Ranges per position anymore.
-	// But wait! We need to pull the budget value for this position.
-	// Where is the budget value? It's in the Budget sheet.
-	// We can use the BudgetTableAusg!
-	// Wait, we can just use the absolute cell reference for the budget position row.
-	// The budget expense block starts at row 24 or similar, depending on Drittmittel etc...
-	// Actually, the Budget Ausgaben block starts after "2. GEPLANTE AUSGABEN".
-	// Let's just lookup by index in the budget table using INDEX.
-	// BudgetTableAusg columns: Betrag (LC) is 4, Betrag (EUR) is 8
+	// Positionsbasiert (MA-Prognose): Budgetwert der Position per INDEX.
 	budLC := fmt.Sprintf("INDEX(%s[Betrag (LC)], %d)", BudgetTableAusg, idx+1)
 	budEUR := fmt.Sprintf("INDEX(%s[Betrag (EUR)], %d)", BudgetTableAusg, idx+1)
 	return budLC, budEUR
 }
 
 func (g *Generator) evalTotalRow(ws string, totalRow, dataStart, dataEnd int) {
-	_ = g.setValue(ws, cellName(EV_COL_LABEL, totalRow), "GESAMT", StyleOptions{
-		Bold: true, FontColor: EV_CLR_TOTAL_TXT, FillColor: EV_CLR_TOTAL, HAlign: "left", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-	})
-	sumCol := func(col int, numFmt string) {
+	_ = g.setValue(ws, cellName(EV_COL_LABEL, totalRow), "GESAMT", EVTotalLabelStyle)
+	sumCol := func(col int, style StyleOptions) {
 		rng := fmt.Sprintf("%s:%s", absName(col, dataStart), absName(col, dataEnd))
-		_ = g.setFormula(ws, cellName(col, totalRow), fmt.Sprintf("=ROUND(SUM(%s),2)", rng), StyleOptions{
-			Bold: true, FontColor: EV_CLR_TOTAL_TXT, FillColor: EV_CLR_TOTAL, HAlign: "right", VAlign: "center",
-			NumFormat: numFmt, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-		})
+		_ = g.setFormula(ws, cellName(col, totalRow), fmt.Sprintf("=ROUND(SUM(%s),2)", rng), style)
 	}
 	pctCol := func(col, actCol, budCol int) {
 		_ = g.setFormula(ws, cellName(col, totalRow),
 			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", absName(actCol, totalRow), absName(budCol, totalRow)),
-			StyleOptions{
-				Bold: true, FontColor: EV_CLR_TOTAL_TXT, FillColor: EV_CLR_TOTAL, HAlign: "right", VAlign: "center",
-				NumFormat: EV_FMT_PCT, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-			})
+			EVTotalPctStyle)
 	}
-	sumCol(EV_COL_ACT_LC, EV_FMT_LC)
-	sumCol(EV_COL_BUD_LC, EV_FMT_LC)
-	sumCol(EV_COL_DIF_LC, EV_FMT_LC)
+	sumCol(EV_COL_ACT_LC, EVTotalLCStyle)
+	sumCol(EV_COL_BUD_LC, EVTotalLCStyle)
+	sumCol(EV_COL_DIF_LC, EVTotalLCStyle)
 	pctCol(EV_COL_ABW_LC, EV_COL_ACT_LC, EV_COL_BUD_LC)
-	sumCol(EV_COL_ACT_EUR, EV_FMT_EUR)
-	sumCol(EV_COL_BUD_EUR, EV_FMT_EUR)
-	sumCol(EV_COL_DIF_EUR, EV_FMT_EUR)
+	sumCol(EV_COL_ACT_EUR, EVTotalEURStyle)
+	sumCol(EV_COL_BUD_EUR, EVTotalEURStyle)
+	sumCol(EV_COL_DIF_EUR, EVTotalEURStyle)
 	pctCol(EV_COL_ABW_EUR, EV_COL_ACT_EUR, EV_COL_BUD_EUR)
 	_ = g.file.SetRowHeight(ws, totalRow, 20.0)
 }
@@ -680,12 +666,8 @@ func (g *Generator) evalDeviationConditional(ws string, col, dataStart, dataEnd 
 	// Bewusst OHNE eigene Rahmen: die bedingte Formatierung überschreibt sonst die
 	// vorhandene Zellkante (innen dünnes Gitter, an der Box rechts kräftig durch
 	// styleOuterBorder). Nur Schrift/Füllung/Format setzen – wie evalLimitUeber.
-	g.addConditionalFormat(ws, rng, fmt.Sprintf("%s>=0.2", topRel), StyleOptions{
-		Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_PCT,
-	})
-	g.addConditionalFormat(ws, rng, fmt.Sprintf("AND(%s>=0.1,%s<0.2)", topRel, topRel), StyleOptions{
-		Bold: true, FontColor: EV_CLR_WARN_TXT, FillColor: EV_CLR_WARN, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_PCT,
-	})
+	g.addConditionalFormat(ws, rng, fmt.Sprintf("%s>=0.2", topRel), EVDevBadStyle)
+	g.addConditionalFormat(ws, rng, fmt.Sprintf("AND(%s>=0.1,%s<0.2)", topRel, topRel), EVDevWarnStyle)
 }
 
 func (g *Generator) evalCellFormula(ws, cell, formula, numFmt, fill string) {
@@ -700,55 +682,13 @@ func (g *Generator) evalCellFormula(ws, cell, formula, numFmt, fill string) {
 // ==================================================================================
 
 // evalFBChooseRef referenziert die kumulative Kum-Zelle des gewählten Finanzberichts
-// (Periode N) per CHOOSE über alle 18 Perioden (nicht-volatil, robust).
+// (Periode N) per CHOOSE über alle Perioden (nicht-volatil, robust). colOffset ist
+// ein FB-Spalten-Offset (z. B. FBOffKumLC/FBOffKumEUR).
 func evalFBChooseRef(selNum string, baseRow, colOffset int) string {
-	parts := make([]string, 0, 18)
-	for p := 1; p <= 18; p++ {
-		col := 2 + (p-1)*7 + colOffset
+	parts := make([]string, 0, FBPeriodenAnzahl)
+	for p := 1; p <= FBPeriodenAnzahl; p++ {
+		col := FBStartCol + (p-1)*(FBTableCols+FBTableSpacing) + colOffset
 		parts = append(parts, fmt.Sprintf("'%s'!%s", EVAL_FB_SHEET, absName(col, baseRow)))
 	}
 	return fmt.Sprintf(`=IFERROR(ROUND(CHOOSE(%s,%s),2),0)`, selNum, strings.Join(parts, ","))
-}
-
-// evalFBChooseRefRows summiert je Finanzbericht-Periode die übergebenen Zeilen
-// (eine je Kostenposition einer Kategorie) der Kum-Spalte (colOffset 3=LC, 4=EUR)
-// und wählt die geprüfte Periode N per CHOOSE. So bleibt die Auswertung
-// kategorienbasiert, obwohl die FB-Tabellen positionsbasiert sind.
-func evalFBChooseRefRows(selNum string, rows []int, colOffset int) string {
-	if len(rows) == 0 {
-		return "=0"
-	}
-	parts := make([]string, 0, 18)
-	for p := 1; p <= 18; p++ {
-		colBase := 2 + (p-1)*7 + colOffset
-		parts = append(parts, fbRowsSumExpr(colBase, rows))
-	}
-	return fmt.Sprintf(`=IFERROR(ROUND(CHOOSE(%s,%s),2),0)`, selNum, strings.Join(parts, ","))
-}
-
-// fbRowsSumExpr baut für eine Spalte einen kompakten SUM-Ausdruck über die Zeilen
-// einer Kategorie, indem aufeinanderfolgende Zeilen zu Bereichen zusammengefasst
-// werden: SUM('FB'!$A$10:$A$39). Bei vielen Positionen je Kategorie blieb die alte
-// Einzelzellen-Addition (A10+A11+...) sonst über Excels 8192-Zeichen-Formellimit.
-// rows ist aufsteigend (siehe fbExpenseRowsForCategory).
-func fbRowsSumExpr(col int, rows []int) string {
-	segs := make([]string, 0)
-	start, prev := rows[0], rows[0]
-	flush := func(a, b int) {
-		if a == b {
-			segs = append(segs, fmt.Sprintf("'%s'!%s", EVAL_FB_SHEET, absName(col, a)))
-		} else {
-			segs = append(segs, fmt.Sprintf("'%s'!%s:%s", EVAL_FB_SHEET, absName(col, a), absName(col, b)))
-		}
-	}
-	for _, r := range rows[1:] {
-		if r == prev+1 {
-			prev = r
-			continue
-		}
-		flush(start, prev)
-		start, prev = r, r
-	}
-	flush(start, prev)
-	return fmt.Sprintf("SUM(%s)", strings.Join(segs, ","))
 }

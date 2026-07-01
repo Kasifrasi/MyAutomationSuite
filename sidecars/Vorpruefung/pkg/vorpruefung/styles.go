@@ -1020,3 +1020,173 @@ var FBDetailTotalKursStyle = StyleOptions{
 	BorderRight:  1,
 	BorderColor:  FBClrGrid,
 }
+
+// ─── Prüfung (Auswertung) Styles ──────────────────────────────────────────────
+// Genutzt von den Prüfblättern (pruefung_fb.go / pruefung_fb_panel.go). Farben und
+// Formate stammen aus den EV_CLR_*/EV_FMT_*-Konstanten in pruefung_shared.go.
+
+// Banner & Überschriften
+var EVBannerTitleStyle = StyleOptions{
+	Bold: true, Size: 18.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "left", VAlign: "center",
+}
+
+var EVBannerSubStyle = StyleOptions{
+	Italic: true, Size: 9.0, FontColor: EV_CLR_BANNER_SUB, FillColor: EV_CLR_BANNER, HAlign: "left", VAlign: "center",
+}
+
+var EVMainHeaderStyle = StyleOptions{
+	Bold: true, Size: 13.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
+}
+
+var EVMainSubStyle = StyleOptions{
+	Italic: true, Size: 9.0, FontColor: "595959", HAlign: "center", VAlign: "center",
+}
+
+var EVSectionTitleStyle = StyleOptions{
+	Bold: true, Size: 11.0, FontColor: EV_CLR_BLACK, FillColor: EV_CLR_HEADER,
+	HAlign: "left", VAlign: "center", BorderTop: 2, BorderBottom: 1, BorderColor: EV_CLR_BORDER,
+}
+
+// KMW-Mittelprüfung
+var EVKmwLabelStyle = StyleOptions{
+	Size: 10.0, HAlign: "left", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVKmwLabelBoldStyle = StyleOptions{
+	Bold: true, Size: 10.0, HAlign: "left", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVKmwCalcStyle = StyleOptions{
+	HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_CALC,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVKmwCalcBoldStyle = StyleOptions{
+	Bold: true, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_CALC,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVKmwInputStyle = StyleOptions{
+	HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_INPUT,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVToggleStyle = StyleOptions{
+	Size: 9.0, HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVDeductStyle = StyleOptions{
+	HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR, FillColor: EV_CLR_DEDUCT,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVAbzugHeaderStyle = StyleOptions{
+	Bold: true, Size: 10.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+// Bedingte Formate (Abzugsoptionen / Prognose-Paare)
+var EVDeductOffCFStyle = StyleOptions{
+	HAlign: "right", VAlign: "center", NumFormat: EV_FMT_EUR,
+	FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVRightBorderCFStyle = StyleOptions{
+	BorderRight: 2, BorderColor: EV_CLR_BORDER,
+}
+
+var EVGreyCFStyle = StyleOptions{
+	FillColor: EV_CLR_DEDUCT_OFF, FontColor: "A0A0A0",
+}
+
+var EVNegativeStyle = StyleOptions{
+	Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD,
+	BorderTop: 1, BorderBottom: 2, BorderLeft: 1, BorderRight: 2, BorderColor: EV_CLR_BORDER,
+}
+
+// Auswahl-Panel
+var EVSelTitleStyle = StyleOptions{
+	Bold: true, Size: 11.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+var EVSelLabelStyle = StyleOptions{
+	Size: 10.0, HAlign: "left", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVPanelNumStyle = StyleOptions{
+	Bold: true, HAlign: "center", VAlign: "center", NumFormat: "0", FillColor: EV_CLR_CALC,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVPanelInputStyle = StyleOptions{
+	HAlign: "center", VAlign: "center", FillColor: EV_CLR_INPUT,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+// Vergleichstabelle
+var EVCompHeaderStyle = StyleOptions{
+	Bold: true, Size: 9.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER,
+	HAlign: "center", VAlign: "center", WrapText: true,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+var EVCompLabelStyle = StyleOptions{
+	HAlign: "left", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID,
+}
+
+var EVTotalLabelStyle = StyleOptions{
+	Bold: true, FontColor: EV_CLR_TOTAL_TXT, FillColor: EV_CLR_TOTAL, HAlign: "left", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+var EVTotalLCStyle = StyleOptions{
+	Bold: true, FontColor: EV_CLR_TOTAL_TXT, FillColor: EV_CLR_TOTAL, HAlign: "right", VAlign: "center",
+	NumFormat: EV_FMT_LC, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+var EVTotalEURStyle = StyleOptions{
+	Bold: true, FontColor: EV_CLR_TOTAL_TXT, FillColor: EV_CLR_TOTAL, HAlign: "right", VAlign: "center",
+	NumFormat: EV_FMT_EUR, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+var EVTotalPctStyle = StyleOptions{
+	Bold: true, FontColor: EV_CLR_TOTAL_TXT, FillColor: EV_CLR_TOTAL, HAlign: "right", VAlign: "center",
+	NumFormat: EV_FMT_PCT, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+// Abweichungs-Ampel (bedingt)
+var EVDevBadStyle = StyleOptions{
+	Bold: true, FontColor: EV_CLR_BAD_TXT, FillColor: EV_CLR_BAD, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_PCT,
+}
+
+var EVDevWarnStyle = StyleOptions{
+	Bold: true, FontColor: EV_CLR_WARN_TXT, FillColor: EV_CLR_WARN, HAlign: "right", VAlign: "center", NumFormat: EV_FMT_PCT,
+}
+
+// ─── Spiegel-Panel (Finanzbericht) Styles ─────────────────────────────────────
+var EVMirrorTitleStyle = StyleOptions{
+	Bold: true, Size: 11.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+var EVMirrorInfoLabelStyle = StyleOptions{
+	Bold: true, HAlign: "left", VAlign: "center",
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
+}
+
+var EVMirrorSectionStyle = StyleOptions{
+	Bold: true, FillColor: EV_CLR_HEADER, HAlign: "left", VAlign: "center",
+	BorderTop: 2, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}
+
+var EVMirrorColHeaderStyle = StyleOptions{
+	Bold: true, Size: 9.0, FillColor: EV_CLR_HEADER, HAlign: "center", VAlign: "center", WrapText: true,
+	BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
+}

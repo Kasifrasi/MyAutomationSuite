@@ -5,26 +5,50 @@ import (
 	"strings"
 )
 
+// ─── Teil A: Grid-Konstanten ──────────────────────────────────────────────────
+
 // EV_HELP_COL ist eine weit rechts liegende, ausgeblendete Helferspalte des
 // Auswertungsblatts (hält z. B. den Index der aktuell gewählten MA-Tabelle).
 const EV_HELP_COL = 30
 
 const EV_GRID_LIGHT = "D3D3D3" // helle Gitterlinie wie auf den Quellblättern
 
+// Spalten des FB-Spiegel-Panels (rechts neben der Finanzberichtsprüfung).
+const (
+	EVFBMirrorColLabel  = 12 // L
+	EVFBMirrorColLC     = 13 // M
+	EVFBMirrorColEUR    = 14 // N
+	EVFBMirrorColKumLC  = 15 // O
+	EVFBMirrorColKumEUR = 16 // P
+)
+
+// ─── Teil B: Layout-Dokumentation ─────────────────────────────────────────────
+/*
+  SPIEGEL-PANEL (schreibgeschützte Ansicht des aktuell gewählten Finanzberichts)
+
+  Das Panel steht rechts neben der Finanzberichtsprüfung und gibt – im Layout/Format
+  des Blatts "III. Finanzberichte" – exakt den ausgewählten Finanzbericht wieder.
+  Jede Wertzelle verweist per CHOOSE(N, …) auf die zugehörige Periodenspalte des
+  Quellblatts (N = sel.fbSelNum), sodass die Ansicht der Auswahl dynamisch folgt.
+
+  | Spalte L (Label)      | M (LC) | N (EUR) | O (Kum LC) | P (Kum EUR) |
+  |-----------------------|--------|---------|------------|-------------|
+  | Kopf (Periode/Von/…)  | gespiegelt (merged M:P)                    |
+  | Einnahmen (Typen)     | =CHOOSE… je Offset 1..4                    |
+  | Ausgaben (Positionen) | =CHOOSE… je Offset 1..4                    |
+  | Saldo des FB          | =CHOOSE… je Offset 1..4                    |
+*/
+
 // ==================================================================================
-// SPIEGEL-PANELS (schreibgeschützte Ansicht der aktuell ausgewählten Belege)
-//
-// Beide Panels stehen rechts neben der jeweiligen Prüfung und geben – im Layout/Format
-// des Quellblatts – exakt den ausgewählten Beleg wieder. Jede Wertzelle verweist per
-// CHOOSE auf die zugehörige Tabelle des Quellblatts (MA: Index j über die Daten-Meta,
-// FB: direkt die Periodennummer N), sodass die Ansicht der Auswahl dynamisch folgt.
+// FB-Spiegel-Panel
 // ==================================================================================
 
 // evalDrawFBMirrorPanel zeichnet rechts neben der Finanzberichtsprüfung eine
-// Spiegelung des ausgewählten Finanzberichts (Hauptblock) im Format des Blatts
-// "III. Finanzberichte". N = sel.fbSelNum wählt die Periode direkt per CHOOSE.
+// Spiegelung des ausgewählten Finanzberichts (Hauptblock). N = sel.fbSelNum wählt
+// die Periode direkt per CHOOSE.
 func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
-	const cLbl, cLC, cEUR, cKumLC, cKumEUR = 12, 13, 14, 15, 16 // L | M | N | O | P
+	cLbl, cLC, cKumEUR := EVFBMirrorColLabel, EVFBMirrorColLC, EVFBMirrorColKumEUR
+
 	g.setColWidth(ws, cLbl-1, 3.0)
 	g.setColWidth(ws, cLbl, 30.0)
 	for c := cLC; c <= cKumEUR; c++ {
@@ -32,11 +56,13 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	}
 
 	nAddr := sel.fbSelNum
+	// mirror spiegelt eine Quellzelle (colOffset innerhalb der Periode, srcRow) über
+	// CHOOSE(N, …) je Finanzbericht-Periode.
 	mirror := func(colOffset, srcRow int) string {
-		parts := make([]string, 0, MA_PERIOD_COUNT)
-		for p := 1; p <= MA_PERIOD_COUNT; p++ {
-			colStart := START_COL + (p-1)*(TABLE_COLS+TABLE_SPACING)
-			parts = append(parts, fmt.Sprintf("'%s'!%s", SHEET_NAME, absName(colStart+colOffset, srcRow)))
+		parts := make([]string, 0, FBPeriodenAnzahl)
+		for p := 1; p <= FBPeriodenAnzahl; p++ {
+			colStart := FBStartCol + (p-1)*(FBTableCols+FBTableSpacing)
+			parts = append(parts, fmt.Sprintf("'%s'!%s", FBSheetName, absName(colStart+colOffset, srcRow)))
 		}
 		return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),"")`, nAddr, strings.Join(parts, ","))
 	}
@@ -48,51 +74,40 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 		`=IF(%s=0,"Aktueller Finanzbericht (keiner gewählt)","Aktueller Finanzbericht – Periode "&%s)`,
 		nAddr, nAddr)
 	_ = g.file.MergeCell(ws, cellName(cLbl, r), cellName(cKumEUR, r))
-	_ = g.setStyle(ws, cellName(cLbl, r), cellName(cKumEUR, r), StyleOptions{
-		Bold: true, Size: 11.0, FontColor: EV_CLR_BANNER_TXT, FillColor: EV_CLR_BANNER, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_BORDER,
-	})
+	_ = g.setStyle(ws, cellName(cLbl, r), cellName(cKumEUR, r), EVMirrorTitleStyle)
 	_ = g.file.SetCellFormula(ws, cellName(cLbl, r), titleFormula)
 	_ = g.file.SetRowHeight(ws, r, 22.0)
 	r++
 
 	infoRow := func(label, formula, numFmt string) {
-		_ = g.setValue(ws, cellName(cLbl, r), label, StyleOptions{
-			Bold: true, HAlign: "left", VAlign: "center",
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
-		})
+		_ = g.setValue(ws, cellName(cLbl, r), label, EVMirrorInfoLabelStyle)
 		c1, c2 := cellName(cLC, r), cellName(cKumEUR, r)
 		_ = g.file.MergeCell(ws, c1, c2)
 		_ = g.setStyle(ws, c1, c2, StyleOptions{
-			HAlign: "center", VAlign: "center", NumFormat: numFmt, FillColor: COLOR_TOTAL,
+			HAlign: "center", VAlign: "center", NumFormat: numFmt, FillColor: FBClrTotal,
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 		})
 		_ = g.file.SetCellFormula(ws, c1, formula)
 	}
-	infoRow("Periode:", mirror(1, 4), "")
+	infoRow("Periode:", mirror(FBOffLC, FBRowPeriode), "")
 	r++
-	infoRow("Von:", mirror(1, 5), "DD.MM.YYYY")
+	infoRow("Von:", mirror(FBOffLC, FBRowVon), "DD.MM.YYYY")
 	r++
-	infoRow("Bis:", mirror(1, 6), "DD.MM.YYYY")
+	infoRow("Bis:", mirror(FBOffLC, FBRowBis), "DD.MM.YYYY")
 	r++
-	infoRow("Zeitraum:", mirror(1, 7), `0" Monate"`)
+	infoRow("Zeitraum:", mirror(FBOffLC, FBRowZeitraum), `0" Monate"`)
 	r++
-	infoRow("Durchschnittskurs:", mirror(1, 8), "0.000000")
+	infoRow("Durchschnittskurs:", mirror(FBOffLC, FBRowKurs), "0.000000")
 	r += 2 // Leerzeile
 
 	section := func(title string) {
-		_ = g.mergeCells(ws, cellName(cLbl, r), cellName(cKumEUR, r), title, StyleOptions{
-			Bold: true, FillColor: COLOR_HEADER, HAlign: "left", VAlign: "center",
-			BorderTop: 2, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080",
-		})
+		_ = g.mergeCells(ws, cellName(cLbl, r), cellName(cKumEUR, r), title, EVMirrorSectionStyle)
 		r++
 	}
 	colHeaders := func(h0 string, hs []string) {
-		hdr := StyleOptions{Bold: true, Size: 9.0, FillColor: COLOR_HEADER, HAlign: "center", VAlign: "center", WrapText: true,
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080"}
-		_ = g.setValue(ws, cellName(cLbl, r), h0, hdr)
+		_ = g.setValue(ws, cellName(cLbl, r), h0, EVMirrorColHeaderStyle)
 		for i, h := range hs {
-			_ = g.setValue(ws, cellName(cLC+i, r), h, hdr)
+			_ = g.setValue(ws, cellName(cLC+i, r), h, EVMirrorColHeaderStyle)
 		}
 		_ = g.file.SetRowHeight(ws, r, 26.0)
 		r++
@@ -119,11 +134,12 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	// ─── EINNAHMEN ───
 	section("Einnahmen")
 	colHeaders("Typ / ID", []string{"Einnahmen (LC)", "Einnahmen (EUR)", "Kum. Einnahmen (LC)", "Kum. Einnahmen (EUR)"})
-	dataRow(mirror(0, 11), true, 11, COLOR_WHITE, false, "left") // Vorperiodensaldo (Label gespiegelt)
+	dataRow(mirror(FBOffLabel, FBRowSaldoVortrag), true, FBRowSaldoVortrag, FBClrWhite, false, "left") // Vorperiodensaldo (Label gespiegelt)
 	for i, t := range TYPE_NAMES {
-		dataRow(t, false, 12+i, COLOR_WHITE, false, "left")
+		dataRow(t, false, FBRowIncomeStart+i, FBClrWhite, false, "left")
 	}
-	dataRow("Gesamteinnahmen", false, 16, COLOR_TOTAL, true, "left")
+	gesamtEinnahmenRow := FBRowIncomeStart + len(TYPE_NAMES)
+	dataRow("Gesamteinnahmen", false, gesamtEinnahmenRow, FBClrTotal, true, "left")
 
 	// ─── AUSGABEN ───
 	// Positionsbasiert: eine Zeile je Kostenposition (Anzahl folgt dem Budget).
@@ -131,17 +147,14 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	colHeaders("ID", []string{"Ausgaben (LC)", "Ausgaben (EUR)", "Kum. Ausgaben (LC)", "Kum. Ausgaben (EUR)"})
 	nPos := g.budgetExpenseCount()
 	for i := 0; i < nPos; i++ {
-		dataRow(mirror(0, FB_AUSG_FIRST_ROW+i), true, FB_AUSG_FIRST_ROW+i, COLOR_WHITE, false, "center") // ID gespiegelt
+		dataRow(mirror(FBOffLabel, FB_AUSG_FIRST_ROW+i), true, FB_AUSG_FIRST_ROW+i, FBClrWhite, false, "center") // ID gespiegelt
 	}
 	gesamtAusgRow := FB_AUSG_FIRST_ROW + nPos // = ausgTotalsRow auf dem FB-Blatt
-	dataRow("Gesamtausgaben", false, gesamtAusgRow, COLOR_TOTAL, true, "left")
+	dataRow("Gesamtausgaben", false, gesamtAusgRow, FBClrTotal, true, "left")
 	r++ // Leerzeile
 
 	// ─── SALDO DES FINANZBERICHTS ───
-	_ = g.setValue(ws, cellName(cLbl, r), "Saldo des Finanzberichts", StyleOptions{
-		Bold: true, HAlign: "left", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
-	})
+	_ = g.setValue(ws, cellName(cLbl, r), "Saldo des Finanzberichts", EVMirrorInfoLabelStyle)
 	saldoSrcRow := gesamtAusgRow + 2 // FB-Saldo liegt zwei Zeilen unter Gesamtausgaben
 	for i := 0; i < 4; i++ {
 		_ = g.setFormula(ws, cellName(cLC+i, r), mirror(i+1, saldoSrcRow), StyleOptions{
