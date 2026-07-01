@@ -163,9 +163,12 @@ func (g *Generator) bindKMWTable(ws string, reg *TemplateRegistry) error {
 	f := g.file
 	tbl := reg.TableKMWMittel
 
-	// Excel-Tabelle (Kopf in Zeile 4 + Datenzeilen bis 76)
+	// Excel-Tabelle (Kopf in Zeile 4 + Datenzeilen + GESAMT-Zeile). Die Summenzeile
+	// gehört – wie im Budget-Blatt – zum Tabellenbereich, damit sie als Total-Zeile
+	// der Tabelle erscheint. SUBTOTAL(109,…) schließt sich in der Summenzeile selbst
+	// aus, es entsteht kein Zirkelbezug.
 	if err := f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(KMWColPeriode, KMWRowHeader), cellName(KMWColDatum, KMWRowDataEnd)),
+		Range:          fmt.Sprintf("%s:%s", cellName(KMWColPeriode, KMWRowHeader), cellName(KMWColDatum, KMWRowTotal)),
 		Name:           tbl.Name,
 		StyleName:      "TableStyleLight1",
 		ShowRowStripes: falsePtr(),

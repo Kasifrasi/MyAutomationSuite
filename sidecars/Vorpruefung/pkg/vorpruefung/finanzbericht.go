@@ -540,7 +540,9 @@ func (g *Generator) fbBindAusgaben(ws string, reg *TemplateRegistry, l fbLayout)
 	g.rangesAusgaben = append(g.rangesAusgaben, dataRange)
 
 	if err := f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(l.colLabel, l.rowAusgTblHdr), cellName(l.colKumEUR, l.rowAusgTotals-1)),
+		// Summenzeile (Gesamtausgaben) gehört zum Tabellenbereich, damit sie als
+		// Total-Zeile der Tabelle erscheint (SUBTOTAL summiert nur die Datenzeilen).
+		Range:          fmt.Sprintf("%s:%s", cellName(l.colLabel, l.rowAusgTblHdr), cellName(l.colKumEUR, l.rowAusgTotals)),
 		Name:           ausgName,
 		StyleName:      "",
 		ShowRowStripes: falsePtr(),
@@ -785,7 +787,9 @@ func (g *Generator) fbCreateEinnahmenTabelle(
 	}
 
 	if err := f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(colStart, startRow), cellName(colStart+FBDetOffKurs, startRow+dataRows)),
+		// Summenzeile gehört zum Tabellenbereich (Total-Zeile der Tabelle); die
+		// SUBTOTAL-Formeln der Summenzeile beziehen sich nur auf die Datenzeilen.
+		Range:          fmt.Sprintf("%s:%s", cellName(colStart, startRow), cellName(colStart+FBDetOffKurs, totalsRow)),
 		Name:           tblName,
 		StyleName:      "",
 		ShowRowStripes: falsePtr(),
