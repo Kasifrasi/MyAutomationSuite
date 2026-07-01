@@ -349,7 +349,7 @@ type TemplateRegistry struct {
 	OutputBudgetGesamtY2       OutputField
 	OutputBudgetGesamtY3       OutputField
 	OutputBudgetGesamtEUR      OutputField
-	
+
 
 	// KMW-Mittel
 	InputKMWPeriode  InputFactory
@@ -541,7 +541,7 @@ func NewTemplateRegistry() *TemplateRegistry {
 		TableBudgetAusgaben: TableField{
 			Name:         "TblBudgetAusgaben",
 			Sheet:        constants.VPSheetBUDGET,
-			HasTotalsRow: false,
+			HasTotalsRow: true,
 			Columns: []TableColumn{
 				{Header: "Kostenkategorie"},
 				{Header: "ID"},
@@ -595,20 +595,30 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputDashSaldovortragEUR:     dash.Out("SaldovortragEUR"),
 
 		// Budget
+		OutputBudgetWK:             OutputField{NamedRange: "Budget_Kurs", Sheet: constants.VPSheetBUDGET},
+		OutputBudgetReserveEUR:     OutputField{NamedRange: "Kosten_Reserve_EUR", Sheet: constants.VPSheetBUDGET},
 		InputBudgetReserveFreigabe: budget.Inp("ReserveFreigabe", ListJaNein),
-		InputBudgetDrittmittelY1:   budget.Inp("DrittmittelY1", nil),
-		InputBudgetDrittmittelY2:   budget.Inp("DrittmittelY2", nil),
-		InputBudgetDrittmittelY3:   budget.Inp("DrittmittelY3", nil),
-		InputBudgetEigenmittelLC:   budget.Inp("EigenmittelLC", nil),
+		InputBudgetBegruendung:     InputField{NamedRange: "Inp_Budget_Begruendung", Sheet: constants.VPSheetBUDGET},
+		InputBudgetEigenmittelLC:   InputField{NamedRange: "Eigenmittel_LW", Sheet: constants.VPSheetBUDGET},
 		InputBudgetEigenmittelY1:   budget.Inp("EigenmittelY1", nil),
 		InputBudgetEigenmittelY2:   budget.Inp("EigenmittelY2", nil),
 		InputBudgetEigenmittelY3:   budget.Inp("EigenmittelY3", nil),
-		InputBudgetEigenmittelEUR:  budget.Inp("EigenmittelEUR", nil),
-		InputBudgetKMWLC:           budget.Inp("KMWLC", nil),
+		InputBudgetEigenmittelEUR:  InputField{NamedRange: "Eigenmittel_EUR", Sheet: constants.VPSheetBUDGET},
+		OutputBudgetDrittmittelLC:  OutputField{NamedRange: "Drittmittel_LW", Sheet: constants.VPSheetBUDGET},
+		InputBudgetDrittmittelY1:   budget.Inp("DrittmittelY1", nil),
+		InputBudgetDrittmittelY2:   budget.Inp("DrittmittelY2", nil),
+		InputBudgetDrittmittelY3:   budget.Inp("DrittmittelY3", nil),
+		OutputBudgetDrittmittelEUR: OutputField{NamedRange: "Drittmittel_EUR", Sheet: constants.VPSheetBUDGET},
+		InputBudgetKMWLC:           InputField{NamedRange: "KMW_Mittel_LW", Sheet: constants.VPSheetBUDGET},
 		InputBudgetKMWY1:           budget.Inp("KMWY1", nil),
 		InputBudgetKMWY2:           budget.Inp("KMWY2", nil),
 		InputBudgetKMWY3:           budget.Inp("KMWY3", nil),
-		InputBudgetKMWEUR:          budget.Inp("KMWEUR", nil),
+		InputBudgetKMWEUR:          InputField{NamedRange: "KMW_Mittel_EUR", Sheet: constants.VPSheetBUDGET},
+		OutputBudgetGesamtLC:       OutputField{NamedRange: "Gesamtprojektmittel_LW", Sheet: constants.VPSheetBUDGET},
+		OutputBudgetGesamtY1:       OutputField{NamedRange: "Gesamtprojektmittel_Y1", Sheet: constants.VPSheetBUDGET},
+		OutputBudgetGesamtY2:       OutputField{NamedRange: "Gesamtprojektmittel_Y2", Sheet: constants.VPSheetBUDGET},
+		OutputBudgetGesamtY3:       OutputField{NamedRange: "Gesamtprojektmittel_Y3", Sheet: constants.VPSheetBUDGET},
+		OutputBudgetGesamtEUR:      OutputField{NamedRange: "Gesamtprojektmittel_EUR", Sheet: constants.VPSheetBUDGET},
 
 		// KMW-Mittel
 		InputKMWPeriode:  kmw.InpFact("Periode_%d", nil),

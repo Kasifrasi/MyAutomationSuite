@@ -151,7 +151,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	// --- LINKER BLOCK (Basis) ---
 	rBew := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Bewilligte KMW-Mittel", false)
-	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", BG_NAME_KMW_EUR), false)
+	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", BudgetNameKMWEUR), false)
 	r++
 	rRes := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Davon Reserve", false)
@@ -159,12 +159,12 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	r++
 	rOp := r
 	g.evalMergedFormula(ws, cellName(lblL1, r), cellName(lblL2, r),
-		fmt.Sprintf(`=IF(%s="Ja","Operatives Budget (Reserve freigegeben)","Operatives Budget (abzgl. Reserve)")`, BG_NAME_RESERVE),
+		fmt.Sprintf(`=IF(%s="Ja","Operatives Budget (Reserve freigegeben)","Operatives Budget (abzgl. Reserve)")`, BudgetNameReserve),
 		StyleOptions{Size: 10.0, HAlign: "left", VAlign: "center",
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID})
 	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf(
 		`=IF(%s="Ja",ROUND(%s,2),ROUND(%s-%s,2))`,
-		BG_NAME_RESERVE, absName(valL, rBew), absName(valL, rBew), absName(valL, rRes)), false)
+		BudgetNameReserve, absName(valL, rBew), absName(valL, rBew), absName(valL, rRes)), false)
 	r++
 	rBer := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Bereitgestellte KMW-Mittel", false)
@@ -619,11 +619,11 @@ func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {
 	if isIncome {
 		switch idx {
 		case 0:
-			return BG_NAME_EIGEN_LW, BG_NAME_EIGEN_EUR
+			return BudgetNameEigenLW, BudgetNameEigenEUR
 		case 1:
-			return BG_NAME_DRITT_LW, BG_NAME_DRITT_EUR
+			return BudgetNameDrittLW, BudgetNameDrittEUR
 		case 2:
-			return BG_NAME_KMW_LW, BG_NAME_KMW_EUR
+			return BudgetNameKMWLW, BudgetNameKMWEUR
 		default:
 			return "0", "0"
 		}
@@ -632,14 +632,14 @@ func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {
 	// Budget table has rows starting at ausgHdrRow + 1. We don't have Named Ranges per position anymore.
 	// But wait! We need to pull the budget value for this position.
 	// Where is the budget value? It's in the Budget sheet.
-	// We can use the BG_TABLE_AUSG!
+	// We can use the BudgetTableAusg!
 	// Wait, we can just use the absolute cell reference for the budget position row.
 	// The budget expense block starts at row 24 or similar, depending on Drittmittel etc...
 	// Actually, the Budget Ausgaben block starts after "2. GEPLANTE AUSGABEN".
 	// Let's just lookup by index in the budget table using INDEX.
-	// BG_TABLE_AUSG columns: Betrag (LC) is 4, Betrag (EUR) is 8
-	budLC := fmt.Sprintf("INDEX(%s[Betrag (LC)], %d)", BG_TABLE_AUSG, idx+1)
-	budEUR := fmt.Sprintf("INDEX(%s[Betrag (EUR)], %d)", BG_TABLE_AUSG, idx+1)
+	// BudgetTableAusg columns: Betrag (LC) is 4, Betrag (EUR) is 8
+	budLC := fmt.Sprintf("INDEX(%s[Betrag (LC)], %d)", BudgetTableAusg, idx+1)
+	budEUR := fmt.Sprintf("INDEX(%s[Betrag (EUR)], %d)", BudgetTableAusg, idx+1)
 	return budLC, budEUR
 }
 

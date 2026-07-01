@@ -179,7 +179,7 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	top := r
 
 	// Jahresbudget-EUR wird mit dem Budget-Kurs (Gesamtprojekt) umgerechnet.
-	rate := BG_NAME_KURS
+	rate := BudgetNameKurs
 
 	gridBorder := func(fill string) StyleOptions {
 		return StyleOptions{FillColor: fill, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
@@ -256,14 +256,14 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	// erstrecken. Pro Jahr wird angegeben, wie viele Monate (von 12) in die
 	// Berechnung einfließen; das anteilige Limit summiert je Jahr
 	// Jahresbudget × Monate / 12.
-	yearMonthAddrs := make([]string, len(BG_YEARS))
-	yearBudLCAddrs := make([]string, len(BG_YEARS))
-	yearBudEURAddrs := make([]string, len(BG_YEARS))
+	yearMonthAddrs := make([]string, len(BudgetYears))
+	yearBudLCAddrs := make([]string, len(BudgetYears))
+	yearBudEURAddrs := make([]string, len(BudgetYears))
 	defaultMonths := []int{8, 0, 0} // bisheriges 8-Monats-Verhalten als Ausgangswert
 	fields := []InputField{FieldMAPruefungMonateY1, FieldMAPruefungMonateY2, FieldMAPruefungMonateY3}
-	for i, year := range BG_YEARS {
+	for i, year := range BudgetYears {
 		label(r, "Jahresbudget "+year, false)
-		budF := fmt.Sprintf("=IFERROR(ROUND(SUBTOTAL(109,%s[%s]),2),0)", BG_TABLE_AUSG, year)
+		budF := fmt.Sprintf("=IFERROR(ROUND(SUBTOTAL(109,%s[%s]),2),0)", BudgetTableAusg, year)
 		g.evalLimitCalc(ws, cellName(vLC, r), budF, EV_FMT_LC, false)
 		yearBudLCAddrs[i] = absName(vLC, r)
 		dm := 0
@@ -289,9 +289,9 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 
 	// Anteiliges Monatslimit = Σ Jahresbudget_i × Monate_i / 12.
 	rLimit := r
-	limTermsLC := make([]string, len(BG_YEARS))
-	limTermsEUR := make([]string, len(BG_YEARS))
-	for i := range BG_YEARS {
+	limTermsLC := make([]string, len(BudgetYears))
+	limTermsEUR := make([]string, len(BudgetYears))
+	for i := range BudgetYears {
 		limTermsLC[i] = fmt.Sprintf("%s*%s/12", yearBudLCAddrs[i], yearMonthAddrs[i])
 		limTermsEUR[i] = fmt.Sprintf("%s*%s/12", yearBudEURAddrs[i], yearMonthAddrs[i])
 	}

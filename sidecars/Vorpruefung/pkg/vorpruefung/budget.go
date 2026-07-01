@@ -97,61 +97,12 @@ const (
 	BudgetNameAusgLW    = "Gesamtausgaben_LW"
 	BudgetNameAusgEUR   = "Gesamtausgaben_EUR"
 
-	// Backward-Compat-Aliase (von anderen Sheets referenziert)
-	BG_SHEET_NAME       = BudgetSheetName
-	BG_COL_LABEL        = BudgetColLabel
-	BG_COL_ID           = BudgetColID
-	BG_COL_POS          = BudgetColPos
-	BG_COL_LC           = BudgetColLC
-	BG_COL_Y1           = BudgetColY1
-	BG_COL_Y2           = BudgetColY2
-	BG_COL_Y3           = BudgetColY3
-	BG_COL_EUR          = BudgetColEUR
-	BG_COL_GAP          = BudgetColGap
-	BG_COL_STATUS       = BudgetColStatus
-	BG_COL_CHECK        = BudgetColCheck
-	BG_COL_BEGR_1       = BudgetColBegr1
-	BG_COL_BEGR_2       = BudgetColBegr2
-	BG_HELP_LC          = BudgetColHelpLC
-	BG_HELP_EUR         = BudgetColHelpEUR
-	BG_COL_LIST_GEBER   = BudgetColListGeber
-	BG_COL_LIST_ID      = BudgetColListID
-	BG_NAME_GEBER_LIST  = BudgetNameGeberList
-	BG_NAME_ID_LIST     = BudgetNameIDList
-	BG_NAME_RESERVE     = BudgetNameReserve
-	BG_NAME_KURS        = BudgetNameKurs
-	BG_NAME_EIGEN_LW    = BudgetNameEigenLW
-	BG_NAME_EIGEN_EUR   = BudgetNameEigenEUR
-	BG_NAME_DRITT_LW    = BudgetNameDrittLW
-	BG_NAME_DRITT_EUR   = BudgetNameDrittEUR
-	BG_NAME_KMW_LW      = BudgetNameKMWLW
-	BG_NAME_KMW_EUR     = BudgetNameKMWEUR
-	BG_NAME_GESAMT_LW   = BudgetNameGesamtLW
-	BG_NAME_GESAMT_EUR  = BudgetNameGesamtEUR
-	BG_NAME_AUSG_LW     = BudgetNameAusgLW
-	BG_NAME_AUSG_EUR    = BudgetNameAusgEUR
-	BG_CLR_HEADER       = BudgetClrHeader
-	BG_CLR_SUBHEAD      = BudgetClrSubhead
-	BG_CLR_INPUT        = BudgetClrInput
-	BG_CLR_BORDER       = BudgetClrBorder
-	BG_CLR_GRID         = BudgetClrGrid
-	BG_CLR_FONT         = BudgetClrFont
-	BG_CLR_BLACK        = BudgetClrBlack
-	BG_CLR_RES_OFF      = BudgetClrResOff
-	BG_CLR_RES_TXT      = BudgetClrResTxt
-	BG_CLR_RES_ON       = BudgetClrResOn
-	BG_CLR_RES_ON_TXT   = BudgetClrResOnTxt
-	BG_CLR_BAD          = BudgetClrBad
-	BG_CLR_BAD_TXT      = BudgetClrBadTxt
-	BG_FMT_LC           = BudgetFmtLC
-	BG_FMT_EUR          = BudgetFmtEUR
-	BG_FMT_RATE         = BudgetFmtRate
-	BG_TABLE_NAME       = "TblDrittmittel"
-	BG_TABLE_AUSG       = "TblBudgetAusgaben"
-	BG_TAB_COLOR        = BudgetTabColor
+	// Tabellennamen (intern und von anderen Sheets verwendet)
+	BudgetTableAusg = "TblBudgetAusgaben"
+	BudgetTableDrit = "TblDrittmittel"
 )
 
-var BG_YEARS = []string{"Jahr 1", "Jahr 2", "Jahr 3"}
+var BudgetYears = []string{"Jahr 1", "Jahr 2", "Jahr 3"}
 
 // ─── Teil B: Layout-Dokumentation ────────────────────────────────────────────
 /*
@@ -373,15 +324,15 @@ func (g *Generator) drawBudgetAusgaben(ws string, dyn budgetDynRows) error {
 	_ = f.SetRowHeight(ws, dyn.AusgTotal, 30)
 	g.setValue(ws, cellName(BudgetColLabel, dyn.AusgTotal), "Geplante Gesamtausgaben", StyleOptions{})
 	g.setFormula(ws, cellName(BudgetColLC, dyn.AusgTotal),
-		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{NumFormat: BudgetFmtLC})
+		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BudgetTableAusg), StyleOptions{NumFormat: BudgetFmtLC})
 	g.setFormula(ws, cellName(BudgetColY1, dyn.AusgTotal),
-		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[0]), StyleOptions{NumFormat: BudgetFmtLC})
+		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BudgetTableAusg, BudgetYears[0]), StyleOptions{NumFormat: BudgetFmtLC})
 	g.setFormula(ws, cellName(BudgetColY2, dyn.AusgTotal),
-		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[1]), StyleOptions{NumFormat: BudgetFmtLC})
+		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BudgetTableAusg, BudgetYears[1]), StyleOptions{NumFormat: BudgetFmtLC})
 	g.setFormula(ws, cellName(BudgetColY3, dyn.AusgTotal),
-		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[2]), StyleOptions{NumFormat: BudgetFmtLC})
+		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BudgetTableAusg, BudgetYears[2]), StyleOptions{NumFormat: BudgetFmtLC})
 	g.setFormula(ws, cellName(BudgetColEUR, dyn.AusgTotal),
-		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BG_TABLE_AUSG), StyleOptions{NumFormat: BudgetFmtEUR})
+		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BudgetTableAusg), StyleOptions{NumFormat: BudgetFmtEUR})
 	g.bgTotalRow(ws, dyn.AusgTotal, BudgetColLabel, BudgetColEUR)
 
 	return nil
@@ -417,7 +368,7 @@ func (g *Generator) drawBudgetDrittmittelTable(ws string) error {
 	g.bgTableHeader(ws, headerRow, cName, cEur)
 	_ = g.file.AddTable(ws, &excelize.Table{
 		Range:          fmt.Sprintf("%s:%s", cellName(cName, headerRow), cellName(cEur, headerRow+dataRows)),
-		Name:           BG_TABLE_NAME,
+		Name:           BudgetTableDrit,
 		StyleName:      "",
 		ShowRowStripes: falsePtr(),
 	})
@@ -555,39 +506,35 @@ func (g *Generator) drawBudgetYearInputRow(ws string, r int) {
 func (g *Generator) bindBudgetFinancing(ws string, reg *TemplateRegistry, dyn budgetDynRows) error {
 	f := g.file
 
-	// Kurs-Named-Range
-	g.upsertNamedRange(BudgetNameKurs, BudgetColY3, BudgetRowSection1)
+	// Kurs
+	g.upsertNamedRange(reg.OutputBudgetWK.NamedRange, BudgetColY3, BudgetRowSection1)
 
-	// Eigenmittel
+	// Eigenmittel — bindInputField setzt "Eigenmittel_LW" / "Eigenmittel_EUR" direkt aus dem Registry-NamedRange
 	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColLC, reg.InputBudgetEigenmittelLC)
 	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColY1, reg.InputBudgetEigenmittelY1)
 	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColY2, reg.InputBudgetEigenmittelY2)
 	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColY3, reg.InputBudgetEigenmittelY3)
 	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColEUR, reg.InputBudgetEigenmittelEUR)
-	g.upsertNamedRange(BudgetNameEigenLW, BudgetColLC, BudgetRowEigen)
-	g.upsertNamedRange(BudgetNameEigenEUR, BudgetColEUR, BudgetRowEigen)
 
-	// Drittmittel — Summenzeile (LC/EUR als Formeln aus Tabelle, Y1–Y3 als Input)
+	// Drittmittel — LC/EUR sind Formel-Outputs, Y1–Y3 Input
 	g.bgSummeCell(ws, BudgetRowDritt, BudgetColLC,
-		fmt.Sprintf(`=SUM(%s[Betrag (LC)])`, BG_TABLE_NAME), BudgetFmtLC)
+		fmt.Sprintf(`=SUM(%s[Betrag (LC)])`, BudgetTableDrit), BudgetFmtLC)
 	g.bgSummeCell(ws, BudgetRowDritt, BudgetColEUR,
-		fmt.Sprintf(`=SUM(%s[Betrag (EUR)])`, BG_TABLE_NAME), BudgetFmtEUR)
+		fmt.Sprintf(`=SUM(%s[Betrag (EUR)])`, BudgetTableDrit), BudgetFmtEUR)
 	_ = g.bindInputField(ws, BudgetRowDritt, BudgetColY1, reg.InputBudgetDrittmittelY1)
 	_ = g.bindInputField(ws, BudgetRowDritt, BudgetColY2, reg.InputBudgetDrittmittelY2)
 	_ = g.bindInputField(ws, BudgetRowDritt, BudgetColY3, reg.InputBudgetDrittmittelY3)
-	g.upsertNamedRange(BudgetNameDrittLW, BudgetColLC, BudgetRowDritt)
-	g.upsertNamedRange(BudgetNameDrittEUR, BudgetColEUR, BudgetRowDritt)
+	g.upsertNamedRange(reg.OutputBudgetDrittmittelLC.NamedRange, BudgetColLC, BudgetRowDritt)
+	g.upsertNamedRange(reg.OutputBudgetDrittmittelEUR.NamedRange, BudgetColEUR, BudgetRowDritt)
 
-	// KMW-Mittel
+	// KMW-Mittel — bindInputField setzt "KMW_Mittel_LW" / "KMW_Mittel_EUR"
 	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColLC, reg.InputBudgetKMWLC)
 	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColY1, reg.InputBudgetKMWY1)
 	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColY2, reg.InputBudgetKMWY2)
 	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColY3, reg.InputBudgetKMWY3)
 	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColEUR, reg.InputBudgetKMWEUR)
-	g.upsertNamedRange(BudgetNameKMWLW, BudgetColLC, BudgetRowKMW)
-	g.upsertNamedRange(BudgetNameKMWEUR, BudgetColEUR, BudgetRowKMW)
 
-	// GESAMTPROJEKTMITTEL (Formeln)
+	// GESAMTPROJEKTMITTEL (Formeln + Named Ranges aus Registry)
 	sumOf := func(col int) string {
 		return fmt.Sprintf("=%s+%s+%s",
 			cellName(col, BudgetRowEigen),
@@ -600,10 +547,13 @@ func (g *Generator) bindBudgetFinancing(ws string, reg *TemplateRegistry, dyn bu
 	g.setFormula(ws, cellName(BudgetColY2, BudgetRowGesamt), sumOf(BudgetColY2), StyleOptions{NumFormat: BudgetFmtLC})
 	g.setFormula(ws, cellName(BudgetColY3, BudgetRowGesamt), sumOf(BudgetColY3), StyleOptions{NumFormat: BudgetFmtLC})
 	g.setFormula(ws, cellName(BudgetColEUR, BudgetRowGesamt), sumOf(BudgetColEUR), StyleOptions{NumFormat: BudgetFmtEUR})
-	g.upsertNamedRange(BudgetNameGesamtLW, BudgetColLC, BudgetRowGesamt)
-	g.upsertNamedRange(BudgetNameGesamtEUR, BudgetColEUR, BudgetRowGesamt)
+	g.upsertNamedRange(reg.OutputBudgetGesamtLC.NamedRange, BudgetColLC, BudgetRowGesamt)
+	g.upsertNamedRange(reg.OutputBudgetGesamtY1.NamedRange, BudgetColY1, BudgetRowGesamt)
+	g.upsertNamedRange(reg.OutputBudgetGesamtY2.NamedRange, BudgetColY2, BudgetRowGesamt)
+	g.upsertNamedRange(reg.OutputBudgetGesamtY3.NamedRange, BudgetColY3, BudgetRowGesamt)
+	g.upsertNamedRange(reg.OutputBudgetGesamtEUR.NamedRange, BudgetColEUR, BudgetRowGesamt)
 
-	// Budget-Kurs-Formel (Gesamt LC / Gesamt EUR)
+	// Budget-Kurs-Formel
 	totalLoc := absName(BudgetColLC, BudgetRowGesamt)
 	totalEur := absName(BudgetColEUR, BudgetRowGesamt)
 	rateCellOpts := StyleOptions{
@@ -613,31 +563,32 @@ func (g *Generator) bindBudgetFinancing(ws string, reg *TemplateRegistry, dyn bu
 	g.setFormula(ws, cellName(BudgetColY3, BudgetRowSection1),
 		fmt.Sprintf(`=IFERROR(%s/%s,0)`, totalLoc, totalEur), rateCellOpts)
 
-	// Ausgaben-Hilfszeilen (Kategorien-Summen)
-	var reserveEurAddr string
+	// Ausgaben-Hilfszeilen (Kategorien-Summen, per-category = dynamisch)
 	for i, cat := range ListKostenkategorien {
 		hr := 4 + i
 		g.setFormula(ws, cellName(BudgetColHelpLC, hr),
-			fmt.Sprintf(`=SUMIFS(%s[Betrag (LC)],%s[Kostenkategorie],"%s")`, BG_TABLE_AUSG, BG_TABLE_AUSG, cat),
+			fmt.Sprintf(`=SUMIFS(%s[Betrag (LC)],%s[Kostenkategorie],"%s")`, BudgetTableAusg, BudgetTableAusg, cat),
 			StyleOptions{})
 		g.setFormula(ws, cellName(BudgetColHelpEUR, hr),
-			fmt.Sprintf(`=SUMIFS(%s[Betrag (EUR)],%s[Kostenkategorie],"%s")`, BG_TABLE_AUSG, BG_TABLE_AUSG, cat),
+			fmt.Sprintf(`=SUMIFS(%s[Betrag (EUR)],%s[Kostenkategorie],"%s")`, BudgetTableAusg, BudgetTableAusg, cat),
 			StyleOptions{})
-		g.upsertNamedRange(bgKostenName(cat, "LW"), BudgetColHelpLC, hr)
-		g.upsertNamedRange(bgKostenName(cat, "EUR"), BudgetColHelpEUR, hr)
+		lcName, eurName := bgKostenName(cat, "LW"), bgKostenName(cat, "EUR")
 		if cat == "Reserve" {
-			reserveEurAddr = absName(BudgetColHelpEUR, hr)
+			eurName = reg.OutputBudgetReserveEUR.NamedRange
 		}
+		g.upsertNamedRange(lcName, BudgetColHelpLC, hr)
+		g.upsertNamedRange(eurName, BudgetColHelpEUR, hr)
 	}
-	_ = reserveEurAddr // wird via BudgetHelpReserveRow direkt referenziert
 
+	// Gesamtausgaben-Hilfszeile (für Prüfungs-Formeln — kein Named Range nötig)
 	gesHr := 4 + len(ListKostenkategorien)
 	g.setFormula(ws, cellName(BudgetColHelpLC, gesHr),
-		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{})
+		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BudgetTableAusg), StyleOptions{})
 	g.setFormula(ws, cellName(BudgetColHelpEUR, gesHr),
-		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BG_TABLE_AUSG), StyleOptions{})
-	g.upsertNamedRange(BudgetNameAusgLW, BudgetColHelpLC, gesHr)
-	g.upsertNamedRange(BudgetNameAusgEUR, BudgetColHelpEUR, gesHr)
+		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BudgetTableAusg), StyleOptions{})
+
+	// Begründungsfeld
+	_ = g.bindInputField(ws, BudgetBegrAreaTop, BudgetColBegr1, reg.InputBudgetBegruendung)
 
 	_ = f.SetColVisible(ws, colLetter(BudgetColHelpLC), false)
 	_ = f.SetColVisible(ws, colLetter(BudgetColHelpEUR), false)
@@ -652,8 +603,8 @@ func (g *Generator) bindBudgetAusgaben(ws string, reg *TemplateRegistry, dyn bud
 
 	// Excel-Tabelle anlegen
 	_ = f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(BudgetColLabel, BudgetRowAusgHdr), cellName(BudgetColEUR, dyn.AusgTotal-1)),
-		Name:           BG_TABLE_AUSG,
+		Range:          fmt.Sprintf("%s:%s", cellName(BudgetColLabel, BudgetRowAusgHdr), cellName(BudgetColEUR, dyn.AusgTotal)),
+		Name:           BudgetTableAusg,
 		StyleName:      "",
 		ShowRowStripes: falsePtr(),
 	})
@@ -668,7 +619,7 @@ func (g *Generator) bindBudgetAusgaben(ws string, reg *TemplateRegistry, dyn bud
 
 	// ID-Liste für Lookup-Formeln
 	g.setDynArrayFormula(ws, cellName(BudgetColListID, 1),
-		fmt.Sprintf(`IFERROR(_xlfn._xlws.FILTER(%s[ID],%s[ID]<>""),"")`, BG_TABLE_AUSG, BG_TABLE_AUSG),
+		fmt.Sprintf(`IFERROR(_xlfn._xlws.FILTER(%s[ID],%s[ID]<>""),"")`, BudgetTableAusg, BudgetTableAusg),
 		StyleOptions{})
 	g.upsertNamedFormula(BudgetNameIDList,
 		fmt.Sprintf("OFFSET('%s'!%s, 0, 0, COUNTA('%s'!%s:%s), 1)",
@@ -707,9 +658,9 @@ func (g *Generator) bgSubHeader(ws string, r int, title string) {
 
 func (g *Generator) budgetValueHeaderCells(ws string, r int) {
 	g.setValue(ws, cellName(BudgetColLC, r), "Betrag (LC)", StyleOptions{})
-	g.setValue(ws, cellName(BudgetColY1, r), BG_YEARS[0], StyleOptions{})
-	g.setValue(ws, cellName(BudgetColY2, r), BG_YEARS[1], StyleOptions{})
-	g.setValue(ws, cellName(BudgetColY3, r), BG_YEARS[2], StyleOptions{})
+	g.setValue(ws, cellName(BudgetColY1, r), BudgetYears[0], StyleOptions{})
+	g.setValue(ws, cellName(BudgetColY2, r), BudgetYears[1], StyleOptions{})
+	g.setValue(ws, cellName(BudgetColY3, r), BudgetYears[2], StyleOptions{})
 	g.setValue(ws, cellName(BudgetColEUR, r), "Betrag (EUR)", StyleOptions{})
 }
 

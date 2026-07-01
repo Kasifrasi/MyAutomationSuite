@@ -240,7 +240,7 @@ func (g *Generator) upsertNamedRange(name string, col, row int) {
 	_ = g.file.DeleteDefinedName(&excelize.DefinedName{Name: name})
 	_ = g.file.SetDefinedName(&excelize.DefinedName{
 		Name:     name,
-		RefersTo: fmt.Sprintf("'%s'!%s", BG_SHEET_NAME, absName(col, row)),
+		RefersTo: fmt.Sprintf("'%s'!%s", BudgetSheetName, absName(col, row)),
 	})
 }
 
@@ -256,15 +256,15 @@ func (g *Generator) drawSectionHeader(sheet string, row int, title string) error
 	opts := StyleOptions{
 		Bold:         true,
 		Size:         11.0,
-		FontColor:    BG_CLR_BLACK,
-		FillColor:    BG_CLR_HEADER,
+		FontColor:    BudgetClrBlack,
+		FillColor:    BudgetClrHeader,
 		HAlign:       "left",
 		VAlign:       "center",
 		BorderTop:    2,
 		BorderBottom: 1,
-		BorderColor:  BG_CLR_BORDER,
+		BorderColor:  BudgetClrBorder,
 	}
-	err := g.mergeCells(sheet, cellName(BG_COL_LABEL, row), cellName(BG_COL_EUR, row), title, opts)
+	err := g.mergeCells(sheet, cellName(BudgetColLabel, row), cellName(BudgetColEUR, row), title, opts)
 	if err != nil {
 		fmt.Println("ERR:", err); return err
 	}
@@ -276,15 +276,15 @@ func (g *Generator) drawSubHeader(sheet string, row int, title string) error {
 	opts := StyleOptions{
 		Bold:         true,
 		Size:         10.0,
-		FontColor:    BG_CLR_BLACK,
-		FillColor:    BG_CLR_SUBHEAD,
+		FontColor:    BudgetClrBlack,
+		FillColor:    BudgetClrSubhead,
 		HAlign:       "left",
 		VAlign:       "center",
 		BorderTop:    1,
 		BorderBottom: 1,
-		BorderColor:  BG_CLR_BORDER,
+		BorderColor:  BudgetClrBorder,
 	}
-	err := g.mergeCells(sheet, cellName(BG_COL_LABEL, row), cellName(BG_COL_EUR, row), title, opts)
+	err := g.mergeCells(sheet, cellName(BudgetColLabel, row), cellName(BudgetColEUR, row), title, opts)
 	if err != nil {
 		fmt.Println("ERR:", err); return err
 	}
@@ -299,23 +299,23 @@ func (g *Generator) drawYearRow(sheet string, row int, label string, labelName, 
 		HAlign: "left",
 		VAlign: "center",
 	}
-	err := g.setValue(sheet, cellName(BG_COL_LABEL, row), label, lblOpts)
+	err := g.setValue(sheet, cellName(BudgetColLabel, row), label, lblOpts)
 	if err != nil {
 		fmt.Println("ERR:", err); return err
 	}
 
 	inputLCOpts := StyleOptions{
-		FillColor:    BG_CLR_INPUT,
+		FillColor:    BudgetClrInput,
 		HAlign:       "right",
 		VAlign:       "center",
-		NumFormat:    BG_FMT_LC,
+		NumFormat:    BudgetFmtLC,
 		BorderLeft:   1,
 		BorderRight:  1,
 		BorderTop:    1,
 		BorderBottom: 1,
-		BorderColor:  BG_CLR_GRID,
+		BorderColor:  BudgetClrGrid,
 	}
-	for c := BG_COL_LC; c <= BG_COL_Y3; c++ {
+	for c := BudgetColLC; c <= BudgetColY3; c++ {
 		err = g.setValue(sheet, cellName(c, row), "", inputLCOpts)
 		if err != nil {
 			fmt.Println("ERR:", err); return err
@@ -323,17 +323,17 @@ func (g *Generator) drawYearRow(sheet string, row int, label string, labelName, 
 	}
 
 	inputEuroOpts := inputLCOpts
-	inputEuroOpts.NumFormat = BG_FMT_EUR
-	err = g.setValue(sheet, cellName(BG_COL_EUR, row), "", inputEuroOpts)
+	inputEuroOpts.NumFormat = BudgetFmtEUR
+	err = g.setValue(sheet, cellName(BudgetColEUR, row), "", inputEuroOpts)
 	if err != nil {
 		fmt.Println("ERR:", err); return err
 	}
 
 	if lwName != "" {
-		g.upsertNamedRange(lwName, BG_COL_LC, row)
+		g.upsertNamedRange(lwName, BudgetColLC, row)
 	}
 	if eurName != "" {
-		g.upsertNamedRange(eurName, BG_COL_EUR, row)
+		g.upsertNamedRange(eurName, BudgetColEUR, row)
 	}
 
 	_ = g.file.SetRowHeight(sheet, row, 22.0)
@@ -344,12 +344,12 @@ func (g *Generator) styleHeader(sheet string, r1, c1, r2, c2 int) error {
 	opts := StyleOptions{
 		Bold:         true,
 		Size:         9.0,
-		FontColor:    BG_CLR_FONT,
-		FillColor:    BG_CLR_HEADER,
+		FontColor:    BudgetClrFont,
+		FillColor:    BudgetClrHeader,
 		HAlign:       "center",
 		VAlign:       "center",
 		BorderBottom: 2,
-		BorderColor:  BG_CLR_BORDER,
+		BorderColor:  BudgetClrBorder,
 	}
 	for r := r1; r <= r2; r++ {
 		for c := c1; c <= c2; c++ {
@@ -481,16 +481,16 @@ func (g *Generator) styleTotalRow(sheet string, row int) error {
 	opts := StyleOptions{
 		Bold:         true,
 		Size:         10.0,
-		FontColor:    BG_CLR_BLACK,
-		FillColor:    BG_CLR_SUBHEAD,
+		FontColor:    BudgetClrBlack,
+		FillColor:    BudgetClrSubhead,
 		VAlign:       "center",
 		BorderTop:    1,
 		BorderBottom: 1,
 		BorderLeft:   1,
 		BorderRight:  1,
-		BorderColor:  BG_CLR_BORDER,
+		BorderColor:  BudgetClrBorder,
 	}
-	for c := BG_COL_LABEL; c <= BG_COL_EUR; c++ {
+	for c := BudgetColLabel; c <= BudgetColEUR; c++ {
 		err := g.setStyle(sheet, cellName(c, row), cellName(c, row), opts)
 		if err != nil {
 			fmt.Println("ERR:", err); return err
