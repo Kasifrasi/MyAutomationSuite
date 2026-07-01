@@ -7,227 +7,195 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// ─── Teil A: Grid-Konstanten ──────────────────────────────────────────────────
+
 const (
-	KMW_SHEET_NAME = constants.VPSheetKMW_MITTEL
-	KMW_TAB_COLOR  = "FFFF00" // Gelb
+	// Spalten
+	KMWColPeriode  = 2  // B
+	KMWColWaehrung = 3  // C
+	KMWColBetrag   = 4  // D
+	KMWColDatum    = 5  // E
+	KMWColValList  = 26 // Z  (ausgeblendete Hilfsliste für die Periode-Auswahl)
 
-	KMW_COL_PERIODE  = 2  // B
-	KMW_COL_WAEHRUNG = 3  // C
-	KMW_COL_BETRAG   = 4  // D
-	KMW_COL_DATUM    = 5  // E
-	KMW_COL_VAL_LIST = 26 // Z  (ausgeblendete Hilfsliste für die Periode-Auswahl)
+	// Zeilen
+	KMWRowTitle     = 2
+	KMWRowHeader    = 4
+	KMWRowDataStart = 5
+	KMWRowDataEnd   = 76
+	KMWRowTotal     = 77
 
-	KMW_TABLE_NAME = "TblKMWMittel"
+	// Ab dieser Zeile werden die Datenzeilen gruppiert und ausgeblendet zugeklappt
+	KMWRowCollapseStart = 23
 
-	// ─── Farb-Konstanten (RGB → Hex) ──────────────────────────────────────────────
-	KMW_CLR_HEADER = "D3D3D3" // 211,211,211 – Titel/Kopf/Summe
-	KMW_CLR_INPUT  = "FFFAE5" // 255,250,229 – Eingabezeilen
-	KMW_CLR_BORDER = "808080" // 128,128,128 – kräftige Rahmen
-	KMW_CLR_GRID   = "D3D3D3" // 211,211,211 – dünne Innenrahmen
-	KMW_CLR_FONT   = "3C3C3C" // 60,60,60    – Kopf-/Summen-Schrift
+	// Anzahl der wählbaren Perioden in der Hilfsliste (Spalte Z)
+	KMWPeriodenAnzahl = 36
+
+	// Spaltenbreiten
+	KMWWPeriode  = 15.0
+	KMWWWaehrung = 10.0
+	KMWWBetrag   = 20.0
+	KMWWDatum    = 15.0
+
+	// Sheet
+	KMWSheetName = constants.VPSheetKMW_MITTEL
+	KMWTabColor  = "FFFF00" // Gelb
 )
+
+// KMW_TABLE_NAME wird auch von anderen Sheets referenziert (z. B. pruefung_fb.go)
+// und stammt – Registry First – aus der zentralen TemplateRegistry.
+var KMW_TABLE_NAME = Registry.TableKMWMittel.Name
+
+// ─── Teil B: Layout-Dokumentation ────────────────────────────────────────────
+/*
+  LAYOUT KMW-MITTEL:
+  | Zeile | B (Periode)        | C (Waehrung)      | D (Betrag)          | E (Datum)          |
+  |-------|--------------------|-------------------|---------------------|--------------------|
+  |   2   | II. KMW-MITTEL BEREITGESTELLT (Titel, merged B:E)                                    |
+  |   4   | Periode            | Waehrung          | Betrag              | Datum   (TblKMWMittel-Kopf) |
+  | 5..76 | [Dropdown Periode] | [Dropdown Waehr.] | [Inp Betrag]        | [Inp Datum]        |
+  |  77   | GESAMT             |                   | [Σ SUBTOTAL Betrag] |                    |
+
+  Zeilen 23–76 sind gruppiert und standardmäßig eingeklappt (ausgeblendet).
+  Spalte Z (ausgeblendet): Hilfsliste "Periode 1".."Periode 36" für das Periode-Dropdown.
+*/
+
+// ─── Teil C: Orchestrator ─────────────────────────────────────────────────────
 
 // CreateKMWMittelSheet erstellt das Layout des Blatts "II. KMW-Mittel".
 func (g *Generator) CreateKMWMittelSheet() error {
-	ws := KMW_SHEET_NAME
-	f := g.file
+	ws := KMWSheetName
 
-	// Sheet initialisieren
-	_, err := f.NewSheet(ws)
+	_, err := g.file.NewSheet(ws)
 	if err != nil {
 		return fmt.Errorf("fehler beim Erstellen des KMW-Mittel-Blatts: %w", err)
 	}
+	tabColor := KMWTabColor
+	_ = g.file.SetSheetProps(ws, &excelize.SheetPropsOptions{TabColorRGB: &tabColor})
+	_ = g.file.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
 
-	tabColor := KMW_TAB_COLOR
-	_ = f.SetSheetProps(ws, &excelize.SheetPropsOptions{TabColorRGB: &tabColor})
-	_ = f.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
+	g.kmwSetupColumns(ws)
 
-	// Spaltenbreiten einstellen
-	g.setColWidth(ws, KMW_COL_PERIODE, 15.0)
-	g.setColWidth(ws, KMW_COL_WAEHRUNG, 10.0)
-	g.setColWidth(ws, KMW_COL_BETRAG, 20.0)
-	g.setColWidth(ws, KMW_COL_DATUM, 15.0)
-
-	// ─── Titel (B2:E2) ────────────────────────────────────────────────────────
-	titleOpts := StyleOptions{
-		Size:      14.0,
-		Bold:      true,
-		FillColor: KMW_CLR_HEADER,
-		HAlign:    "center",
-		VAlign:    "center",
+	// ── Teil D: Draw ──────────────────────────────────────────────────────────
+	if err := g.drawKMWTitle(ws); err != nil {
+		return err
 	}
-	err = g.mergeCells(ws, cellName(KMW_COL_PERIODE, 2), cellName(KMW_COL_DATUM, 2), "II. KMW-MITTEL BEREITGESTELLT", titleOpts)
-	if err != nil {
+	if err := g.drawKMWTable(ws, Registry); err != nil {
+		return err
+	}
+	if err := g.drawKMWTotals(ws); err != nil {
+		return err
+	}
+
+	// ── Teil E: Bind ──────────────────────────────────────────────────────────
+	if err := g.bindKMWTable(ws, Registry); err != nil {
+		return err
+	}
+
+	// ── Abschluß (Außenrahmen) ────────────────────────────────────────────────
+	_ = g.styleOuterBorder(ws, KMWRowHeader, KMWColPeriode, KMWRowHeader, KMWColDatum, 2, KMWClrBorder)
+	_ = g.styleOuterBorder(ws, KMWRowDataStart, KMWColPeriode, KMWRowDataEnd, KMWColDatum, 2, KMWClrBorder)
+	_ = g.styleOuterBorder(ws, KMWRowTotal, KMWColPeriode, KMWRowTotal, KMWColDatum, 2, KMWClrBorder)
+
+	return nil
+}
+
+// ─── Teil D: Draw-Funktionen (nur visuell) ───────────────────────────────────
+
+func (g *Generator) kmwSetupColumns(ws string) {
+	g.setColWidth(ws, KMWColPeriode, KMWWPeriode)
+	g.setColWidth(ws, KMWColWaehrung, KMWWWaehrung)
+	g.setColWidth(ws, KMWColBetrag, KMWWBetrag)
+	g.setColWidth(ws, KMWColDatum, KMWWDatum)
+}
+
+func (g *Generator) drawKMWTitle(ws string) error {
+	if err := g.mergeCells(ws,
+		cellName(KMWColPeriode, KMWRowTitle),
+		cellName(KMWColDatum, KMWRowTitle),
+		"II. KMW-MITTEL BEREITGESTELLT",
+		KMWTitleStyle,
+	); err != nil {
 		return fmt.Errorf("fehler beim Erstellen des Titels: %w", err)
 	}
-	_ = f.SetRowHeight(ws, 2, 24.0)
+	_ = g.file.SetRowHeight(ws, KMWRowTitle, 24.0)
+	return nil
+}
 
-	// ─── Validierungs-Hilfsliste "Periode 1..36" in Spalte Z (ausgeblendet) ───
-	for i := 1; i <= 36; i++ {
-		cell := cellName(KMW_COL_VAL_LIST, i)
-		err = f.SetCellValue(ws, cell, fmt.Sprintf("Periode %d", i))
-		if err != nil {
+func (g *Generator) drawKMWTable(ws string, reg *TemplateRegistry) error {
+	f := g.file
+
+	// Kopfzeile (Spaltenüberschriften aus der Registry)
+	for i, col := range reg.TableKMWMittel.Columns {
+		_ = g.setValue(ws, cellName(KMWColPeriode+i, KMWRowHeader), col.Header, KMWHeaderStyle)
+	}
+	_ = f.SetRowHeight(ws, KMWRowHeader, 20.0)
+
+	// Datenzeilen formatieren
+	for row := KMWRowDataStart; row <= KMWRowDataEnd; row++ {
+		_ = g.setStyle(ws, cellName(KMWColPeriode, row), cellName(KMWColPeriode, row), KMWInputStyle)
+		_ = g.setStyle(ws, cellName(KMWColWaehrung, row), cellName(KMWColWaehrung, row), KMWInputStyle)
+		_ = g.setStyle(ws, cellName(KMWColBetrag, row), cellName(KMWColBetrag, row), KMWBetragStyle)
+		_ = g.setStyle(ws, cellName(KMWColDatum, row), cellName(KMWColDatum, row), KMWDatumStyle)
+	}
+
+	// Zeilen 23 bis 76 gruppieren und ausgeblendet zuklappen
+	for r := KMWRowCollapseStart; r <= KMWRowDataEnd; r++ {
+		_ = f.SetRowOutlineLevel(ws, r, 1)
+		_ = f.SetRowVisible(ws, r, false)
+	}
+
+	return nil
+}
+
+func (g *Generator) drawKMWTotals(ws string) error {
+	row := KMWRowTotal
+	_ = g.setValue(ws, cellName(KMWColPeriode, row), "GESAMT", KMWTotalStyle)
+	_ = g.setStyle(ws, cellName(KMWColWaehrung, row), cellName(KMWColWaehrung, row), KMWTotalStyle)
+	_ = g.setFormula(ws, cellName(KMWColBetrag, row),
+		fmt.Sprintf("=SUBTOTAL(109,%s[Betrag])", KMW_TABLE_NAME), KMWTotalBetragStyle)
+	_ = g.setStyle(ws, cellName(KMWColDatum, row), cellName(KMWColDatum, row), KMWTotalStyle)
+	return nil
+}
+
+// ─── Teil E: Bind-Funktionen (Logik & Registry) ───────────────────────────────
+
+func (g *Generator) bindKMWTable(ws string, reg *TemplateRegistry) error {
+	f := g.file
+	tbl := reg.TableKMWMittel
+
+	// Excel-Tabelle (Kopf in Zeile 4 + Datenzeilen bis 76)
+	if err := f.AddTable(ws, &excelize.Table{
+		Range:          fmt.Sprintf("%s:%s", cellName(KMWColPeriode, KMWRowHeader), cellName(KMWColDatum, KMWRowDataEnd)),
+		Name:           tbl.Name,
+		StyleName:      "TableStyleLight1",
+		ShowRowStripes: falsePtr(),
+	}); err != nil {
+		return fmt.Errorf("fehler beim Erstellen der Tabelle %s: %w", tbl.Name, err)
+	}
+
+	// Ausgeblendete Hilfsliste "Periode 1..36" in Spalte Z für das Periode-Dropdown
+	for i := 1; i <= KMWPeriodenAnzahl; i++ {
+		if err := f.SetCellValue(ws, cellName(KMWColValList, i), fmt.Sprintf("Periode %d", i)); err != nil {
 			return fmt.Errorf("fehler beim Schreiben der Periode in Spalte Z: %w", err)
 		}
 	}
-	_ = f.SetColVisible(ws, colLetter(KMW_COL_VAL_LIST), false)
+	_ = f.SetColVisible(ws, colLetter(KMWColValList), false)
 
-	// ─── Tabelle (Kopf in Zeile 4 + 18 Datenzeilen) ────────────────────────────
-	headers := []string{"Periode", "Waehrung", "Betrag", "Datum"}
-	for i, h := range headers {
-		cell := cellName(KMW_COL_PERIODE+i, 4)
-		_ = f.SetCellValue(ws, cell, h)
-	}
-
-	// Tabelle erstellen
-	err = f.AddTable(ws, &excelize.Table{
-		Range:          "B4:E76",
-		Name:           KMW_TABLE_NAME,
-		StyleName:      "TableStyleLight1",
-		ShowRowStripes: falsePtr(),
-	})
-	if err != nil {
-		return fmt.Errorf("fehler beim Erstellen der Tabelle %s: %w", KMW_TABLE_NAME, err)
-	}
-
-	// ─── Validierungen hinzufügen ─────────────────────────────────────────────
 	// Validierung 'Periode' aus der Hilfsliste
 	dvPeriode := excelize.NewDataValidation(true)
-	dvPeriode.Sqref = "B5:B76"
-	dvPeriode.SetSqrefDropList(fmt.Sprintf("'%s'!$%s$1:$%s$36", KMW_SHEET_NAME, colLetter(KMW_COL_VAL_LIST), colLetter(KMW_COL_VAL_LIST)))
-	err = f.AddDataValidation(ws, dvPeriode)
-	if err != nil {
+	dvPeriode.Sqref = fmt.Sprintf("%s:%s", cellName(KMWColPeriode, KMWRowDataStart), cellName(KMWColPeriode, KMWRowDataEnd))
+	dvPeriode.SetSqrefDropList(fmt.Sprintf("'%s'!$%s$1:$%s$%d",
+		ws, colLetter(KMWColValList), colLetter(KMWColValList), KMWPeriodenAnzahl))
+	if err := f.AddDataValidation(ws, dvPeriode); err != nil {
 		return fmt.Errorf("fehler beim Hinzufügen der Periode-Validierung: %w", err)
 	}
 
 	// Validierung 'Waehrung'
 	dvWaehrung := excelize.NewDataValidation(true)
-	dvWaehrung.Sqref = "C5:C76"
+	dvWaehrung.Sqref = fmt.Sprintf("%s:%s", cellName(KMWColWaehrung, KMWRowDataStart), cellName(KMWColWaehrung, KMWRowDataEnd))
 	dvWaehrung.SetDropList(ListWaehrung)
-	err = f.AddDataValidation(ws, dvWaehrung)
-	if err != nil {
+	if err := f.AddDataValidation(ws, dvWaehrung); err != nil {
 		return fmt.Errorf("fehler beim Hinzufügen der Waehrung-Validierung: %w", err)
-	}
-
-	// ─── Datenbereich formatieren (B5:E76) ────────────────────────────────────
-	for row := 5; row <= 76; row++ {
-		// B: Periode
-		_ = g.setStyle(ws, cellName(KMW_COL_PERIODE, row), cellName(KMW_COL_PERIODE, row), StyleOptions{
-			FillColor:    KMW_CLR_INPUT,
-			VAlign:       "center",
-			BorderTop:    1,
-			BorderBottom: 1,
-			BorderLeft:   1,
-			BorderRight:  1,
-			BorderColor:  KMW_CLR_GRID,
-		})
-		_ = g.bindInputField(ws, row, KMW_COL_PERIODE, FieldKMWPeriode(row-4))
-
-		// C: Waehrung
-		_ = g.setStyle(ws, cellName(KMW_COL_WAEHRUNG, row), cellName(KMW_COL_WAEHRUNG, row), StyleOptions{
-			FillColor:    KMW_CLR_INPUT,
-			VAlign:       "center",
-			BorderTop:    1,
-			BorderBottom: 1,
-			BorderLeft:   1,
-			BorderRight:  1,
-			BorderColor:  KMW_CLR_GRID,
-		})
-		_ = g.bindInputField(ws, row, KMW_COL_WAEHRUNG, FieldKMWWaehrung(row-4))
-
-		// D: Betrag
-		_ = g.setStyle(ws, cellName(KMW_COL_BETRAG, row), cellName(KMW_COL_BETRAG, row), StyleOptions{
-			FillColor:    KMW_CLR_INPUT,
-			NumFormat:    "#,##0.00",
-			HAlign:       "right",
-			VAlign:       "center",
-			BorderTop:    1,
-			BorderBottom: 1,
-			BorderLeft:   1,
-			BorderRight:  1,
-			BorderColor:  KMW_CLR_GRID,
-		})
-		_ = g.bindInputField(ws, row, KMW_COL_BETRAG, FieldKMWBetrag(row-4))
-
-		// E: Datum
-		_ = g.setStyle(ws, cellName(KMW_COL_DATUM, row), cellName(KMW_COL_DATUM, row), StyleOptions{
-			FillColor:    KMW_CLR_INPUT,
-			NumFmtID:     14, // Excel built-in kurzes Datum
-			HAlign:       "center",
-			VAlign:       "center",
-			BorderTop:    1,
-			BorderBottom: 1,
-			BorderLeft:   1,
-			BorderRight:  1,
-			BorderColor:  KMW_CLR_GRID,
-		})
-		_ = g.bindInputField(ws, row, KMW_COL_DATUM, FieldKMWDatum(row-4))
-	}
-
-	// ─── Kopfzeile formatieren (B4:E4) ────────────────────────────────────────
-	headerOpts := StyleOptions{
-		Bold:         true,
-		Size:         9.0,
-		FontColor:    KMW_CLR_FONT,
-		FillColor:    KMW_CLR_HEADER,
-		HAlign:       "center",
-		VAlign:       "center",
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  KMW_CLR_GRID,
-	}
-	for c := KMW_COL_PERIODE; c <= KMW_COL_DATUM; c++ {
-		_ = g.setStyle(ws, cellName(c, 4), cellName(c, 4), headerOpts)
-	}
-	_ = f.SetRowHeight(ws, 4, 20.0)
-
-	// ─── Ergebniszeile (GESAMT + Summe Betrag) (B77:E77) ──────────────────────
-	totalsRow := 77
-	_ = f.SetCellValue(ws, cellName(KMW_COL_PERIODE, totalsRow), "GESAMT")
-	_ = f.SetCellFormula(ws, cellName(KMW_COL_BETRAG, totalsRow), fmt.Sprintf("=SUBTOTAL(109,%s[Betrag])", KMW_TABLE_NAME))
-
-	totalsOpts := StyleOptions{
-		Bold:         true,
-		Size:         9.0,
-		FontColor:    KMW_CLR_FONT,
-		FillColor:    KMW_CLR_HEADER,
-		VAlign:       "center",
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  KMW_CLR_GRID,
-	}
-	for c := KMW_COL_PERIODE; c <= KMW_COL_DATUM; c++ {
-		_ = g.setStyle(ws, cellName(c, totalsRow), cellName(c, totalsRow), totalsOpts)
-	}
-
-	// Spezifisches Zahlenformat für Betrag in der Ergebniszeile
-	_ = g.setStyle(ws, cellName(KMW_COL_BETRAG, totalsRow), cellName(KMW_COL_BETRAG, totalsRow), StyleOptions{
-		Bold:         true,
-		Size:         9.0,
-		FontColor:    KMW_CLR_FONT,
-		FillColor:    KMW_CLR_HEADER,
-		VAlign:       "center",
-		NumFormat:    "#,##0.00",
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  KMW_CLR_GRID,
-	})
-
-	// ─── Außenrahmen (kräftig grau) ───────────────────────────────────────────
-	_ = g.styleOuterBorder(ws, 4, KMW_COL_PERIODE, 4, KMW_COL_DATUM, 2, KMW_CLR_BORDER)
-	_ = g.styleOuterBorder(ws, 5, KMW_COL_PERIODE, 76, KMW_COL_DATUM, 2, KMW_CLR_BORDER)
-	_ = g.styleOuterBorder(ws, totalsRow, KMW_COL_PERIODE, totalsRow, KMW_COL_DATUM, 2, KMW_CLR_BORDER)
-
-	// ─── Zeilen 23 bis 76 gruppieren und ausgeblendet zuklappen ─────────────────
-	for r := 23; r <= 76; r++ {
-		_ = f.SetRowOutlineLevel(ws, r, 1)
-		_ = f.SetRowVisible(ws, r, false)
 	}
 
 	return nil

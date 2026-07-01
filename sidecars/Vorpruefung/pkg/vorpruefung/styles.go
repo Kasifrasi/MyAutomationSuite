@@ -364,3 +364,99 @@ var BudgetNameCellStyle = StyleOptions{
 	BorderBottom: 1,
 	BorderColor:  BudgetClrGrid,
 }
+
+// ─── KMW-Mittel-Farben & Formate ──────────────────────────────────────────────
+const (
+	KMWClrHeader = "D3D3D3" // 211,211,211 – Titel/Kopf/Summe
+	KMWClrInput  = "FFFAE5" // 255,250,229 – Eingabezeilen
+	KMWClrBorder = "808080" // 128,128,128 – kräftige Rahmen
+	KMWClrGrid   = "D3D3D3" // 211,211,211 – dünne Innenrahmen
+	KMWClrFont   = "3C3C3C" // 60,60,60    – Kopf-/Summen-Schrift
+
+	KMWFmtBetrag = "#,##0.00"
+)
+
+// ─── KMW-Mittel Styles ────────────────────────────────────────────────────────
+
+var KMWTitleStyle = StyleOptions{
+	Size:      14.0,
+	Bold:      true,
+	FillColor: KMWClrHeader,
+	HAlign:    "center",
+	VAlign:    "center",
+}
+
+var KMWHeaderStyle = StyleOptions{
+	Bold:         true,
+	Size:         9.0,
+	FontColor:    KMWClrFont,
+	FillColor:    KMWClrHeader,
+	HAlign:       "center",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  KMWClrGrid,
+}
+
+var KMWInputStyle = StyleOptions{
+	FillColor:    KMWClrInput,
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  KMWClrGrid,
+}
+
+var KMWBetragStyle = StyleOptions{
+	FillColor:    KMWClrInput,
+	NumFormat:    KMWFmtBetrag,
+	HAlign:       "right",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  KMWClrGrid,
+}
+
+var KMWDatumStyle = StyleOptions{
+	FillColor:    KMWClrInput,
+	NumFmtID:     14, // Excel built-in kurzes Datum
+	HAlign:       "center",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  KMWClrGrid,
+}
+
+var KMWTotalStyle = StyleOptions{
+	Bold:         true,
+	Size:         9.0,
+	FontColor:    KMWClrFont,
+	FillColor:    KMWClrHeader,
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  KMWClrGrid,
+}
+
+var KMWTotalBetragStyle = StyleOptions{
+	Bold:         true,
+	Size:         9.0,
+	FontColor:    KMWClrFont,
+	FillColor:    KMWClrHeader,
+	VAlign:       "center",
+	NumFormat:    KMWFmtBetrag,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  KMWClrGrid,
+}
