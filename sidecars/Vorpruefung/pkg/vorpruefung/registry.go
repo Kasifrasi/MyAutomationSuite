@@ -350,13 +350,6 @@ type TemplateRegistry struct {
 	OutputBudgetGesamtY3       OutputField
 	OutputBudgetGesamtEUR      OutputField
 
-
-	// KMW-Mittel
-	InputKMWPeriode  InputFactory
-	InputKMWWaehrung InputFactory
-	InputKMWBetrag   InputFactory
-	InputKMWDatum    InputFactory
-
 	// Finanzberichte
 	InputFBVon              InputFactory
 	InputFBBis              InputFactory
@@ -399,119 +392,7 @@ type TemplateRegistry struct {
 	InputMAPruefungMonateY3      InputField
 }
 
-// ─────────────────────────────────────────────────────────────
-// 6. Paket-weite Field-Accessoren (für Generator & API)
-// ─────────────────────────────────────────────────────────────
-
 var Registry = NewTemplateRegistry()
-
-func FieldDashChecklist(i int) InputField {
-	checks := [6]InputField{
-		Registry.InputDashVPSaldoCheck,
-		Registry.InputDashVertragCheck,
-		Registry.InputDashBudgetCheck,
-		Registry.InputDashBankBelegeCheck,
-		Registry.InputDashFBCheck,
-		Registry.InputDashMACheck,
-	}
-	if i < 1 || i > len(checks) {
-		panic(fmt.Sprintf("FieldDashChecklist: ungültiger Index %d (1-%d)", i, len(checks)))
-	}
-	return checks[i-1]
-}
-
-// KMW
-func FieldKMWPeriode(i int) InputField  { return Registry.InputKMWPeriode.Get(i) }
-func FieldKMWWaehrung(i int) InputField { return Registry.InputKMWWaehrung.Get(i) }
-func FieldKMWBetrag(i int) InputField   { return Registry.InputKMWBetrag.Get(i) }
-func FieldKMWDatum(i int) InputField    { return Registry.InputKMWDatum.Get(i) }
-
-// Finanzberichte
-func FieldFBVon(i int) InputField              { return Registry.InputFBVon.Get(i) }
-func FieldFBBis(i int) InputField              { return Registry.InputFBBis.Get(i) }
-func FieldFBAufschlBank(i int) InputField      { return Registry.InputFBAufschlBank.Get(i) }
-func FieldFBAufschlKasse(i int) InputField     { return Registry.InputFBAufschlKasse.Get(i) }
-func FieldFBAufschlSonstiges(i int) InputField { return Registry.InputFBAufschlSonstiges.Get(i) }
-
-// MA (Input)
-func FieldMAVon(i int) InputField           { return Registry.InputMAVon.Get(i) }
-func FieldMABis(i int) InputField           { return Registry.InputMABis.Get(i) }
-func FieldMAKurs(i int) InputField          { return Registry.InputMAKurs.Get(i) }
-func FieldMAEigenmittelLC(i int) InputField { return Registry.InputMAEigenmittelLC.Get(i) }
-func FieldMADrittmittelLC(i int) InputField { return Registry.InputMADrittmittelLC.Get(i) }
-func FieldMASaldoLC(i int) InputField       { return Registry.InputMASaldoLC.Get(i) }
-func FieldMAManBetrag(i int) InputField     { return Registry.InputMAManBetrag.Get(i) }
-func FieldMAKat(j, k int) InputField        { return Registry.InputMAKat.Get(j, k) }
-func FieldMAKmwLC(i int) InputField         { return Registry.InputMAKmwLC.Get(i) }
-
-// MA (Output → liefert Named-Range-String für Formeln)
-func FieldMAPeriode(i int) string        { return Registry.OutputMAPeriode.Get(i).NamedRange }
-func FieldMAZeitraum(i int) string       { return Registry.OutputMAZeitraum.Get(i).NamedRange }
-func FieldMASumLC(i int) string          { return Registry.OutputMASumLC.Get(i).NamedRange }
-func FieldMASumEUR(i int) string         { return Registry.OutputMASumEUR.Get(i).NamedRange }
-func FieldMAEigenmittelEUR(i int) string { return Registry.OutputMAEigenmittelEUR.Get(i).NamedRange }
-func FieldMADrittmittelEUR(i int) string { return Registry.OutputMADrittmittelEUR.Get(i).NamedRange }
-func FieldMAKatEUR(j, k int) string      { return Registry.OutputMAKatEUR.Get(j, k).NamedRange }
-func FieldMAKmwEUR(i int) string         { return Registry.OutputMAKmwEUR.Get(i).NamedRange }
-
-// Paket-weite Variablen für api.go (Flat-Accessor-Aliases → Registry)
-
-// Dashboard
-var (
-	FieldDashProjektnummer       = Registry.InputDashProjektnummer
-	FieldDashVorprojekt          = Registry.InputDashVorprojekt
-	FieldDashProjekttitel        = Registry.InputDashProjekttitel
-	FieldDashProjekttraeger      = Registry.InputDashProjekttraeger
-	FieldDashBerichtswaehrung    = Registry.InputDashBerichtswaehrung
-	FieldDashProjektstart        = Registry.InputDashProjektstart
-	FieldDashProjektende         = Registry.InputDashProjektende
-	FieldDashVPNummer            = Registry.InputDashVPNummer
-	FieldDashVPBerichtswaehrung  = Registry.InputDashVPBerichtswaehrung
-	FieldDashVPEnde              = Registry.InputDashVPEnde
-	FieldDashVPWechselkurs       = Registry.InputDashVPWechselkurs
-	FieldDashVPSaldoLC           = Registry.InputDashVPSaldoLC
-	FieldDashVPSaldoEUR          = Registry.InputDashVPSaldoEUR
-	FieldDashVPFolgeprojektstart = Registry.InputDashVPFolgeprojektstart
-	FieldDashVPFolgeWechselkurs  = Registry.InputDashVPFolgeWechselkurs
-	FieldDashVPFolgeSaldoLC      = Registry.InputDashVPFolgeSaldoLC
-	FieldDashVPFolgeSaldoEUR     = Registry.InputDashVPFolgeSaldoEUR
-)
-
-// Budget
-var (
-	FieldBudgetReserveFreigabe = Registry.InputBudgetReserveFreigabe
-	FieldBudgetEigenmittelLC   = Registry.InputBudgetEigenmittelLC
-	FieldBudgetEigenmittelY1   = Registry.InputBudgetEigenmittelY1
-	FieldBudgetEigenmittelY2   = Registry.InputBudgetEigenmittelY2
-	FieldBudgetEigenmittelY3   = Registry.InputBudgetEigenmittelY3
-	FieldBudgetEigenmittelEUR  = Registry.InputBudgetEigenmittelEUR
-	FieldBudgetDrittmittelY1   = Registry.InputBudgetDrittmittelY1
-	FieldBudgetDrittmittelY2   = Registry.InputBudgetDrittmittelY2
-	FieldBudgetDrittmittelY3   = Registry.InputBudgetDrittmittelY3
-	FieldBudgetKMWLC           = Registry.InputBudgetKMWLC
-	FieldBudgetKMWY1           = Registry.InputBudgetKMWY1
-	FieldBudgetKMWY2           = Registry.InputBudgetKMWY2
-	FieldBudgetKMWY3           = Registry.InputBudgetKMWY3
-	FieldBudgetKMWEUR          = Registry.InputBudgetKMWEUR
-)
-
-// Prüfung FB
-var (
-	FieldFBPruefungAuswahl    = Registry.InputFBPruefungAuswahl
-	FieldFBPruefungAbzugSaldo = Registry.InputFBPruefungAbzugSaldo
-	FieldFBPruefungAbzugMehr  = Registry.InputFBPruefungAbzugMehr
-)
-
-// Prüfung MA
-var (
-	FieldMAPruefungAuswahl       = Registry.InputMAPruefungAuswahl
-	FieldMAPruefungAbzugSaldo    = Registry.InputMAPruefungAbzugSaldo
-	FieldMAPruefungAbzugMehr     = Registry.InputMAPruefungAbzugMehr
-	FieldMAPruefungAbzugPrognose = Registry.InputMAPruefungAbzugPrognose
-	FieldMAPruefungMonateY1      = Registry.InputMAPruefungMonateY1
-	FieldMAPruefungMonateY2      = Registry.InputMAPruefungMonateY2
-	FieldMAPruefungMonateY3      = Registry.InputMAPruefungMonateY3
-)
 
 func NewTemplateRegistry() *TemplateRegistry {
 	dash := SheetBuilder{Sheet: constants.VPSheetDASHBOARD, Prefix: "Dash_"}
