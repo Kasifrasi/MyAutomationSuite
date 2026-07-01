@@ -7,685 +7,487 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// ─── Teil A: Grid-Konstanten ──────────────────────────────────────────────────
+
 const (
-	DB_SHEET_NAME = constants.VPSheetDASHBOARD
-	DB_TAB_COLOR  = "D3D3D3" // hellgrau
+	// Spalten
+	DashColLabelLeft  = 2 // B
+	DashColInputLeft  = 3 // C
+	DashColLabelRight = 4 // D
+	DashColInputRight = 5 // E
 
-	DB_C_LBL1 = 2
-	DB_C_IN1  = 3
-	DB_C_LBL2 = 4
-	DB_C_IN2  = 5
+	// Zeilen
+	DashRowHeader          = 2
+	DashRowTitle           = 4
+	DashRowProjektNummer   = 5
+	DashRowProjekttitel    = 6
+	DashRowProjekttraeger  = 7
+	DashRowProjektstart    = 8
+	DashRowProjektlaufzeit = 9
+	DashRowVPNummer        = 10 // VP-Block Beginn (Doppellinie)
+	DashRowVPEnde          = 11
+	DashRowVPSaldo         = 12
+	DashRowVPFolgestart    = 13
+	DashRowVPSaldovortrag  = 14 // VP-Block Ende; Named Ranges Saldovortrag_LW/_EUR
+	DashRowChecklistStart  = 16
 
-	DB_HEADER_ROW = 2 // grüner DASHBOARD-Banner mit Versions-Tag
-	DB_TITLE_ROW  = 4 // "Statische Projektinformationen"
+	DashCCYCol = 27 // Hilfsspalte für Währungsliste (ausgeblendet)
 
-	// --- Benannte Bereiche ---
-	DB_NAME_SALDOVORTRAG_LW  = "Saldovortrag_LW"
-	DB_NAME_SALDOVORTRAG_EUR = "Saldovortrag_EUR"
+	// Sheet
+	DashSheetName = constants.VPSheetDASHBOARD
+	DashTabColor  = "D3D3D3"
 
-	// --- Farb-Konstanten ---
-	DB_CLR_HEADER_BG     = "6C7A50" // RGB(108,122,80) – grüner Banner (VBA COL_BG_HEADER)
-	DB_CLR_HEADER_ACCENT = "667022" // RGB(102,112,34) – Akzentlinie (VBA COL_ACCENT)
-	DB_CLR_TITLE         = "DCDCDC" // RGB(220,220,220)
-	DB_CLR_LABEL         = "F5F5F5" // RGB(245,245,245)
-	DB_CLR_INPUT         = "FFFAE5" // RGB(255,250,229)
-	DB_CLR_DISABLED      = "F0F0F0" // RGB(240,240,240)
-	DB_CLR_FONT_GRAY     = "646464" // RGB(100,100,100)
-	DB_CLR_BORDER        = "969696" // RGB(150,150,150)
+	// Benannte Bereiche
+	DashNameSaldovortragLW  = "Saldovortrag_LW"
+	DashNameSaldovortragEUR = "Saldovortrag_EUR"
 
-	// --- Zahlenformate ---
-	DB_FMT_LC   = "#,##0.00"
-	DB_FMT_EUR  = `#,##0.00" €"`
-	DB_FMT_DATE = "dd.mm.yyyy"
-	DB_FMT_RATE = "0.0000"
-
-	DB_CCY_COL = 27
-
-	DB_SALDOVORTRAG_ROW = 14
-	DB_DOCS_START_ROW   = 16
+	// Alias für andere Sheets
+	DB_NAME_SALDOVORTRAG_LW  = DashNameSaldovortragLW
+	DB_NAME_SALDOVORTRAG_EUR = DashNameSaldovortragEUR
 )
 
-// --- Dokumenten-Checkliste ---
+// ─── Teil B: Layout-Dokumentation ────────────────────────────────────────────
+/*
+  LAYOUT DASHBOARD:
+  | Zeile | Spalte B (Label)              | Spalte C (Input 1)             | Spalte D (Label)            | Spalte E (Input 2)              |
+  |-------|-------------------------------|--------------------------------|-----------------------------|----------------------------------|
+  |   2   | DASHBOARD-Header (merged B:E, grün)                                                                                            |
+  |   4   | "Statische Projektinformationen" (Titel, merged B:E)                                                                           |
+  |   5   | Projektnummer                 | [Inp_Dash_Projektnummer]       | Vorprojekt vorhanden        | [Inp_Dash_Vorprojekt]           |
+  |   6   | Projekttitel                  | [Inp_Dash_Projekttitel (merged C:E)]                                                          |
+  |   7   | Projekttraeger                | [Inp_Dash_Projekttraeger]      | Berichtswaehrung            | [Inp_Dash_Berichtswaehrung]     |
+  |   8   | Projektstart                  | [Inp_Dash_Projektstart]        | Projektende                 | [Inp_Dash_Projektende]          |
+  |   9   | Projektlaufzeit (geplant)     | [Out_Dash_Projektlaufzeit]     | In Monate                   | [Out_Dash_Monate]               |
+  |-------|-------------------------------|--------------------------------|-----------------------------|----------------------------------|
+  |  10   | Vorprojektnummer (=VPStart ══)| [Inp_Dash_VPNummer]            | VP-Berichtswaehrung         | [Inp_Dash_VPBerichtswaehrung]   |
+  |  11   | Vorprojektende                | [Inp_Dash_VPEnde]              | Wechselkurs                 | [Inp_Dash_VPWechselkurs]        |
+  |  12   | Saldo (LW)                    | [Inp_Dash_VPSaldoLC]           | Saldo (EUR)                 | [Out_Dash_SaldoEUR]             |
+  |  13   | Folgeprojektstart             | [Inp_Dash_VPFolgeprojektstart] | Wechselkurs                 | [Inp_Dash_VPFolgeWechselkurs]   |
+  |  14   | Saldovortrag (LW)             | [Inp_Dash_VPFolgeSaldoLC]      | Saldovortrag (EUR)          | [Out_Dash_SaldovortragEUR]      |
+  |-------|-------------------------------|--------------------------------|-----------------------------|----------------------------------|
+  |  16   | "Folgende Dokumente liegen vor:" (merged B:C, Zeilen 16:21)        | [D16] Ja/Nein               | Vorprojektsaldo (Nachweis)  |
+  |  17   |                               |                                | [D17] Ja/Nein               | Vertrag                         |
+  |  18   |                               |                                | [D18] Ja/Nein               | Budget                          |
+  |  19   |                               |                                | [D19] Ja/Nein               | Bankbelege                      |
+  |  20   |                               |                                | [D20] Ja/Nein               | Finanzbericht(e)                |
+  |  21   |                               |                                | [D21] Ja/Nein               | Mittelanforderung(en)           |
+*/
+
+// ─── Checklist-Einträge ───────────────────────────────────────────────────────
+
 var AppVersion = "v1.0.1"
 
-var DB_DOCS = []string{
+var DashDocs = []string{
 	"Vorprojektsaldo (Nachweis)",
 	"Vertrag",
 	"Budget",
 	"Bankbelege",
 	"Finanzbericht(e)",
-	"Einzelbelege und Beleglisten",
-	"Narrativer Bericht",
+	"Mittelanforderung(en)",
 }
 
-// --- Währungs-Auswahlliste ---
-var DB_WAEHRUNGEN = []string{
-	"AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN", "BAM", "BBD",
-	"BDT", "BHD", "BIF", "BMD", "BND", "BOB", "BRL", "BSD", "BTN", "BWP", "BYN",
-	"BZD", "CAD", "CDF", "CHF", "CLP", "CNY", "COP", "CRC", "CUP", "CVE", "CZK",
-	"DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB", "EUR", "FJD", "FKP", "GBP",
-	"GEL", "GHS", "GIP", "GMD", "GNF", "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF",
-	"IDR", "ILS", "INR", "IQD", "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS",
-	"KHR", "KMF", "KPW", "KRW", "KWD", "KYD", "KZT", "LAK", "LBP", "LKR", "LRD",
-	"LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT", "MOP", "MRU", "MUR",
-	"MVR", "MWK", "MXN", "MYR", "MZN", "NAD", "NGN", "NIO", "NOK", "NPR", "NZD",
-	"OMR", "PAB", "PEN", "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD",
-	"RUB", "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SOS",
-	"SRD", "SSP", "STN", "SVC", "SYP", "SZL", "THB", "TJS", "TMT", "TND", "TOP",
-	"TRY", "TTD", "TWD", "TZS", "UAH", "UGX", "USD", "UYU", "UZS", "VED", "VES",
-	"VND", "VUV", "WST", "XAF", "XCD", "XCG", "XOF", "XPF", "YER", "ZAR", "ZMW",
-	"ZWG",
-}
+// ─── Teil C: Orchestrator ─────────────────────────────────────────────────────
 
-// CreateDashboardSheet legt das Blatt "Dashboard" an und zeichnet
-// die statischen Projektinformationen, Checklist und Bedingte Formatierungen.
-func (g *Generator) CreateDashboardSheet() error {
-	ws := DB_SHEET_NAME
-	f := g.file
+func (g *Generator) CreateDashboardSheet(reg *TemplateRegistry) error {
+	ws := DashSheetName
 
-	// Sheet initialisieren
-	_, err := f.NewSheet(ws)
+	_, err := g.file.NewSheet(ws)
 	if err != nil {
 		return err
 	}
+	tabColor := DashTabColor
+	_ = g.file.SetSheetProps(ws, &excelize.SheetPropsOptions{TabColorRGB: &tabColor})
+	_ = g.file.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
 
-	tabColor := DB_TAB_COLOR
-	_ = f.SetSheetProps(ws, &excelize.SheetPropsOptions{TabColorRGB: &tabColor})
-	_ = f.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
+	g.dashSetupColumns(ws)
 
-	// Spaltenbreiten einstellen
-	g.dbSetupColumnWidths(ws)
-
-	// Dashboard-Header zeichnen
-	err = g.drawDashboardHeader(ws)
-	if err != nil {
+	if err = g.drawDashHeader(ws); err != nil {
+		return err
+	}
+	if err = g.drawDashStaticInfo(ws); err != nil {
+		return err
+	}
+	if err = g.drawDashChecklist(ws); err != nil {
+		return err
+	}
+	if err = g.bindDashFields(ws, reg); err != nil {
+		return err
+	}
+	if err = g.bindDashChecklist(ws, reg); err != nil {
+		return err
+	}
+	if err = g.applyDashConditionalFormatting(ws); err != nil {
 		return err
 	}
 
-	// Statische Projektinformationen zeichnen
-	err = g.drawStaticProjectInfo(ws)
-	if err != nil {
-		return err
-	}
-
-	// Benannte Bereiche für Saldovortrag (LW)/(EUR) anlegen bzw. aktualisieren.
-	// Sie zeigen auf die Eingabezellen der Saldovortrag-Zeile.
-	g.dbUpsertNamedRange(ws, DB_NAME_SALDOVORTRAG_LW, DB_C_IN1, DB_SALDOVORTRAG_ROW)
-	g.dbUpsertNamedRange(ws, DB_NAME_SALDOVORTRAG_EUR, DB_C_IN2, DB_SALDOVORTRAG_ROW)
+	g.dbUpsertNamedRange(ws, DashNameSaldovortragLW, DashColInputLeft, DashRowVPSaldovortrag)
+	g.dbUpsertNamedRange(ws, DashNameSaldovortragEUR, DashColInputRight, DashRowVPSaldovortrag)
 
 	return nil
 }
 
-func (g *Generator) drawDashboardHeader(ws string) error {
-	headerOpts := StyleOptions{
-		Bold:         true,
-		Size:         18.0,
-		FontColor:    "FFFFFF",
-		FillColor:    DB_CLR_HEADER_BG,
-		VAlign:       "center",
-		HAlign:       "left",
-		BorderBottom: 5,
-		BorderColor:  DB_CLR_HEADER_ACCENT,
-	}
-	err := g.mergeCells(ws, cellName(DB_C_LBL1, DB_HEADER_ROW), cellName(DB_C_IN2, DB_HEADER_ROW), "  DASHBOARD ("+AppVersion+")", headerOpts)
+// ─── Teil D: Draw-Funktionen (nur visuell) ───────────────────────────────────
+
+func (g *Generator) drawDashHeader(ws string) error {
+	err := g.mergeCells(ws,
+		cellName(DashColLabelLeft, DashRowHeader),
+		cellName(DashColInputRight, DashRowHeader),
+		"  DASHBOARD ("+AppVersion+")",
+		DashHeaderStyle,
+	)
 	if err != nil {
 		return err
 	}
-	_ = g.file.SetRowHeight(ws, DB_HEADER_ROW, 40.0)
+	_ = g.file.SetRowHeight(ws, DashRowHeader, 40.0)
 	return nil
 }
 
-func (g *Generator) drawStaticProjectInfo(ws string) error {
-	// --- Titel ---
-	titleOpts := StyleOptions{
-		Bold:         true,
-		Size:         13.0,
-		FillColor:    DB_CLR_TITLE,
-		HAlign:       "center",
-		VAlign:       "center",
-		BorderBottom: 1,
-		BorderColor:  DB_CLR_BORDER,
-	}
-	err := g.mergeCells(ws, cellName(DB_C_LBL1, DB_TITLE_ROW), cellName(DB_C_IN2, DB_TITLE_ROW), "Statische Projektinformationen", titleOpts)
+func (g *Generator) drawDashStaticInfo(ws string) error {
+	// Titel
+	err := g.mergeCells(ws,
+		cellName(DashColLabelLeft, DashRowTitle),
+		cellName(DashColInputRight, DashRowTitle),
+		"Statische Projektinformationen",
+		DashTitleStyle,
+	)
 	if err != nil {
 		return err
 	}
-	_ = g.file.SetRowHeight(ws, DB_TITLE_ROW, 24.0)
+	_ = g.file.SetRowHeight(ws, DashRowTitle, 24.0)
 
-	// Ausgeblendete Währungs-Auswahlliste bereitstellen
-	// err = g.dbEnsureCurrencyList(ws) (removed)
+	// Zeile 5: Projektnummer | Vorprojekt vorhanden
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowProjektNummer), "Projektnummer", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowProjektNummer), "", DashInputStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowProjektNummer), "Vorprojekt vorhanden", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setStyle(ws, cellName(DashColInputRight, DashRowProjektNummer), cellName(DashColInputRight, DashRowProjektNummer), DashDropdownStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowProjektNummer, 22.0)
 
-	r := DB_TITLE_ROW + 1
+	// Zeile 6: Projekttitel (C:E zusammengefasst)
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowProjekttitel), "Projekttitel", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.mergeCells(ws,
+		cellName(DashColInputLeft, DashRowProjekttitel),
+		cellName(DashColInputRight, DashRowProjekttitel),
+		"", DashInputStyle,
+	); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowProjekttitel, 22.0)
 
-	// --- Zeile: Projektnummer | Vorprojekt vorhanden (Dropdown Ja/Nein) ---
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Projektnummer")
-	if err != nil {
+	// Zeile 7: Projekttraeger | Berichtswaehrung
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowProjekttraeger), "Projekttraeger", DashLabelStyle); err != nil {
 		return err
 	}
-	err = g.dbInput(ws, r, DB_C_IN1, "")
-	if err != nil {
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowProjekttraeger), "", DashInputStyle); err != nil {
 		return err
 	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashProjektnummer)
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowProjekttraeger), "Berichtswaehrung", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputRight, DashRowProjekttraeger), "", DashInputStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowProjekttraeger, 22.0)
 
-	err = g.dbLabel(ws, r, DB_C_LBL2, "Vorprojekt vorhanden")
-	if err != nil {
+	// Zeile 8: Projektstart | Projektende
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowProjektstart), "Projektstart", DashLabelStyle); err != nil {
 		return err
 	}
-	err = g.dbDropdownJaNein(ws, r, DB_C_IN2, "", DB_CLR_INPUT)
-	if err != nil {
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowProjektstart), "", DashInputDateStyle); err != nil {
 		return err
 	}
-	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVorprojekt)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	r++
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowProjektstart), "Projektende", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputRight, DashRowProjektstart), "", DashInputDateStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowProjektstart, 22.0)
 
-	// --- Zeile: Projekttitel (C:E zusammengefasst) ---
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Projekttitel")
-	if err != nil {
+	// Zeile 9: Projektlaufzeit (Formel) | In Monate (Formel) — wird in bindDashFields befüllt
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowProjektlaufzeit), "Projektlaufzeit (geplant)", DashLabelStyle); err != nil {
 		return err
 	}
-	titleInputOpts := StyleOptions{
-		FillColor:    DB_CLR_INPUT,
-		VAlign:       "center",
-		HAlign:       "left",
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	}
-	err = g.mergeCells(ws, cellName(DB_C_IN1, r), cellName(DB_C_IN2, r), "", titleInputOpts)
-	if err != nil {
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowProjektlaufzeit), "", DashOutputStyle); err != nil {
 		return err
 	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashProjekttitel)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	r++
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowProjektlaufzeit), "In Monate", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputRight, DashRowProjektlaufzeit), "", DashOutputStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowProjektlaufzeit, 22.0)
 
-	// --- Zeile: Projektträger | Berichtswährung ---
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Projekttraeger")
-	if err != nil {
-		return err
-	}
-	err = g.dbInput(ws, r, DB_C_IN1, "")
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashProjekttraeger)
+	// ── VP-Block (Doppellinie oben ab Zeile 10) ──────────────────────────────
 
-	err = g.dbLabel(ws, r, DB_C_LBL2, "Berichtswaehrung")
-	if err != nil {
+	// Zeile 10: Vorprojektnummer | VP-Berichtswaehrung
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowVPNummer), "Vorprojektnummer", DashVPLabelStyle); err != nil {
 		return err
 	}
-	err = g.dbInput(ws, r, DB_C_IN2, "")
-	if err != nil {
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowVPNummer), "", DashVPInputStyle); err != nil {
 		return err
 	}
-	err = g.dbCurrencyValidation(ws, r, DB_C_IN2)
-	if err != nil {
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowVPNummer), "VP-Berichtswaehrung", DashVPLabelStyle); err != nil {
 		return err
 	}
-	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashBerichtswaehrung)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	r++
+	if err = g.setValue(ws, cellName(DashColInputRight, DashRowVPNummer), "", DashVPInputStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowVPNummer, 22.0)
 
-	// --- Zeile: Projektstart | Projektende ---
-	rStartEnde := r
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Projektstart")
-	if err != nil {
+	// Zeile 11: Vorprojektende | Wechselkurs
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowVPEnde), "Vorprojektende", DashLabelStyle); err != nil {
 		return err
 	}
-	err = g.dbInputDate(ws, r, DB_C_IN1)
-	if err != nil {
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowVPEnde), "", DashInputDateStyle); err != nil {
 		return err
 	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashProjektstart)
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowVPEnde), "Wechselkurs", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputRight, DashRowVPEnde), "", DashInputRateStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowVPEnde, 22.0)
 
-	err = g.dbLabel(ws, r, DB_C_LBL2, "Projektende")
-	if err != nil {
+	// Zeile 12: Saldo (LW) | Saldo (EUR) — EUR ist Output/Formel
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowVPSaldo), "Saldo (LW)", DashLabelStyle); err != nil {
 		return err
 	}
-	err = g.dbInputDate(ws, r, DB_C_IN2)
-	if err != nil {
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowVPSaldo), "", DashInputLCStyle); err != nil {
 		return err
 	}
-	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashProjektende)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	r++
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowVPSaldo), "Saldo (EUR)", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputRight, DashRowVPSaldo), "", DashOutputEURStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowVPSaldo, 22.0)
 
-	// --- Zeile: Projektlaufzeit (geplant, berechnet) | In Monate (Formel) ---
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Projektlaufzeit (geplant)")
-	if err != nil {
+	// Zeile 13: Folgeprojektstart | Wechselkurs
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowVPFolgestart), "Folgeprojektstart", DashLabelStyle); err != nil {
 		return err
 	}
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowVPFolgestart), "", DashInputDateStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowVPFolgestart), "Wechselkurs", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputRight, DashRowVPFolgestart), "", DashInputRateStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowVPFolgestart, 22.0)
+
+	// Zeile 14: Saldovortrag (LW) | Saldovortrag (EUR) — EUR ist Output/Formel
+	if err = g.setValue(ws, cellName(DashColLabelLeft, DashRowVPSaldovortrag), "Saldovortrag (LW)", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputLeft, DashRowVPSaldovortrag), "", DashInputLCStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColLabelRight, DashRowVPSaldovortrag), "Saldovortrag (EUR)", DashLabelStyle); err != nil {
+		return err
+	}
+	if err = g.setValue(ws, cellName(DashColInputRight, DashRowVPSaldovortrag), "", DashOutputEURStyle); err != nil {
+		return err
+	}
+	_ = g.file.SetRowHeight(ws, DashRowVPSaldovortrag, 22.0)
+
+	return nil
+}
+
+func (g *Generator) drawDashChecklist(ws string) error {
+	docEnd := DashRowChecklistStart + len(DashDocs) - 1
+
+	// B16:C21 merged — Label
+	if err := g.mergeCells(ws,
+		cellName(DashColLabelLeft, DashRowChecklistStart),
+		cellName(DashColInputLeft, docEnd),
+		"Folgende Dokumente liegen vor:",
+		DashChecklistLabelStyle,
+	); err != nil {
+		return err
+	}
+
+	// D16:D21 Dropdowns + E16:E21 Texte
+	for i, docName := range DashDocs {
+		row := DashRowChecklistStart + i
+		_ = g.file.SetRowHeight(ws, row, 22.0)
+
+		if err := g.setStyle(ws, cellName(DashColLabelRight, row), cellName(DashColLabelRight, row), DashDropdownStyle); err != nil {
+			return err
+		}
+		if err := g.setValue(ws, cellName(DashColInputRight, row), docName, DashChecklistTextStyle); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ─── Teil E: Bind-Funktionen (Logik & Registry) ───────────────────────────────
+
+func (g *Generator) bindDashFields(ws string, reg *TemplateRegistry) error {
+	// Projektnummer
+	_ = g.bindInputField(ws, DashRowProjektNummer, DashColInputLeft, reg.InputDashProjektnummer)
+
+	// Vorprojekt vorhanden (Dropdown)
+	_ = g.bindInputField(ws, DashRowProjektNummer, DashColInputRight, reg.InputDashVorprojekt)
+
+	// Projekttitel
+	_ = g.bindInputField(ws, DashRowProjekttitel, DashColInputLeft, reg.InputDashProjekttitel)
+
+	// Projekttraeger
+	_ = g.bindInputField(ws, DashRowProjekttraeger, DashColInputLeft, reg.InputDashProjekttraeger)
+
+	// Berichtswaehrung (Dropdown)
+	_ = g.bindInputField(ws, DashRowProjekttraeger, DashColInputRight, reg.InputDashBerichtswaehrung)
+	if err := g.dashCurrencyValidation(ws, DashRowProjekttraeger, DashColInputRight); err != nil {
+		return err
+	}
+
+	// Projektstart / Projektende
+	_ = g.bindInputField(ws, DashRowProjektstart, DashColInputLeft, reg.InputDashProjektstart)
+	_ = g.bindInputField(ws, DashRowProjektstart, DashColInputRight, reg.InputDashProjektende)
+
+	// Projektlaufzeit & Monate (Formeln)
 	fmtDate := func(addr string) string {
 		return fmt.Sprintf(`TEXT(DAY(%s),"00")&"."&TEXT(MONTH(%s),"00")&"."&TEXT(YEAR(%s),"0000")`, addr, addr, addr)
 	}
+	startAddr := absName(DashColInputLeft, DashRowProjektstart)
+	endeAddr := absName(DashColInputRight, DashRowProjektstart)
 	laufzeitFormula := fmt.Sprintf(
 		`=IF(AND(ISNUMBER(%s),ISNUMBER(%s)),%s&" - "&%s,"")`,
-		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde),
-		fmtDate(absName(DB_C_IN1, rStartEnde)), fmtDate(absName(DB_C_IN2, rStartEnde)))
-	err = g.setFormula(ws, cellName(DB_C_IN1, r), laufzeitFormula, StyleOptions{
-		FillColor:    DB_CLR_DISABLED,
-		VAlign:       "center",
-		HAlign:       "left",
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	})
-	if err != nil {
-		return err
-	}
-	err = g.dbLabel(ws, r, DB_C_LBL2, "In Monate")
-	if err != nil {
+		startAddr, endeAddr, fmtDate(startAddr), fmtDate(endeAddr),
+	)
+	if err := g.setFormula(ws, cellName(DashColInputLeft, DashRowProjektlaufzeit), laufzeitFormula, DashOutputStyle); err != nil {
 		return err
 	}
 	monateFormula := fmt.Sprintf(
 		`=IF(AND(ISNUMBER(%s),ISNUMBER(%s)),DATEDIF(%s,%s+1,"M"),"")`,
-		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde),
-		absName(DB_C_IN1, rStartEnde), absName(DB_C_IN2, rStartEnde))
-	err = g.setFormula(ws, cellName(DB_C_IN2, r), monateFormula, StyleOptions{
-		FillColor:    DB_CLR_DISABLED,
-		VAlign:       "center",
-		HAlign:       "left",
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	})
-	if err != nil {
-		return err
-	}
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	r++
-
-	// ── VORPROJEKT-BLOCK (Doppellinie als Oberkante) ──────────────────────────
-	vpStart := r
-
-	// Row 9: Vorprojektnummer | VP-Berichtswaehrung (Double Top Border)
-	err = g.setValue(ws, cellName(DB_C_LBL1, r), "Vorprojektnummer", StyleOptions{
-		Bold:         true,
-		Size:         10.0,
-		FillColor:    DB_CLR_LABEL,
-		VAlign:       "center",
-		HAlign:       "left",
-		WrapText:     true,
-		BorderTop:    6, // Doppellinie
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	})
-	if err != nil {
-		return err
-	}
-	err = g.setValue(ws, cellName(DB_C_IN1, r), "", StyleOptions{
-		FillColor:    DB_CLR_INPUT,
-		VAlign:       "center",
-		HAlign:       "left",
-		BorderTop:    6, // Doppellinie
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	})
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPNummer)
-	err = g.setValue(ws, cellName(DB_C_LBL2, r), "VP-Berichtswaehrung", StyleOptions{
-		Bold:         true,
-		Size:         10.0,
-		FillColor:    DB_CLR_LABEL,
-		VAlign:       "center",
-		HAlign:       "left",
-		WrapText:     true,
-		BorderTop:    6, // Doppellinie
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	})
-	if err != nil {
-		return err
-	}
-	err = g.setValue(ws, cellName(DB_C_IN2, r), "", StyleOptions{
-		FillColor:    DB_CLR_INPUT,
-		VAlign:       "center",
-		HAlign:       "left",
-		BorderTop:    6, // Doppellinie
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	})
-	if err != nil {
-		return err
-	}
-	err = g.dbCurrencyValidation(ws, r, DB_C_IN2)
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPBerichtswaehrung)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	r++
-
-	// Row 10: Vorprojektende | Wechselkurs
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Vorprojektende")
-	if err != nil {
-		return err
-	}
-	err = g.dbInputDate(ws, r, DB_C_IN1)
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPEnde)
-
-	err = g.dbLabel(ws, r, DB_C_LBL2, "Wechselkurs")
-	if err != nil {
-		return err
-	}
-	err = g.dbInput(ws, r, DB_C_IN2, DB_FMT_RATE)
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPWechselkurs)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	r++
-
-	// Row 11: Saldo (LW) | Saldo (EUR) — EUR berechnet sich aus LW / Vorprojekt-Kurs
-	rSaldo := r
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Saldo (LW)")
-	if err != nil {
-		return err
-	}
-	err = g.dbInput(ws, r, DB_C_IN1, DB_FMT_LC)
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPSaldoLC)
-
-	err = g.dbLabel(ws, r, DB_C_LBL2, "Saldo (EUR)")
-	if err != nil {
-		return err
-	}
-	// Saldo (EUR) = Saldo (LW) / Wechselkurs (Zeile 10, Spalte E)
-	err = g.setFormula(ws, cellName(DB_C_IN2, r),
-		fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", absName(DB_C_IN1, rSaldo), absName(DB_C_IN2, rSaldo-1)),
-		StyleOptions{FillColor: DB_CLR_DISABLED, VAlign: "center", HAlign: "left", NumFormat: DB_FMT_EUR,
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: DB_CLR_BORDER})
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPSaldoEUR)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	r++
-
-	// Row 12: Folgeprojektstart | Wechselkurs
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Folgeprojektstart")
-	if err != nil {
-		return err
-	}
-	err = g.dbInputDate(ws, r, DB_C_IN1)
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPFolgeprojektstart)
-
-	err = g.dbLabel(ws, r, DB_C_LBL2, "Wechselkurs")
-	if err != nil {
-		return err
-	}
-	err = g.dbInput(ws, r, DB_C_IN2, DB_FMT_RATE)
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPFolgeWechselkurs)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	rFolgeKurs := r
-	r++
-
-	// Row 13: Saldovortrag (LW) | Saldovortrag (EUR) — EUR berechnet sich aus LW / Folgeprojekt-Kurs
-	rSaldovortrag := r
-	err = g.dbLabel(ws, r, DB_C_LBL1, "Saldovortrag (LW)")
-	if err != nil {
-		return err
-	}
-	err = g.dbInput(ws, r, DB_C_IN1, DB_FMT_LC)
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN1, FieldDashVPFolgeSaldoLC)
-
-	err = g.dbLabel(ws, r, DB_C_LBL2, "Saldovortrag (EUR)")
-	if err != nil {
-		return err
-	}
-	// Saldovortrag (EUR) = Saldovortrag (LW) / Wechselkurs (Zeile 12, Spalte E)
-	err = g.setFormula(ws, cellName(DB_C_IN2, r),
-		fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", absName(DB_C_IN1, rSaldovortrag), absName(DB_C_IN2, rFolgeKurs)),
-		StyleOptions{FillColor: DB_CLR_DISABLED, VAlign: "center", HAlign: "left", NumFormat: DB_FMT_EUR,
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: DB_CLR_BORDER})
-	if err != nil {
-		return err
-	}
-	_ = g.bindInputField(ws, r, DB_C_IN2, FieldDashVPFolgeSaldoEUR)
-	_ = g.file.SetRowHeight(ws, r, 22.0)
-	vpEnd := r
-	r++ // Skip Row 14 (r=14)
-	r++ // Next block starts at row 15 (r=15)
-
-	// ── DOKUMENTEN-CHECKLISTE ──────────────────────────────────────────────────
-	docStart := DB_DOCS_START_ROW
-	docEnd := docStart + len(DB_DOCS) - 1
-
-	// Beschriftung links merged B15:C21
-	docLblOpts := StyleOptions{
-		Bold:         true,
-		Size:         10.0,
-		VAlign:       "center",
-		HAlign:       "left",
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-		WrapText:     true,
-	}
-	err = g.mergeCells(ws, cellName(DB_C_LBL1, docStart), cellName(DB_C_IN1, docEnd), "Folgende Dokumente liegen vor:", docLblOpts)
-	if err != nil {
+		startAddr, endeAddr, startAddr, endeAddr,
+	)
+	if err := g.setFormula(ws, cellName(DashColInputRight, DashRowProjektlaufzeit), monateFormula, DashOutputStyle); err != nil {
 		return err
 	}
 
-	// Dropdowns (D15:D21) und Texte (E15:E21)
-	for i, docName := range DB_DOCS {
-		row := docStart + i
-		_ = g.file.SetRowHeight(ws, row, 22.0)
-
-		// Ja/Nein Dropdown (Spalte D)
-		err = g.dbDropdownJaNein(ws, row, DB_C_LBL2, "", DB_CLR_INPUT)
-		if err != nil {
-			return err
-		}
-		_ = g.bindInputField(ws, row, DB_C_LBL2, FieldDashChecklist(i+1))
-
-		// Text (Spalte E)
-		txtOpts := StyleOptions{
-			VAlign:       "center",
-			HAlign:       "left",
-			BorderTop:    1,
-			BorderBottom: 1,
-			BorderLeft:   1,
-			BorderRight:  1,
-			BorderColor:  DB_CLR_BORDER,
-		}
-		err = g.setValue(ws, cellName(DB_C_IN2, row), docName, txtOpts)
-		if err != nil {
-			return err
-		}
+	// VP-Block
+	_ = g.bindInputField(ws, DashRowVPNummer, DashColInputLeft, reg.InputDashVPNummer)
+	_ = g.bindInputField(ws, DashRowVPNummer, DashColInputRight, reg.InputDashVPBerichtswaehrung)
+	if err := g.dashCurrencyValidation(ws, DashRowVPNummer, DashColInputRight); err != nil {
+		return err
 	}
 
-	// ── BEDINGTE FORMATIERUNG ──────────────────────────────────────────────────
-	err = g.applyConditionalFormatting(ws, vpStart, vpEnd, docStart, docEnd)
-	if err != nil {
+	_ = g.bindInputField(ws, DashRowVPEnde, DashColInputLeft, reg.InputDashVPEnde)
+	_ = g.bindInputField(ws, DashRowVPEnde, DashColInputRight, reg.InputDashVPWechselkurs)
+
+	// Saldo (LW) + Saldo (EUR) als Formel
+	_ = g.bindInputField(ws, DashRowVPSaldo, DashColInputLeft, reg.InputDashVPSaldoLC)
+	saldoEURFormula := fmt.Sprintf(
+		"=IFERROR(ROUND(%s/%s,2),0)",
+		absName(DashColInputLeft, DashRowVPSaldo),
+		absName(DashColInputRight, DashRowVPEnde),
+	)
+	if err := g.setFormula(ws, cellName(DashColInputRight, DashRowVPSaldo), saldoEURFormula, DashOutputEURStyle); err != nil {
+		return err
+	}
+	_ = g.bindInputField(ws, DashRowVPSaldo, DashColInputRight, reg.InputDashVPSaldoEUR)
+
+	// Folgeprojektstart + FolgeWechselkurs
+	_ = g.bindInputField(ws, DashRowVPFolgestart, DashColInputLeft, reg.InputDashVPFolgeprojektstart)
+	_ = g.bindInputField(ws, DashRowVPFolgestart, DashColInputRight, reg.InputDashVPFolgeWechselkurs)
+
+	// Saldovortrag (LW) + Saldovortrag (EUR) als Formel
+	_ = g.bindInputField(ws, DashRowVPSaldovortrag, DashColInputLeft, reg.InputDashVPFolgeSaldoLC)
+	saldovortragEURFormula := fmt.Sprintf(
+		"=IFERROR(ROUND(%s/%s,2),0)",
+		absName(DashColInputLeft, DashRowVPSaldovortrag),
+		absName(DashColInputRight, DashRowVPFolgestart),
+	)
+	if err := g.setFormula(ws, cellName(DashColInputRight, DashRowVPSaldovortrag), saldovortragEURFormula, DashOutputEURStyle); err != nil {
+		return err
+	}
+	_ = g.bindInputField(ws, DashRowVPSaldovortrag, DashColInputRight, reg.InputDashVPFolgeSaldoEUR)
+
+	return nil
+}
+
+func (g *Generator) bindDashChecklist(ws string, reg *TemplateRegistry) error {
+	checkFields := []InputField{
+		reg.InputDashVPSaldoCheck,
+		reg.InputDashVertragCheck,
+		reg.InputDashBudgetCheck,
+		reg.InputDashBankBelegeCheck,
+		reg.InputDashFBCheck,
+		reg.InputDashMACheck,
+	}
+	for i, field := range checkFields {
+		row := DashRowChecklistStart + i
+		_ = g.bindInputField(ws, row, DashColLabelRight, field)
+	}
+	return nil
+}
+
+func (g *Generator) applyDashConditionalFormatting(ws string) error {
+	vpAddr := absName(DashColInputRight, DashRowProjektNummer)
+	docEnd := DashRowChecklistStart + len(DashDocs) - 1
+
+	vpCfOpts := StyleOptions{FillColor: DashClrDisabled, FontColor: DashClrFontGray}
+	if err := g.addConditionalFormat(ws,
+		fmt.Sprintf("%s:%s", cellName(DashColLabelLeft, DashRowVPNummer), cellName(DashColInputRight, DashRowVPSaldovortrag)),
+		fmt.Sprintf("=%s=\"Nein\"", vpAddr),
+		vpCfOpts,
+	); err != nil {
+		return err
+	}
+
+	docCfOpts := StyleOptions{FontColor: DashClrFontGray, Strike: true}
+	if err := g.addConditionalFormat(ws,
+		fmt.Sprintf("%s:%s", cellName(DashColInputRight, DashRowChecklistStart), cellName(DashColInputRight, docEnd)),
+		fmt.Sprintf("=$%s%d=\"Nein\"", colLetter(DashColLabelRight), DashRowChecklistStart),
+		docCfOpts,
+	); err != nil {
+		return err
+	}
+
+	nachweisCfOpts := StyleOptions{FillColor: DashClrDisabled, FontColor: DashClrFontGray}
+	if err := g.addConditionalFormat(ws,
+		fmt.Sprintf("%s:%s", cellName(DashColLabelRight, DashRowChecklistStart), cellName(DashColInputRight, DashRowChecklistStart)),
+		fmt.Sprintf("=%s=\"Nein\"", vpAddr),
+		nachweisCfOpts,
+	); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (g *Generator) applyConditionalFormatting(
-	ws string,
-	vpStart, vpEnd int,
-	docStart, docEnd int,
-) error {
-	// Adresse der "Vorprojekt vorhanden"-Dropdown (E5 -> $E$5)
-	vpAddr := absName(DB_C_IN2, DB_TITLE_ROW+1)
+// ─── Hilfsfunktionen ──────────────────────────────────────────────────────────
 
-	// 1) Vorprojekt-Block ausgrauen, wenn "Vorprojekt vorhanden" auf "Nein" steht.
-	vpCfOpts := StyleOptions{
-		FillColor: DB_CLR_DISABLED,
-		FontColor: DB_CLR_FONT_GRAY,
-	}
-	err := g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_LBL1, vpStart), cellName(DB_C_IN2, vpEnd)), fmt.Sprintf("=%s=\"Nein\"", vpAddr), vpCfOpts)
-	if err != nil {
-		return err
-	}
-
-	// 2) Dokument-Text durchstreichen + ausgrauen, solange die zugehörige Dropdown (Spalte D) auf "Nein" steht.
-	//    Bezug relativ ($D15="Nein") -> gilt zeilenweise. Range: E15:E21
-	docCfOpts := StyleOptions{
-		FontColor: DB_CLR_FONT_GRAY,
-		Strike:    true,
-	}
-	err = g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_IN2, docStart), cellName(DB_C_IN2, docEnd)), fmt.Sprintf("=$%s%d=\"Nein\"", colLetter(DB_C_LBL2), docStart), docCfOpts)
-	if err != nil {
-		return err
-	}
-
-	// 3) Ohne Vorprojekt kann es keinen Vorprojektsaldo-Nachweis geben:
-	//    Erste Dokumentzeile (Dropdown + Text) D15:E15 ausgrauen, wenn kein Vorprojekt ("Nein").
-	nachweisCfOpts := StyleOptions{
-		FillColor: DB_CLR_DISABLED,
-		FontColor: DB_CLR_FONT_GRAY,
-	}
-	err = g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(DB_C_LBL2, docStart), cellName(DB_C_IN2, docStart)), fmt.Sprintf("=%s=\"Nein\"", vpAddr), nachweisCfOpts)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (g *Generator) dashSetupColumns(ws string) {
+	g.setColWidth(ws, 1, 3.0)
+	g.setColWidth(ws, DashColLabelLeft, 32.0)
+	g.setColWidth(ws, DashColInputLeft, 43.0)
+	g.setColWidth(ws, DashColLabelRight, 24.0)
+	g.setColWidth(ws, DashColInputRight, 35.0)
 }
 
-// --- Zellen-Hilfsfunktionen ---
-
-func (g *Generator) dbLabel(sheet string, row, col int, text string) error {
-	opts := StyleOptions{
-		Bold:         true,
-		Size:         10.0,
-		FillColor:    DB_CLR_LABEL,
-		VAlign:       "center",
-		HAlign:       "left",
-		WrapText:     true,
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	}
-	return g.setValue(sheet, cellName(col, row), text, opts)
-}
-
-func (g *Generator) dbInput(sheet string, row, col int, numFmt string) error {
-	opts := StyleOptions{
-		FillColor:    DB_CLR_INPUT,
-		VAlign:       "center",
-		HAlign:       "left",
-		NumFormat:    numFmt,
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	}
-	return g.setValue(sheet, cellName(col, row), "", opts)
-}
-
-func (g *Generator) dbInputDate(sheet string, row, col int) error {
-	opts := StyleOptions{
-		FillColor:    DB_CLR_INPUT,
-		VAlign:       "center",
-		HAlign:       "left",
-		NumFmtID:     14, // Excel built-in kurzes Datum, lokalsensitiv
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	}
-	return g.setValue(sheet, cellName(col, row), "", opts)
-}
-
-func (g *Generator) dbDropdownJaNein(sheet string, row, col int, defaultValue string, fillColor string) error {
-	opts := StyleOptions{
-		FillColor:    fillColor,
-		VAlign:       "center",
-		HAlign:       "center",
-		BorderTop:    1,
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  DB_CLR_BORDER,
-	}
-	cell := cellName(col, row)
-	var err error
-	if defaultValue != "" {
-		err = g.setValue(sheet, cell, defaultValue, opts)
-	} else {
-		err = g.setStyle(sheet, cell, cell, opts)
-	}
-	if err != nil {
-		return err
-	}
-	dv := excelize.NewDataValidation(true)
-	dv.Sqref = cell
-	dv.SetDropList(ListJaNein)
-	return g.file.AddDataValidation(sheet, dv)
-}
-
-func (g *Generator) dbCurrencyValidation(sheet string, row, col int) error {
+func (g *Generator) dashCurrencyValidation(sheet string, row, col int) error {
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = cellName(col, row)
 	dv.SetDropList(ListWaehrung)
 	return g.file.AddDataValidation(sheet, dv)
-}
-
-func (g *Generator) dbEnsureCurrencyList(sheet string) error {
-	for i, ccy := range DB_WAEHRUNGEN {
-		cell := cellName(DB_CCY_COL, i+1)
-		err := g.setValue(sheet, cell, ccy, StyleOptions{})
-		if err != nil {
-			return err
-		}
-	}
-	return g.file.SetColVisible(sheet, colLetter(DB_CCY_COL), false)
-}
-
-func (g *Generator) dbSetupColumnWidths(sheet string) {
-	// Spalte A: leerer Rand
-	// Spalte B: Label 1 (32.0, passend für längere Beschriftungen wie "Projektlaufzeit (geplant)")
-	// Spalte C: Eingabe 1 (25.0)
-	// Spalte D: Label 2 / Ja/Nein Dropdowns in der Checkliste (24.0, passend für "VP-Berichtswaehrung" und komfortable Ja/Nein-Auswahl)
-	// Spalte E: Eingabe 2 / Dokumentenname (35.0, passend für längere Dokumentnamen der Checkliste)
-	g.setColWidth(sheet, 1, 3.0)
-	g.setColWidth(sheet, 2, 32.0)
-	g.setColWidth(sheet, 3, 43.0)
-	g.setColWidth(sheet, 4, 24.0)
-	g.setColWidth(sheet, 5, 35.0)
 }
 
 func (g *Generator) dbUpsertNamedRange(sheet string, name string, col, row int) {

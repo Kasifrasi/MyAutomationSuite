@@ -8,370 +8,411 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// ─── Teil A: Grid-Konstanten ──────────────────────────────────────────────────
+
 const (
-	BG_SHEET_NAME = constants.VPSheetBUDGET
-	BG_TAB_COLOR  = "5B9BD5" // Medium Blue
+	// Spalten (Financing + Ausgaben)
+	BudgetColLabel  = 2  // B
+	BudgetColID     = 3  // C
+	BudgetColPos    = 4  // D
+	BudgetColLC     = 5  // E
+	BudgetColY1     = 6  // F
+	BudgetColY2     = 7  // G
+	BudgetColY3     = 8  // H
+	BudgetColEUR    = 9  // I
+	BudgetColGap    = 10 // J (Leer-Trenner)
+	BudgetColStatus = 11 // K
+	BudgetColCheck  = 12 // L
+	BudgetColBegr1  = 11 // K  (Begründung links = Status-Spalte)
+	BudgetColBegr2  = 13 // M  (Begründung rechts)
 
-	BG_COL_LABEL  = 2
-	BG_COL_ID     = 3
-	BG_COL_POS    = 4
-	BG_COL_LC     = 5
-	BG_COL_Y1     = 6
-	BG_COL_Y2     = 7
-	BG_COL_Y3     = 8
-	BG_COL_EUR    = 9
-	BG_COL_GAP    = 10
-	BG_COL_STATUS = 11
-	BG_COL_CHECK  = 12
-	BG_COL_BEGR_1 = 11
-	BG_COL_BEGR_2 = 13
+	BudgetColHelpLC  = 15 // O (ausgeblendet)
+	BudgetColHelpEUR = 16 // P (ausgeblendet)
 
-	BG_HELP_LC  = 15
-	BG_HELP_EUR = 16
+	BudgetColListGeber = 18 // R (ausgeblendet)
+	BudgetColListID    = 19 // S (ausgeblendet)
 
-	BG_COL_LIST_GEBER = 18
-	BG_COL_LIST_ID    = 19
+	// Feste Zeilen
+	BudgetRowTitle     = 2
+	BudgetRowSection1  = 4  // Abschnittsheader + Kurs-Zeile (gleiche Zeile)
+	BudgetRowFinanzHdr = 5
+	BudgetRowEigenHead = 6
+	BudgetRowEigen     = 7
+	BudgetRowDrittHead = 9
+	BudgetRowDritt     = 10
+	BudgetRowKMWHead   = 12
+	BudgetRowKMW       = 13
+	BudgetRowGesamt    = 15
+	BudgetRowSection2  = 17
+	BudgetRowAusgHdr   = 18
+	BudgetRowAusgStart = 19
 
-	BG_NAME_GEBER_LIST = "Geber_Liste"
-	BG_NAME_ID_LIST    = "Budget_ID_Liste"
+	// Reserve-Box (Spalte K, Zeilen 2–6)
+	BudgetReserveRowTitle  = 2
+	BudgetReserveRowAmount = 3
+	BudgetReserveRowLabel  = 4
+	BudgetReserveRowCheck  = 5
+	BudgetReserveRowStatus = 6
 
-	BG_TABLE_NAME = "TblDrittmittel"
-	BG_TABLE_AUSG = "TblBudgetAusgaben"
+	// Begründungsfeld (Spalten K–M, Zeilen 8–12)
+	BudgetBegrHdrRow   = 8
+	BudgetBegrAreaTop  = 9
+	BudgetBegrAreaRows = 4
 
-	BG_W_LABEL  = 25.0
-	BG_W_ID     = 8.0
-	BG_W_POS    = 100.0
-	BG_W_LC     = 18.0
-	BG_W_YEAR   = 14.0
-	BG_W_EUR    = 18.0
-	BG_W_GAP    = 3.0
-	BG_W_STATUS = 37.0
-	BG_W_CHECK  = 24.0
-	BG_W_BEGR   = 24.0
+	// Hilfszeilen (immer: 4 + Index in ListKostenkategorien; Reserve = Index 7)
+	// BudgetHelpReserveRow = 11 (4 + 7)
+	// BudgetHelpTotalRow   = 12 (4 + 8 = 4 + len(ListKostenkategorien))
+	BudgetHelpReserveRow = 11
+	BudgetHelpTotalRow   = 12
 
-	BG_FMT_LC   = "#,##0.00"
-	BG_FMT_EUR  = `#,##0.00" €"`
-	BG_FMT_RATE = "0.0000"
+	// Spaltenbreiten
+	BudgetWLabel  = 25.0
+	BudgetWID     = 8.0
+	BudgetWPos    = 100.0
+	BudgetWLC     = 18.0
+	BudgetWYear   = 14.0
+	BudgetWEUR    = 18.0
+	BudgetWGap    = 3.0
+	BudgetWStatus = 37.0
+	BudgetWCheck  = 24.0
+	BudgetWBegr   = 24.0
 
-	BG_CLR_HEADER     = "D3D3D3"
-	BG_CLR_SUBHEAD    = "F0F0F0"
-	BG_CLR_INPUT      = "FFFAE5"
-	BG_CLR_BORDER     = "808080"
-	BG_CLR_GRID       = "D3D3D3"
-	BG_CLR_FONT       = "3C3C3C"
-	BG_CLR_BLACK      = "000000"
-	BG_CLR_RES_OFF    = "F2F2F2"
-	BG_CLR_RES_TXT    = "595959"
-	BG_CLR_RES_ON     = "C6EFCE"
-	BG_CLR_RES_ON_TXT = "006100"
-	BG_CLR_BAD        = "FFC7CE"
-	BG_CLR_BAD_TXT    = "9C0006"
+	// Sheet
+	BudgetSheetName = constants.VPSheetBUDGET
+	BudgetTabColor  = "5B9BD5"
 
-	BG_NAME_RESERVE    = "Inp_Budget_ReserveFreigabe"
-	BG_NAME_KURS       = "Budget_Kurs"
-	BG_NAME_EIGEN_LW   = "Eigenmittel_LW"
-	BG_NAME_EIGEN_EUR  = "Eigenmittel_EUR"
-	BG_NAME_DRITT_LW   = "Drittmittel_LW"
-	BG_NAME_DRITT_EUR  = "Drittmittel_EUR"
-	BG_NAME_KMW_LW     = "KMW_Mittel_LW"
-	BG_NAME_KMW_EUR    = "KMW_Mittel_EUR"
-	BG_NAME_GESAMT_LW  = "Gesamtprojektmittel_LW"
-	BG_NAME_GESAMT_EUR = "Gesamtprojektmittel_EUR"
-	BG_NAME_AUSG_LW    = "Gesamtausgaben_LW"
-	BG_NAME_AUSG_EUR   = "Gesamtausgaben_EUR"
+	// Benannte Bereiche (Strings unveränderlich – andere Sheets referenzieren sie)
+	BudgetNameGeberList = "Geber_Liste"
+	BudgetNameIDList    = "Budget_ID_Liste"
+	BudgetNameReserve   = "Inp_Budget_ReserveFreigabe"
+	BudgetNameKurs      = "Budget_Kurs"
+	BudgetNameEigenLW   = "Eigenmittel_LW"
+	BudgetNameEigenEUR  = "Eigenmittel_EUR"
+	BudgetNameDrittLW   = "Drittmittel_LW"
+	BudgetNameDrittEUR  = "Drittmittel_EUR"
+	BudgetNameKMWLW     = "KMW_Mittel_LW"
+	BudgetNameKMWEUR    = "KMW_Mittel_EUR"
+	BudgetNameGesamtLW  = "Gesamtprojektmittel_LW"
+	BudgetNameGesamtEUR = "Gesamtprojektmittel_EUR"
+	BudgetNameAusgLW    = "Gesamtausgaben_LW"
+	BudgetNameAusgEUR   = "Gesamtausgaben_EUR"
+
+	// Backward-Compat-Aliase (von anderen Sheets referenziert)
+	BG_SHEET_NAME       = BudgetSheetName
+	BG_COL_LABEL        = BudgetColLabel
+	BG_COL_ID           = BudgetColID
+	BG_COL_POS          = BudgetColPos
+	BG_COL_LC           = BudgetColLC
+	BG_COL_Y1           = BudgetColY1
+	BG_COL_Y2           = BudgetColY2
+	BG_COL_Y3           = BudgetColY3
+	BG_COL_EUR          = BudgetColEUR
+	BG_COL_GAP          = BudgetColGap
+	BG_COL_STATUS       = BudgetColStatus
+	BG_COL_CHECK        = BudgetColCheck
+	BG_COL_BEGR_1       = BudgetColBegr1
+	BG_COL_BEGR_2       = BudgetColBegr2
+	BG_HELP_LC          = BudgetColHelpLC
+	BG_HELP_EUR         = BudgetColHelpEUR
+	BG_COL_LIST_GEBER   = BudgetColListGeber
+	BG_COL_LIST_ID      = BudgetColListID
+	BG_NAME_GEBER_LIST  = BudgetNameGeberList
+	BG_NAME_ID_LIST     = BudgetNameIDList
+	BG_NAME_RESERVE     = BudgetNameReserve
+	BG_NAME_KURS        = BudgetNameKurs
+	BG_NAME_EIGEN_LW    = BudgetNameEigenLW
+	BG_NAME_EIGEN_EUR   = BudgetNameEigenEUR
+	BG_NAME_DRITT_LW    = BudgetNameDrittLW
+	BG_NAME_DRITT_EUR   = BudgetNameDrittEUR
+	BG_NAME_KMW_LW      = BudgetNameKMWLW
+	BG_NAME_KMW_EUR     = BudgetNameKMWEUR
+	BG_NAME_GESAMT_LW   = BudgetNameGesamtLW
+	BG_NAME_GESAMT_EUR  = BudgetNameGesamtEUR
+	BG_NAME_AUSG_LW     = BudgetNameAusgLW
+	BG_NAME_AUSG_EUR    = BudgetNameAusgEUR
+	BG_CLR_HEADER       = BudgetClrHeader
+	BG_CLR_SUBHEAD      = BudgetClrSubhead
+	BG_CLR_INPUT        = BudgetClrInput
+	BG_CLR_BORDER       = BudgetClrBorder
+	BG_CLR_GRID         = BudgetClrGrid
+	BG_CLR_FONT         = BudgetClrFont
+	BG_CLR_BLACK        = BudgetClrBlack
+	BG_CLR_RES_OFF      = BudgetClrResOff
+	BG_CLR_RES_TXT      = BudgetClrResTxt
+	BG_CLR_RES_ON       = BudgetClrResOn
+	BG_CLR_RES_ON_TXT   = BudgetClrResOnTxt
+	BG_CLR_BAD          = BudgetClrBad
+	BG_CLR_BAD_TXT      = BudgetClrBadTxt
+	BG_FMT_LC           = BudgetFmtLC
+	BG_FMT_EUR          = BudgetFmtEUR
+	BG_FMT_RATE         = BudgetFmtRate
+	BG_TABLE_NAME       = "TblDrittmittel"
+	BG_TABLE_AUSG       = "TblBudgetAusgaben"
+	BG_TAB_COLOR        = BudgetTabColor
 )
 
 var BG_YEARS = []string{"Jahr 1", "Jahr 2", "Jahr 3"}
 
-func bgKostenName(cat string, cur string) string {
-	return fmt.Sprintf("Kosten_%s_%s", cat, cur)
+// ─── Teil B: Layout-Dokumentation ────────────────────────────────────────────
+/*
+  LAYOUT BUDGET:
+  | Zeile | B (Label)              | C (ID)  | D (Pos)  | E (LC)   | F–H (J1–3) | I (EUR)  | K (Status) | M (Begr.) |
+  |-------|------------------------|---------|----------|----------|------------|----------|------------|-----------|
+  |   2   | KERNDATEN BUDGET (Titel, merged B:I)                                  | Reserve Freigabe (K)            |
+  |   4   | 1. GEPLANTE EINNAHMEN (Section Hdr, B:I)  | Budget-Kurs (G4:H4)       | Reserve (K3–K6)                 |
+  |   5   | Finanzierungsquelle | B. (LC) | J1 | J2 | J3 | B. (EUR)                Begründung (K8–M12)             |
+  |   6   | 1.1 Eigenmittel (SubHdr B:I)                                                                              |
+  |   7   | Eigenmittel            |         |          | [Inp] | [Inp] | [Inp] | [Inp] | [Inp]                       |
+  |   9   | 1.2 Drittmittel (SubHdr)                                              | Drittmittel-Tabelle (K17:M28)   |
+  |  10   | Drittmittel (Summe)   |         |          |[Σ LC]|[Inp]|[Inp]|[Inp]|[Σ EUR]                           |
+  |  12   | 1.3 KMW-Mittel (SubHdr)                                                                                   |
+  |  13   | KMW-Mittel            |         |          | [Inp] | [Inp] | [Inp] | [Inp] | [Inp]                       |
+  |  15   | GESAMTPROJEKTMITTEL (Total)                                                                               |
+  |  17   | 2. GEPLANTE AUSGABEN (Section Hdr)                                                                        |
+  |  18   | Kostenkategorie | ID | Kostenposition | LC | J1 | J2 | J3 | EUR  (TblBudgetAusgaben, dyn. Zeilen)         |
+  | 19..N | [Ausgaben-Daten (kategorie-gesteuert)]                                                                    |
+  | N+1   | Geplante Gesamtausgaben (Total)                                                                           |
+  | N+3   | Budgetprüfung (Checks-Box, merged B:E)                                                                    |
+*/
+
+// ─── Hilfs-Struct für dynamische Ausgaben-Zeilen ─────────────────────────────
+
+type budgetDynRows struct {
+	AusgDataRows int
+	AusgTotal    int // erste Zeile nach den Daten = Summen-Zeile
 }
 
-func falsePtr() *bool {
-	b := false
-	return &b
+func (g *Generator) budgetComputeDynRows() budgetDynRows {
+	n := g.budgetExpenseCount()
+	return budgetDynRows{
+		AusgDataRows: n,
+		AusgTotal:    BudgetRowAusgStart + n,
+	}
 }
 
-func (g *Generator) CreateBudgetSheet() error {
-	ws := BG_SHEET_NAME
-	f := g.file
+// ─── Teil C: Orchestrator ─────────────────────────────────────────────────────
 
-	_, _ = f.NewSheet(ws)
-	tabColor := BG_TAB_COLOR
-	_ = f.SetSheetProps(ws, &excelize.SheetPropsOptions{TabColorRGB: &tabColor})
-	_ = f.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
+func (g *Generator) CreateBudgetSheet(reg *TemplateRegistry) error {
+	ws := BudgetSheetName
+	dyn := g.budgetComputeDynRows()
 
-	g.setColWidth(ws, BG_COL_LABEL, BG_W_LABEL)
-	g.setColWidth(ws, BG_COL_ID, BG_W_ID)
-	g.setColWidth(ws, BG_COL_POS, BG_W_POS)
-	g.setColWidth(ws, BG_COL_LC, BG_W_LC)
-	g.setColWidth(ws, BG_COL_Y1, BG_W_YEAR)
-	g.setColWidth(ws, BG_COL_Y2, BG_W_YEAR)
-	g.setColWidth(ws, BG_COL_Y3, BG_W_YEAR)
-	g.setColWidth(ws, BG_COL_EUR, BG_W_EUR)
-	g.setColWidth(ws, BG_COL_GAP, BG_W_GAP)
-	g.setColWidth(ws, BG_COL_STATUS, BG_W_STATUS)
-	g.setColWidth(ws, BG_COL_CHECK, BG_W_CHECK)
-	g.setColWidth(ws, BG_COL_BEGR_2, BG_W_BEGR)
+	_, _ = g.file.NewSheet(ws)
+	tabColor := BudgetTabColor
+	_ = g.file.SetSheetProps(ws, &excelize.SheetPropsOptions{TabColorRGB: &tabColor})
+	_ = g.file.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
 
-	r := 2
+	g.budgetSetupColumns(ws)
 
-	// Title
-	titleOpts := StyleOptions{Size: 14, Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, VAlign: "center", BorderTop: 2, BorderBottom: 2, BorderColor: BG_CLR_BORDER}
-	for c := BG_COL_LABEL; c <= BG_COL_EUR; c++ {
-		g.setStyle(ws, cellName(c, r), cellName(c, r), titleOpts)
+	// ── Teil D: Draw ──────────────────────────────────────────────────────────
+	if err := g.drawBudgetTitle(ws); err != nil {
+		return err
 	}
-	g.setValue(ws, cellName(BG_COL_LABEL, r), "I. KERNDATEN BUDGET", titleOpts)
-	_ = f.SetRowHeight(ws, r, 24)
-	r += 2
-
-	// Section 1
-	g.bgSectionHeader(ws, r, "1. GEPLANTE EINNAHMEN / FINANZIERUNG")
-
-	// Budget-Kurs (G4 und H4)
-	g.setValue(ws, cellName(BG_COL_Y2, r), "€ Budget-Kurs:", StyleOptions{
-		Size:         9,
-		HAlign:       "right",
-		VAlign:       "center",
-		FillColor:    BG_CLR_HEADER,
-		BorderTop:    2,
-		BorderBottom: 1,
-		BorderColor:  BG_CLR_BORDER,
-	})
-	rateCellOpts := StyleOptions{
-		NumFormat:    BG_FMT_RATE,
-		Italic:       true,
-		BorderTop:    2, // Durchgehender dicker Rahmen oben
-		BorderBottom: 1,
-		BorderLeft:   1,
-		BorderRight:  1,
-		BorderColor:  BG_CLR_BORDER,
+	if err := g.drawBudgetFinancing(ws); err != nil {
+		return err
 	}
-	g.setStyle(ws, cellName(BG_COL_Y3, r), cellName(BG_COL_Y3, r), rateCellOpts)
-	g.upsertNamedRange(BG_NAME_KURS, BG_COL_Y3, r)
-	r += 1
-
-	g.setValue(ws, cellName(BG_COL_LABEL, r), "Finanzierungsquelle", StyleOptions{})
-	g.bgValueHeaderCells(ws, r)
-	g.bgTableHeader(ws, r, BG_COL_LABEL, BG_COL_EUR)
-	r += 1
-
-	// 1.1 Eigenmittel
-	g.bgSubHeader(ws, r, "1.1 Eigenmittel")
-	r += 1
-	eigenRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r), "Eigenmittel", StyleOptions{Size: 10})
-	g.bgYearRow(ws, r, []InputField{FieldBudgetEigenmittelLC, FieldBudgetEigenmittelY1, FieldBudgetEigenmittelY2, FieldBudgetEigenmittelY3, FieldBudgetEigenmittelEUR})
-	g.upsertNamedRange(BG_NAME_EIGEN_LW, BG_COL_LC, r)
-	g.upsertNamedRange(BG_NAME_EIGEN_EUR, BG_COL_EUR, r)
-	_ = f.SetRowHeight(ws, r, 22)
-	r += 2
-
-	// 1.2 Drittmittel
-	g.bgSubHeader(ws, r, "1.2 Drittmittel")
-	r += 1
-	drittSummeRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r), "Drittmittel (Summe):", StyleOptions{Size: 10})
-	g.setValue(ws, cellName(BG_COL_POS, r), "Aufstellung je Geber → Tabelle rechts", StyleOptions{Size: 8, Italic: true, FontColor: BG_CLR_RES_TXT})
-	g.bgSummeCell(ws, r, BG_COL_LC, fmt.Sprintf(`=SUM(%s[Betrag (LC)])`, BG_TABLE_NAME), BG_FMT_LC)
-	g.bgSummeCell(ws, r, BG_COL_EUR, fmt.Sprintf(`=SUM(%s[Betrag (EUR)])`, BG_TABLE_NAME), BG_FMT_EUR)
-	g.bgInput(ws, cellName(BG_COL_Y1, r), BG_FMT_LC)
-	_ = g.bindInputField(ws, r, BG_COL_Y1, FieldBudgetDrittmittelY1)
-	g.bgInput(ws, cellName(BG_COL_Y2, r), BG_FMT_LC)
-	_ = g.bindInputField(ws, r, BG_COL_Y2, FieldBudgetDrittmittelY2)
-	g.bgInput(ws, cellName(BG_COL_Y3, r), BG_FMT_LC)
-	_ = g.bindInputField(ws, r, BG_COL_Y3, FieldBudgetDrittmittelY3)
-	g.upsertNamedRange(BG_NAME_DRITT_LW, BG_COL_LC, r)
-	g.upsertNamedRange(BG_NAME_DRITT_EUR, BG_COL_EUR, r)
-	_ = f.SetRowHeight(ws, r, 22)
-	r += 2
-
-	// 1.3 KMW-Mittel
-	g.bgSubHeader(ws, r, "1.3 KMW-Mittel")
-	r += 1
-	kmwRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r), "KMW-Mittel", StyleOptions{Size: 10})
-	g.bgYearRow(ws, r, []InputField{FieldBudgetKMWLC, FieldBudgetKMWY1, FieldBudgetKMWY2, FieldBudgetKMWY3, FieldBudgetKMWEUR})
-	g.upsertNamedRange(BG_NAME_KMW_LW, BG_COL_LC, r)
-	g.upsertNamedRange(BG_NAME_KMW_EUR, BG_COL_EUR, r)
-	_ = f.SetRowHeight(ws, r, 22)
-	r += 2
-
-	// GESAMTPROJEKTMITTEL
-	gesamtRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r), "GESAMTPROJEKTMITTEL", StyleOptions{})
-	sumOf := func(col int) string {
-		return fmt.Sprintf("=%s+%s+%s", cellName(col, eigenRow), cellName(col, drittSummeRow), cellName(col, kmwRow))
+	if err := g.drawBudgetAusgaben(ws, dyn); err != nil {
+		return err
 	}
-	g.setFormula(ws, cellName(BG_COL_LC, r), sumOf(BG_COL_LC), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y1, r), sumOf(BG_COL_Y1), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y2, r), sumOf(BG_COL_Y2), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y3, r), sumOf(BG_COL_Y3), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_EUR, r), sumOf(BG_COL_EUR), StyleOptions{NumFormat: BG_FMT_EUR})
-	g.bgTotalRow(ws, r, BG_COL_LABEL, BG_COL_EUR)
-
-	totalLoc := absName(BG_COL_LC, r)
-	totalEur := absName(BG_COL_EUR, r)
-	g.upsertNamedRange(BG_NAME_GESAMT_LW, BG_COL_LC, r)
-	g.upsertNamedRange(BG_NAME_GESAMT_EUR, BG_COL_EUR, r)
-
-	g.setFormula(ws, cellName(BG_COL_Y3, 4), fmt.Sprintf(`=IFERROR(%s/%s,0)`, totalLoc, totalEur), rateCellOpts)
-	r += 2
-
-	// Section 2: Ausgaben
-	g.bgSectionHeader(ws, r, "2. GEPLANTE AUSGABEN")
-	r += 1
-
-	ausgHdrRow := r
-	g.setValue(ws, cellName(BG_COL_LABEL, r), "Kostenkategorie", StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_ID, r), "ID", StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_POS, r), "Kostenposition", StyleOptions{})
-	g.bgValueHeaderCells(ws, r)
-	r += 1
-
-	ausgDataRows := len(ListKostenkategorien)
-	if g.cfg.ExpensePositionsCount > 0 {
-		ausgDataRows = g.cfg.ExpensePositionsCount
+	if err := g.drawBudgetDrittmittelTable(ws); err != nil {
+		return err
 	}
-	catCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
-	idCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", NumFormat: "@", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
-	posCellOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID, WrapText: true}
-	catArrayStr := `{"` + strings.Join(ListKostenkategorien, `","`) + `"}`
-	for i := 0; i < ausgDataRows; i++ {
-		row := r + i
-		_ = f.SetRowHeight(ws, row, 30)
+	reserveEurAddr := absName(BudgetColHelpEUR, BudgetHelpReserveRow)
+	reserveCheckAddr := absName(BudgetColStatus, BudgetReserveRowCheck)
+	g.drawBudgetReserveBox(ws, reserveEurAddr)
+	g.drawBudgetBegruendung(ws, reserveCheckAddr)
 
-		if g.cfg.ExpensePositionsCount > 0 {
-			// Datengetrieben: Wir legen die Struktur für die Position an, befüllen sie
-			// aber NICHT mit den konkreten Positionswerten. Das Befüllen übernimmt die API.
-			// Hier bleibt die Zelle als leeres Eingabefeld formatiert.
-			g.setStyle(ws, cellName(BG_COL_LABEL, row), cellName(BG_COL_LABEL, row), catCellOpts)
-			g.setStyle(ws, cellName(BG_COL_ID, row), cellName(BG_COL_ID, row), idCellOpts)
-			g.setStyle(ws, cellName(BG_COL_POS, row), cellName(BG_COL_POS, row), posCellOpts)
-			g.bgInput(ws, cellName(BG_COL_LC, row), BG_FMT_LC)
-			g.bgInput(ws, cellName(BG_COL_Y1, row), BG_FMT_LC)
-			g.bgInput(ws, cellName(BG_COL_Y2, row), BG_FMT_LC)
-			g.bgInput(ws, cellName(BG_COL_Y3, row), BG_FMT_LC)
-			g.bgInput(ws, cellName(BG_COL_EUR, row), BG_FMT_EUR)
-			continue
-		}
-
-		// Leeres Template: Kategorie vorbelegt, ID per Formel, Werte leer.
-		g.setValue(ws, cellName(BG_COL_LABEL, row), ListKostenkategorien[i], catCellOpts)
-
-		formulaID := fmt.Sprintf(`=IF(B%d="","",MATCH(B%d,%s,0)&"."&COUNTIF(B$%d:B%d,B%d))`, row, row, catArrayStr, r, row, row)
-		g.setFormula(ws, cellName(BG_COL_ID, row), formulaID, idCellOpts)
-
-		g.setValue(ws, cellName(BG_COL_POS, row), "", posCellOpts)
-		g.bgInput(ws, cellName(BG_COL_LC, row), BG_FMT_LC)
-		g.bgInput(ws, cellName(BG_COL_Y1, row), BG_FMT_LC)
-		g.bgInput(ws, cellName(BG_COL_Y2, row), BG_FMT_LC)
-		g.bgInput(ws, cellName(BG_COL_Y3, row), BG_FMT_LC)
-		g.bgInput(ws, cellName(BG_COL_EUR, row), BG_FMT_EUR)
+	// ── Teil E: Bind ──────────────────────────────────────────────────────────
+	if err := g.bindBudgetFinancing(ws, reg, dyn); err != nil {
+		return err
 	}
-
-	g.bgTableHeader(ws, ausgHdrRow, BG_COL_LABEL, BG_COL_EUR)
-
-	dv := excelize.NewDataValidation(true)
-	dv.Sqref = fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, r), cellName(BG_COL_LABEL, r+ausgDataRows-1))
-	dv.SetDropList(ListKostenkategorien)
-	_ = f.AddDataValidation(ws, dv)
-
-	r += ausgDataRows
-	ausgTotalsRow := r
-	_ = f.SetRowHeight(ws, ausgTotalsRow, 30)
-	g.setValue(ws, cellName(BG_COL_LABEL, ausgTotalsRow), "Geplante Gesamtausgaben", StyleOptions{})
-	g.setFormula(ws, cellName(BG_COL_LC, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y1, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[0]), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y2, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[1]), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_Y3, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[2]), StyleOptions{NumFormat: BG_FMT_LC})
-	g.setFormula(ws, cellName(BG_COL_EUR, ausgTotalsRow), fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BG_TABLE_AUSG), StyleOptions{NumFormat: BG_FMT_EUR})
-
-	g.bgTotalRow(ws, ausgTotalsRow, BG_COL_LABEL, BG_COL_EUR)
-
-	_ = f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(BG_COL_LABEL, ausgHdrRow), cellName(BG_COL_EUR, ausgTotalsRow-1)),
-		Name:           BG_TABLE_AUSG,
-		StyleName:      "",
-		ShowRowStripes: falsePtr(),
-	})
-
-	ausgLastRow := ausgTotalsRow
-
-	reserveEurAddr := ""
-	for i, cat := range ListKostenkategorien {
-		hr := 4 + i
-		g.setFormula(ws, cellName(BG_HELP_LC, hr), fmt.Sprintf(`=SUMIFS(%s[Betrag (LC)],%s[Kostenkategorie],"%s")`, BG_TABLE_AUSG, BG_TABLE_AUSG, cat), StyleOptions{})
-		g.setFormula(ws, cellName(BG_HELP_EUR, hr), fmt.Sprintf(`=SUMIFS(%s[Betrag (EUR)],%s[Kostenkategorie],"%s")`, BG_TABLE_AUSG, BG_TABLE_AUSG, cat), StyleOptions{})
-		g.upsertNamedRange(bgKostenName(cat, "LW"), BG_HELP_LC, hr)
-		g.upsertNamedRange(bgKostenName(cat, "EUR"), BG_HELP_EUR, hr)
-		if cat == "Reserve" {
-			reserveEurAddr = absName(BG_HELP_EUR, hr)
-		}
+	if err := g.bindBudgetAusgaben(ws, reg, dyn); err != nil {
+		return err
 	}
+	_ = g.bindInputField(ws, BudgetReserveRowCheck, BudgetColStatus, reg.InputBudgetReserveFreigabe)
 
-	gesHr := 4 + len(ListKostenkategorien)
-	g.setFormula(ws, cellName(BG_HELP_LC, gesHr), fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{})
-	g.setFormula(ws, cellName(BG_HELP_EUR, gesHr), fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BG_TABLE_AUSG), StyleOptions{})
-	g.upsertNamedRange(BG_NAME_AUSG_LW, BG_HELP_LC, gesHr)
-	g.upsertNamedRange(BG_NAME_AUSG_EUR, BG_HELP_EUR, gesHr)
-	expLocAddr := absName(BG_HELP_LC, gesHr)
-	expEurAddr := absName(BG_HELP_EUR, gesHr)
+	// ── Abschluß (braucht bindete Adressen) ──────────────────────────────────
+	g.styleOuterBorder(ws, BudgetRowTitle, BudgetColLabel, dyn.AusgTotal, BudgetColEUR, 2, BudgetClrBorder)
 
-	_ = f.SetColVisible(ws, colLetter(BG_HELP_LC), false)
-	_ = f.SetColVisible(ws, colLetter(BG_HELP_EUR), false)
-	_ = f.SetColVisible(ws, colLetter(BG_COL_LIST_GEBER), false)
-	_ = f.SetColVisible(ws, colLetter(BG_COL_LIST_ID), false)
-
-	g.bgBuildLookupLists(ws)
-	g.bgDrawDrittmittelTable(ws, ausgHdrRow)
-
-	g.styleOuterBorder(ws, 2, BG_COL_LABEL, ausgLastRow, BG_COL_EUR, 2, BG_CLR_BORDER)
-
-	reserveCheckAddr := g.bgDrawReserveBox(ws, reserveEurAddr)
-	g.bgDrawBegruendung(ws, reserveCheckAddr)
-
-	incYearsAddr := fmt.Sprintf("%s+%s+%s", absName(BG_COL_Y1, gesamtRow), absName(BG_COL_Y2, gesamtRow), absName(BG_COL_Y3, gesamtRow))
-	expYearsAddr := fmt.Sprintf("%s+%s+%s", absName(BG_COL_Y1, ausgLastRow), absName(BG_COL_Y2, ausgLastRow), absName(BG_COL_Y3, ausgLastRow))
-	rateCellAddr := absName(BG_COL_Y3, 4)
-	g.bgDrawChecks(ws, ausgLastRow+2, totalLoc, totalEur, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr, rateCellAddr)
+	incYearsAddr := fmt.Sprintf("%s+%s+%s",
+		absName(BudgetColY1, BudgetRowGesamt),
+		absName(BudgetColY2, BudgetRowGesamt),
+		absName(BudgetColY3, BudgetRowGesamt),
+	)
+	expYearsAddr := fmt.Sprintf("%s+%s+%s",
+		absName(BudgetColY1, dyn.AusgTotal),
+		absName(BudgetColY2, dyn.AusgTotal),
+		absName(BudgetColY3, dyn.AusgTotal),
+	)
+	g.drawBudgetChecks(ws,
+		dyn.AusgTotal+2,
+		absName(BudgetColLC, BudgetRowGesamt),
+		absName(BudgetColEUR, BudgetRowGesamt),
+		incYearsAddr,
+		absName(BudgetColHelpLC, BudgetHelpTotalRow),
+		absName(BudgetColHelpEUR, BudgetHelpTotalRow),
+		expYearsAddr,
+		absName(BudgetColY3, BudgetRowSection1),
+	)
 
 	return nil
 }
 
-func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
-	cName, cLc, cEur := BG_COL_STATUS, BG_COL_CHECK, BG_COL_BEGR_2
-	titleRow := ausgHdrRow - 1
-	headerRow := ausgHdrRow
-	// geberRows: explizit benannte Geber (ohne Sonstiges).
-	// dataRows:  geberRows + 1 feste Sonstiges-Zeile (immer vorhanden).
-	geberRows := 10
-	// TODO: Maybe let the API configure this, but default to 10 if not set.
-	// For now, if we don't have GeberCount, we fallback to 10.
-	dataRows := geberRows + 1 // +1 für Sonstiges
+// ─── Teil D: Draw-Funktionen (nur visuell) ───────────────────────────────────
 
-	g.mergeCells(ws, cellName(cName, titleRow), cellName(cEur, titleRow), "Drittmittel – Aufstellung je Geber", StyleOptions{
-		Bold: true, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center",
+func (g *Generator) budgetSetupColumns(ws string) {
+	g.setColWidth(ws, BudgetColLabel, BudgetWLabel)
+	g.setColWidth(ws, BudgetColID, BudgetWID)
+	g.setColWidth(ws, BudgetColPos, BudgetWPos)
+	g.setColWidth(ws, BudgetColLC, BudgetWLC)
+	g.setColWidth(ws, BudgetColY1, BudgetWYear)
+	g.setColWidth(ws, BudgetColY2, BudgetWYear)
+	g.setColWidth(ws, BudgetColY3, BudgetWYear)
+	g.setColWidth(ws, BudgetColEUR, BudgetWEUR)
+	g.setColWidth(ws, BudgetColGap, BudgetWGap)
+	g.setColWidth(ws, BudgetColStatus, BudgetWStatus)
+	g.setColWidth(ws, BudgetColCheck, BudgetWCheck)
+	g.setColWidth(ws, BudgetColBegr2, BudgetWBegr)
+}
+
+func (g *Generator) drawBudgetTitle(ws string) error {
+	for c := BudgetColLabel; c <= BudgetColEUR; c++ {
+		g.setStyle(ws, cellName(c, BudgetRowTitle), cellName(c, BudgetRowTitle), BudgetTitleStyle)
+	}
+	g.setValue(ws, cellName(BudgetColLabel, BudgetRowTitle), "I. KERNDATEN BUDGET", BudgetTitleStyle)
+	_ = g.file.SetRowHeight(ws, BudgetRowTitle, 24)
+	return nil
+}
+
+func (g *Generator) drawBudgetFinancing(ws string) error {
+	f := g.file
+
+	// Section 1 header (= row mit Kurs-Zelle)
+	g.bgSectionHeader(ws, BudgetRowSection1, "1. GEPLANTE EINNAHMEN / FINANZIERUNG")
+	g.setValue(ws, cellName(BudgetColY2, BudgetRowSection1), "€ Budget-Kurs:", StyleOptions{
+		Size: 9, HAlign: "right", VAlign: "center", FillColor: BudgetClrHeader,
+		BorderTop: 2, BorderBottom: 1, BorderColor: BudgetClrBorder,
 	})
+	g.setStyle(ws, cellName(BudgetColY3, BudgetRowSection1), cellName(BudgetColY3, BudgetRowSection1), StyleOptions{
+		NumFormat: BudgetFmtRate, Italic: true,
+		BorderTop: 2, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BudgetClrBorder,
+	})
+
+	// Spaltenüberschriften
+	g.setValue(ws, cellName(BudgetColLabel, BudgetRowFinanzHdr), "Finanzierungsquelle", StyleOptions{})
+	g.budgetValueHeaderCells(ws, BudgetRowFinanzHdr)
+	g.bgTableHeader(ws, BudgetRowFinanzHdr, BudgetColLabel, BudgetColEUR)
+
+	// 1.1 Eigenmittel
+	g.bgSubHeader(ws, BudgetRowEigenHead, "1.1 Eigenmittel")
+	g.setValue(ws, cellName(BudgetColLabel, BudgetRowEigen), "Eigenmittel", StyleOptions{Size: 10})
+	g.drawBudgetYearInputRow(ws, BudgetRowEigen)
+	_ = f.SetRowHeight(ws, BudgetRowEigen, 22)
+
+	// 1.2 Drittmittel
+	g.bgSubHeader(ws, BudgetRowDrittHead, "1.2 Drittmittel")
+	g.setValue(ws, cellName(BudgetColLabel, BudgetRowDritt), "Drittmittel (Summe):", StyleOptions{Size: 10})
+	g.setValue(ws, cellName(BudgetColPos, BudgetRowDritt), "Aufstellung je Geber → Tabelle rechts",
+		StyleOptions{Size: 8, Italic: true, FontColor: BudgetClrResTxt})
+	g.bgInput(ws, cellName(BudgetColY1, BudgetRowDritt), BudgetFmtLC)
+	g.bgInput(ws, cellName(BudgetColY2, BudgetRowDritt), BudgetFmtLC)
+	g.bgInput(ws, cellName(BudgetColY3, BudgetRowDritt), BudgetFmtLC)
+	_ = f.SetRowHeight(ws, BudgetRowDritt, 22)
+
+	// 1.3 KMW-Mittel
+	g.bgSubHeader(ws, BudgetRowKMWHead, "1.3 KMW-Mittel")
+	g.setValue(ws, cellName(BudgetColLabel, BudgetRowKMW), "KMW-Mittel", StyleOptions{Size: 10})
+	g.drawBudgetYearInputRow(ws, BudgetRowKMW)
+	_ = f.SetRowHeight(ws, BudgetRowKMW, 22)
+
+	// GESAMTPROJEKTMITTEL
+	g.setValue(ws, cellName(BudgetColLabel, BudgetRowGesamt), "GESAMTPROJEKTMITTEL", StyleOptions{})
+	g.bgTotalRow(ws, BudgetRowGesamt, BudgetColLabel, BudgetColEUR)
+
+	return nil
+}
+
+func (g *Generator) drawBudgetAusgaben(ws string, dyn budgetDynRows) error {
+	f := g.file
+
+	// Section 2 header
+	g.bgSectionHeader(ws, BudgetRowSection2, "2. GEPLANTE AUSGABEN")
+
+	// Spaltenüberschriften
+	g.setValue(ws, cellName(BudgetColLabel, BudgetRowAusgHdr), "Kostenkategorie", StyleOptions{})
+	g.setValue(ws, cellName(BudgetColID, BudgetRowAusgHdr), "ID", StyleOptions{})
+	g.setValue(ws, cellName(BudgetColPos, BudgetRowAusgHdr), "Kostenposition", StyleOptions{})
+	g.budgetValueHeaderCells(ws, BudgetRowAusgHdr)
+
+	catArrayStr := `{"` + strings.Join(ListKostenkategorien, `","`) + `"}`
+	for i := 0; i < dyn.AusgDataRows; i++ {
+		row := BudgetRowAusgStart + i
+		_ = f.SetRowHeight(ws, row, 30)
+
+		if g.cfg.ExpensePositionsCount > 0 {
+			g.setStyle(ws, cellName(BudgetColLabel, row), cellName(BudgetColLabel, row), BudgetCatCellStyle)
+			g.setStyle(ws, cellName(BudgetColID, row), cellName(BudgetColID, row), BudgetIDCellStyle)
+			g.setStyle(ws, cellName(BudgetColPos, row), cellName(BudgetColPos, row), BudgetPosCellStyle)
+		} else {
+			g.setValue(ws, cellName(BudgetColLabel, row), ListKostenkategorien[i], BudgetCatCellStyle)
+			formulaID := fmt.Sprintf(
+				`=IF(B%d="","",MATCH(B%d,%s,0)&"."&COUNTIF(B$%d:B%d,B%d))`,
+				row, row, catArrayStr, BudgetRowAusgStart, row, row)
+			g.setFormula(ws, cellName(BudgetColID, row), formulaID, BudgetIDCellStyle)
+			g.setValue(ws, cellName(BudgetColPos, row), "", BudgetPosCellStyle)
+		}
+		g.bgInput(ws, cellName(BudgetColLC, row), BudgetFmtLC)
+		g.bgInput(ws, cellName(BudgetColY1, row), BudgetFmtLC)
+		g.bgInput(ws, cellName(BudgetColY2, row), BudgetFmtLC)
+		g.bgInput(ws, cellName(BudgetColY3, row), BudgetFmtLC)
+		g.bgInput(ws, cellName(BudgetColEUR, row), BudgetFmtEUR)
+	}
+
+	g.bgTableHeader(ws, BudgetRowAusgHdr, BudgetColLabel, BudgetColEUR)
+
+	// Summen-Zeile
+	_ = f.SetRowHeight(ws, dyn.AusgTotal, 30)
+	g.setValue(ws, cellName(BudgetColLabel, dyn.AusgTotal), "Geplante Gesamtausgaben", StyleOptions{})
+	g.setFormula(ws, cellName(BudgetColLC, dyn.AusgTotal),
+		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{NumFormat: BudgetFmtLC})
+	g.setFormula(ws, cellName(BudgetColY1, dyn.AusgTotal),
+		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[0]), StyleOptions{NumFormat: BudgetFmtLC})
+	g.setFormula(ws, cellName(BudgetColY2, dyn.AusgTotal),
+		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[1]), StyleOptions{NumFormat: BudgetFmtLC})
+	g.setFormula(ws, cellName(BudgetColY3, dyn.AusgTotal),
+		fmt.Sprintf(`=SUBTOTAL(109,%s[%s])`, BG_TABLE_AUSG, BG_YEARS[2]), StyleOptions{NumFormat: BudgetFmtLC})
+	g.setFormula(ws, cellName(BudgetColEUR, dyn.AusgTotal),
+		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BG_TABLE_AUSG), StyleOptions{NumFormat: BudgetFmtEUR})
+	g.bgTotalRow(ws, dyn.AusgTotal, BudgetColLabel, BudgetColEUR)
+
+	return nil
+}
+
+func (g *Generator) drawBudgetDrittmittelTable(ws string) error {
+	cName, cLc, cEur := BudgetColStatus, BudgetColCheck, BudgetColBegr2
+	titleRow := BudgetRowSection2        // = 17
+	headerRow := BudgetRowAusgHdr        // = 18
+	geberRows := 10
+	dataRows := geberRows + 1
+
+	g.mergeCells(ws, cellName(cName, titleRow), cellName(cEur, titleRow),
+		"Drittmittel – Aufstellung je Geber", StyleOptions{
+			Bold: true, FontColor: BudgetClrBlack, FillColor: BudgetClrHeader,
+			HAlign: "center", VAlign: "center",
+		})
 	g.setValue(ws, cellName(cName, headerRow), "Name des Gebers", StyleOptions{})
 	g.setValue(ws, cellName(cLc, headerRow), "Betrag (LC)", StyleOptions{})
 	g.setValue(ws, cellName(cEur, headerRow), "Betrag (EUR)", StyleOptions{})
 
-	nameOpts := StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID}
-
-	// Explizite Geber-Zeilen
 	for i := 0; i < geberRows; i++ {
 		row := headerRow + 1 + i
-		g.setStyle(ws, cellName(cName, row), cellName(cName, row), nameOpts)
-		g.bgInput(ws, cellName(cLc, row), BG_FMT_LC)
-		g.bgInput(ws, cellName(cEur, row), BG_FMT_EUR)
+		g.setStyle(ws, cellName(cName, row), cellName(cName, row), BudgetNameCellStyle)
+		g.bgInput(ws, cellName(cLc, row), BudgetFmtLC)
+		g.bgInput(ws, cellName(cEur, row), BudgetFmtEUR)
 	}
-
-	// Feste Sonstiges-Zeile (immer letzte Zeile der Tabelle)
 	sonstigesRow := headerRow + 1 + geberRows
-	g.setValue(ws, cellName(cName, sonstigesRow), "Sonstige", nameOpts)
-	g.bgInput(ws, cellName(cLc, sonstigesRow), BG_FMT_LC)
-	g.bgInput(ws, cellName(cEur, sonstigesRow), BG_FMT_EUR)
+	g.setValue(ws, cellName(cName, sonstigesRow), "Sonstige", BudgetNameCellStyle)
+	g.bgInput(ws, cellName(cLc, sonstigesRow), BudgetFmtLC)
+	g.bgInput(ws, cellName(cEur, sonstigesRow), BudgetFmtEUR)
 
 	g.bgTableHeader(ws, headerRow, cName, cEur)
 	_ = g.file.AddTable(ws, &excelize.Table{
@@ -381,183 +422,84 @@ func (g *Generator) bgDrawDrittmittelTable(ws string, ausgHdrRow int) {
 		ShowRowStripes: falsePtr(),
 	})
 
-	// Geber_Liste: alle Zeilen inkl. Sonstiges.
 	firstDataRow := headerRow + 1
 	lastDataRow := headerRow + dataRows
-	g.upsertNamedFormula(BG_NAME_GEBER_LIST, fmt.Sprintf(
+	g.upsertNamedFormula(BudgetNameGeberList, fmt.Sprintf(
 		"OFFSET('%s'!%s,0,0,MAX(1,COUNTA('%s'!$%s$%d:$%s$%d)),1)",
 		ws, absName(cName, firstDataRow),
 		ws, colLetter(cName), firstDataRow, colLetter(cName), lastDataRow))
 
-	g.styleOuterBorder(ws, titleRow, cName, headerRow+dataRows, cEur, 2, BG_CLR_BORDER)
+	g.styleOuterBorder(ws, titleRow, cName, headerRow+dataRows, cEur, 2, BudgetClrBorder)
+	return nil
 }
 
-func (g *Generator) bgSectionHeader(ws string, r int, title string) {
-	opts := StyleOptions{
-		Bold: true, Size: 11, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "left", VAlign: "center", BorderTop: 2, BorderBottom: 1, BorderColor: BG_CLR_BORDER,
-	}
-	for c := BG_COL_LABEL; c <= BG_COL_EUR; c++ {
-		g.setStyle(ws, cellName(c, r), cellName(c, r), opts)
-	}
-	g.setValue(ws, cellName(BG_COL_LABEL, r), title, opts)
-	_ = g.file.SetRowHeight(ws, r, 24)
-}
+func (g *Generator) drawBudgetReserveBox(ws string, reserveEurAddr string) {
+	col := BudgetColStatus
 
-func (g *Generator) bgSubHeader(ws string, r int, title string) {
-	opts := StyleOptions{
-		Bold: true, Size: 10, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_SUBHEAD, HAlign: "left", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_BORDER,
-	}
-	for c := BG_COL_LABEL; c <= BG_COL_EUR; c++ {
-		g.setStyle(ws, cellName(c, r), cellName(c, r), opts)
-	}
-	g.setValue(ws, cellName(BG_COL_LABEL, r), title, opts)
-	_ = g.file.SetRowHeight(ws, r, 20)
-}
-
-func (g *Generator) bgValueHeaderCells(ws string, r int) {
-	g.setValue(ws, cellName(BG_COL_LC, r), "Betrag (LC)", StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_Y1, r), BG_YEARS[0], StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_Y2, r), BG_YEARS[1], StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_Y3, r), BG_YEARS[2], StyleOptions{})
-	g.setValue(ws, cellName(BG_COL_EUR, r), "Betrag (EUR)", StyleOptions{})
-}
-
-func (g *Generator) bgTableHeader(ws string, r int, c1 int, c2 int) {
-	opts := StyleOptions{
-		Bold: true, Size: 9, FontColor: BG_CLR_FONT, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center", BorderBottom: 2, BorderColor: BG_CLR_BORDER,
-	}
-	for c := c1; c <= c2; c++ {
-		g.setStyle(ws, cellName(c, r), cellName(c, r), opts)
-	}
-}
-
-func (g *Generator) bgYearRow(ws string, r int, fields []InputField) {
-	for i, c := range []int{BG_COL_LC, BG_COL_Y1, BG_COL_Y2, BG_COL_Y3} {
-		g.bgInput(ws, cellName(c, r), BG_FMT_LC)
-		if i < len(fields) {
-			_ = g.bindInputField(ws, r, c, fields[i])
-		}
-	}
-	g.bgInput(ws, cellName(BG_COL_EUR, r), BG_FMT_EUR)
-	if len(fields) > 4 {
-		_ = g.bindInputField(ws, r, BG_COL_EUR, fields[4])
-	}
-}
-
-// bgFillIncomeRow trägt LC / Jahr 1–3 / EUR einer Finanzierungszeile aus der Config ein.
-func (g *Generator) bgFillIncomeRow(ws string, r int, inc IncomeRow) {
-	g.bgFillInput(ws, cellName(BG_COL_LC, r), inc.LC)
-	g.bgFillInput(ws, cellName(BG_COL_Y1, r), inc.Y1)
-	g.bgFillInput(ws, cellName(BG_COL_Y2, r), inc.Y2)
-	g.bgFillInput(ws, cellName(BG_COL_Y3, r), inc.Y3)
-	g.bgFillInput(ws, cellName(BG_COL_EUR, r), inc.EUR)
-}
-
-func (g *Generator) bgSummeCell(ws string, r int, c int, formula string, fmtStr string) {
-	g.setFormula(ws, cellName(c, r), formula, StyleOptions{
-		Bold: true, HAlign: "right", VAlign: "center", NumFormat: fmtStr,
+	g.setValue(ws, cellName(col, BudgetReserveRowTitle), "Reserve Freigabe", StyleOptions{
+		Bold: true, Size: 9, FontColor: BudgetClrBlack, FillColor: BudgetClrHeader,
+		HAlign: "center", VAlign: "center",
+		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
 	})
-}
-
-func (g *Generator) bgInput(ws string, cell string, numFmt string) {
-	g.setStyle(ws, cell, cell, StyleOptions{
-		FillColor: BG_CLR_INPUT, HAlign: "right", VAlign: "center", NumFormat: numFmt, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID,
-	})
-}
-
-// bgFillInput trägt einen optionalen Wert in eine (bereits formatierte) Eingabezelle
-// ein. nil ⇒ Zelle bleibt leer.
-func (g *Generator) bgFillInput(ws, cell string, v *float64) {
-	if v != nil {
-		_ = g.file.SetCellValue(ws, cell, *v)
-	}
-}
-
-func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
-	for c := c1; c <= c2; c++ {
-		opts := StyleOptions{
-			Bold: true, Size: 10, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_SUBHEAD, VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER,
-		}
-		if c >= BG_COL_LC && c <= BG_COL_Y3 {
-			opts.NumFormat = BG_FMT_LC
-		} else if c == BG_COL_EUR {
-			opts.NumFormat = BG_FMT_EUR
-		}
-		g.setStyle(ws, cellName(c, r), cellName(c, r), opts)
-	}
-	_ = g.file.SetRowHeight(ws, r, 20)
-}
-
-func (g *Generator) bgBuildLookupLists(ws string) {
-	// Geber_Liste wird direkt in bgDrawDrittmittelTable definiert (robuste
-	// Bereichs-Referenz auf die Geber-Eingabezellen statt eines Dynamic-Array-Spills,
-	// der in der Datenvalidierung leer blieb).
-	g.setDynArrayFormula(ws, cellName(BG_COL_LIST_ID, 1), fmt.Sprintf(`IFERROR(_xlfn._xlws.FILTER(%s[ID],%s[ID]<>""),"")`, BG_TABLE_AUSG, BG_TABLE_AUSG), StyleOptions{})
-	g.upsertNamedFormula(BG_NAME_ID_LIST, fmt.Sprintf("OFFSET('%s'!%s, 0, 0, COUNTA('%s'!%s:%s), 1)", ws, absName(BG_COL_LIST_ID, 1), ws, colLetter(BG_COL_LIST_ID), colLetter(BG_COL_LIST_ID)))
-}
-
-func (g *Generator) bgDrawReserveBox(ws string, reserveEurAddr string) string {
-	c, col := BG_COL_STATUS, BG_COL_STATUS
-	rHead, rAmount, rCapt, rCheck, rStatus := 2, 3, 4, 5, 6
-
-	g.setValue(ws, cellName(col, rHead), "Reserve Freigabe", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-
 	if reserveEurAddr != "" {
-		g.setFormula(ws, cellName(col, rAmount), fmt.Sprintf("=%s", reserveEurAddr), StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_FONT, HAlign: "center", VAlign: "center", NumFormat: BG_FMT_EUR, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-	} else {
-		g.setValue(ws, cellName(col, rAmount), 0, StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_FONT, HAlign: "center", VAlign: "center", NumFormat: BG_FMT_EUR, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+		g.setFormula(ws, cellName(col, BudgetReserveRowAmount), fmt.Sprintf("=%s", reserveEurAddr), StyleOptions{
+			Bold: true, Size: 9, FontColor: BudgetClrFont, HAlign: "center", VAlign: "center",
+			NumFormat: BudgetFmtEUR,
+			BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
+		})
 	}
+	g.setValue(ws, cellName(col, BudgetReserveRowLabel), "Reserve freigeben:", StyleOptions{
+		Size: 9, FontColor: BudgetClrResTxt, Italic: true, HAlign: "center", VAlign: "center",
+		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
+	})
+	g.setStyle(ws, cellName(col, BudgetReserveRowCheck), cellName(col, BudgetReserveRowCheck), StyleOptions{
+		FillColor: BudgetClrInput, HAlign: "center", VAlign: "center",
+		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
+	})
 
-	g.setValue(ws, cellName(col, rCapt), "Reserve freigeben:", StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, Italic: true, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-
-	g.setStyle(ws, cellName(col, rCheck), cellName(col, rCheck), StyleOptions{FillColor: BG_CLR_INPUT, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-	checkAddr := absName(c, rCheck)
-
-	// Dropdown-Auswahl Ja/Nein hinzufügen
-	// The validation is handled via bindInputField using FieldBudgetReserveFreigabe
-	_ = g.bindInputField(ws, rCheck, c, FieldBudgetReserveFreigabe)
-
+	checkAddr := absName(col, BudgetReserveRowCheck)
 	statusFormula := fmt.Sprintf(`=IF(%s="Ja","FREIGEGEBEN","NICHT FREIGEGEBEN")`, checkAddr)
-	statusStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-	g.file.SetCellFormula(ws, cellName(col, rStatus), statusFormula)
-	g.file.SetCellStyle(ws, cellName(col, rStatus), cellName(col, rStatus), statusStyleId)
+	statusStyleID, _ := g.getOrCreateStyle(StyleOptions{
+		Bold: true, Size: 9, FontColor: BudgetClrResTxt, FillColor: BudgetClrResOff,
+		HAlign: "center", VAlign: "center",
+		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
+	})
+	g.file.SetCellFormula(ws, cellName(col, BudgetReserveRowStatus), statusFormula)
+	g.file.SetCellStyle(ws, cellName(col, BudgetReserveRowStatus), cellName(col, BudgetReserveRowStatus), statusStyleID)
 
-	onStyleOpts := StyleOptions{
-		Bold:         true,
-		Size:         9,
-		FontColor:    BG_CLR_RES_ON_TXT,
-		FillColor:    BG_CLR_RES_ON,
-		BorderLeft:   2,
-		BorderRight:  2,
-		BorderTop:    1,
-		BorderBottom: 2,
-		BorderColor:  BG_CLR_BORDER,
-	}
-	g.addConditionalFormat(ws, cellName(col, rStatus), fmt.Sprintf(`%s="Ja"`, checkAddr), onStyleOpts)
-
-	g.styleOuterBorder(ws, rHead, col, rStatus, col, 2, BG_CLR_BORDER)
-	return checkAddr
+	g.addConditionalFormat(ws, cellName(col, BudgetReserveRowStatus), fmt.Sprintf(`%s="Ja"`, checkAddr), StyleOptions{
+		Bold: true, Size: 9, FontColor: BudgetClrResOnTxt, FillColor: BudgetClrResOn,
+		BorderLeft: 2, BorderRight: 2, BorderTop: 1, BorderBottom: 2, BorderColor: BudgetClrBorder,
+	})
+	g.styleOuterBorder(ws, BudgetReserveRowTitle, col, BudgetReserveRowStatus, col, 2, BudgetClrBorder)
 }
 
-func (g *Generator) bgDrawBegruendung(ws string, reserveCheckAddr string) {
-	c1, c2 := BG_COL_BEGR_1, BG_COL_BEGR_2
-	hdrRow, areaTop, areaRows := 8, 9, 4
-
-	// Inaktiver Standard-Stil: Grau hinterlegt, grauer Text, dünner grauer Rahmen
-	g.mergeCells(ws, cellName(c1, hdrRow), cellName(c2, hdrRow), "Begruendung", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_BORDER})
-	g.mergeCells(ws, cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1), "", StyleOptions{FillColor: "F2F2F2", HAlign: "left", VAlign: "top", WrapText: true, BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: "D3D3D3", Unlocked: true})
-
+func (g *Generator) drawBudgetBegruendung(ws string, reserveCheckAddr string) {
+	c1, c2 := BudgetColBegr1, BudgetColBegr2
+	g.mergeCells(ws, cellName(c1, BudgetBegrHdrRow), cellName(c2, BudgetBegrHdrRow), "Begruendung", StyleOptions{
+		Bold: true, Size: 9, FontColor: BudgetClrBlack, FillColor: BudgetClrHeader,
+		HAlign: "center", VAlign: "center",
+		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrBorder,
+	})
+	g.mergeCells(ws, cellName(c1, BudgetBegrAreaTop), cellName(c2, BudgetBegrAreaTop+BudgetBegrAreaRows-1), "", StyleOptions{
+		FillColor: "F2F2F2", HAlign: "left", VAlign: "top", WrapText: true,
+		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: "D3D3D3", Unlocked: true,
+	})
 	condFormula := fmt.Sprintf(`%s="Ja"`, reserveCheckAddr)
-
-	// Aktiver Stil für Eingabebereich bei TRUE: Zartgelb (BG_CLR_INPUT) mit deutlichem Rahmen
-	styleActiveAreaOpts := StyleOptions{FillColor: BG_CLR_INPUT, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BG_CLR_BORDER}
-	g.addConditionalFormat(ws, fmt.Sprintf("%s:%s", cellName(c1, areaTop), cellName(c2, areaTop+areaRows-1)), condFormula, styleActiveAreaOpts)
+	g.addConditionalFormat(ws,
+		fmt.Sprintf("%s:%s", cellName(c1, BudgetBegrAreaTop), cellName(c2, BudgetBegrAreaTop+BudgetBegrAreaRows-1)),
+		condFormula,
+		StyleOptions{FillColor: BudgetClrInput, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BudgetClrBorder},
+	)
 }
 
-func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr, rateCellAddr string) {
-	cLbl, cVal := BG_COL_LABEL, BG_COL_LC
-
-	g.mergeCells(ws, cellName(cLbl, top), cellName(cVal, top), "Budgetpruefung", StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_BLACK, FillColor: BG_CLR_HEADER, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+func (g *Generator) drawBudgetChecks(ws string, top int, incLocAddr, incEurAddr, incYearsAddr, expLocAddr, expEurAddr, expYearsAddr, rateCellAddr string) {
+	cLbl, cVal := BudgetColLabel, BudgetColLC
+	g.mergeCells(ws, cellName(cLbl, top), cellName(cVal, top), "Budgetpruefung", StyleOptions{
+		Bold: true, Size: 9, FontColor: BudgetClrBlack, FillColor: BudgetClrHeader,
+		HAlign: "center", VAlign: "center",
+		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
+	})
 
 	checks := []struct{ lbl, fml string }{
 		{"Einnahmen = Ausgaben (LC)", fmt.Sprintf(`=IF(ROUND(%s-%s,2)=0,"OK","Abweichung")`, incLocAddr, expLocAddr)},
@@ -569,45 +511,266 @@ func (g *Generator) bgDrawChecks(ws string, top int, incLocAddr, incEurAddr, inc
 
 	for i, chk := range checks {
 		rr := top + 1 + i
-		g.mergeCells(ws, cellName(cLbl, rr), cellName(BG_COL_POS, rr), chk.lbl, StyleOptions{Size: 9, FontColor: BG_CLR_RES_TXT, HAlign: "left", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
-
+		g.mergeCells(ws, cellName(cLbl, rr), cellName(BudgetColPos, rr), chk.lbl, StyleOptions{
+			Size: 9, FontColor: BudgetClrResTxt, HAlign: "left", VAlign: "center",
+			BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
+		})
 		valCell := cellName(cVal, rr)
-		valStyleId, _ := g.getOrCreateStyle(StyleOptions{Bold: true, Size: 9, FontColor: BG_CLR_RES_TXT, FillColor: BG_CLR_RES_OFF, HAlign: "center", VAlign: "center", BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BG_CLR_GRID})
+		valStyleID, _ := g.getOrCreateStyle(StyleOptions{
+			Bold: true, Size: 9, FontColor: BudgetClrResTxt, FillColor: BudgetClrResOff,
+			HAlign: "center", VAlign: "center",
+			BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
+		})
 		g.file.SetCellFormula(ws, valCell, chk.fml)
-		g.file.SetCellStyle(ws, valCell, valCell, valStyleId)
+		g.file.SetCellStyle(ws, valCell, valCell, valStyleID)
 
 		valAddr := absName(cVal, rr)
 		bBottom := 1
 		if i == len(checks)-1 {
 			bBottom = 2
 		}
-
-		okStyleOpts := StyleOptions{
-			Bold:         true,
-			Size:         9,
-			FontColor:    BG_CLR_RES_ON_TXT,
-			FillColor:    BG_CLR_RES_ON,
-			BorderLeft:   1,
-			BorderTop:    1,
-			BorderRight:  2,
-			BorderBottom: bBottom,
-			BorderColor:  BG_CLR_BORDER,
-		}
-		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`%s="OK"`, valAddr), okStyleOpts)
-
-		badStyleOpts := StyleOptions{
-			Bold:         true,
-			Size:         9,
-			FontColor:    BG_CLR_BAD_TXT,
-			FillColor:    BG_CLR_BAD,
-			BorderLeft:   1,
-			BorderTop:    1,
-			BorderRight:  2,
-			BorderBottom: bBottom,
-			BorderColor:  BG_CLR_BORDER,
-		}
-		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`%s<>"OK"`, valAddr), badStyleOpts)
+		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`%s="OK"`, valAddr), StyleOptions{
+			Bold: true, Size: 9, FontColor: BudgetClrResOnTxt, FillColor: BudgetClrResOn,
+			BorderLeft: 1, BorderTop: 1, BorderRight: 2, BorderBottom: bBottom, BorderColor: BudgetClrBorder,
+		})
+		g.addConditionalFormat(ws, valCell, fmt.Sprintf(`%s<>"OK"`, valAddr), StyleOptions{
+			Bold: true, Size: 9, FontColor: BudgetClrBadTxt, FillColor: BudgetClrBad,
+			BorderLeft: 1, BorderTop: 1, BorderRight: 2, BorderBottom: bBottom, BorderColor: BudgetClrBorder,
+		})
 	}
+	g.styleOuterBorder(ws, top, cLbl, top+len(checks), cVal, 2, BudgetClrBorder)
+}
 
-	g.styleOuterBorder(ws, top, cLbl, top+len(checks), cVal, 2, BG_CLR_BORDER)
+// drawBudgetYearInputRow zeichnet leere Eingabe-Zellen für LC/Y1/Y2/Y3/EUR.
+func (g *Generator) drawBudgetYearInputRow(ws string, r int) {
+	g.bgInput(ws, cellName(BudgetColLC, r), BudgetFmtLC)
+	g.bgInput(ws, cellName(BudgetColY1, r), BudgetFmtLC)
+	g.bgInput(ws, cellName(BudgetColY2, r), BudgetFmtLC)
+	g.bgInput(ws, cellName(BudgetColY3, r), BudgetFmtLC)
+	g.bgInput(ws, cellName(BudgetColEUR, r), BudgetFmtEUR)
+}
+
+// ─── Teil E: Bind-Funktionen (Logik & Registry) ───────────────────────────────
+
+func (g *Generator) bindBudgetFinancing(ws string, reg *TemplateRegistry, dyn budgetDynRows) error {
+	f := g.file
+
+	// Kurs-Named-Range
+	g.upsertNamedRange(BudgetNameKurs, BudgetColY3, BudgetRowSection1)
+
+	// Eigenmittel
+	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColLC, reg.InputBudgetEigenmittelLC)
+	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColY1, reg.InputBudgetEigenmittelY1)
+	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColY2, reg.InputBudgetEigenmittelY2)
+	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColY3, reg.InputBudgetEigenmittelY3)
+	_ = g.bindInputField(ws, BudgetRowEigen, BudgetColEUR, reg.InputBudgetEigenmittelEUR)
+	g.upsertNamedRange(BudgetNameEigenLW, BudgetColLC, BudgetRowEigen)
+	g.upsertNamedRange(BudgetNameEigenEUR, BudgetColEUR, BudgetRowEigen)
+
+	// Drittmittel — Summenzeile (LC/EUR als Formeln aus Tabelle, Y1–Y3 als Input)
+	g.bgSummeCell(ws, BudgetRowDritt, BudgetColLC,
+		fmt.Sprintf(`=SUM(%s[Betrag (LC)])`, BG_TABLE_NAME), BudgetFmtLC)
+	g.bgSummeCell(ws, BudgetRowDritt, BudgetColEUR,
+		fmt.Sprintf(`=SUM(%s[Betrag (EUR)])`, BG_TABLE_NAME), BudgetFmtEUR)
+	_ = g.bindInputField(ws, BudgetRowDritt, BudgetColY1, reg.InputBudgetDrittmittelY1)
+	_ = g.bindInputField(ws, BudgetRowDritt, BudgetColY2, reg.InputBudgetDrittmittelY2)
+	_ = g.bindInputField(ws, BudgetRowDritt, BudgetColY3, reg.InputBudgetDrittmittelY3)
+	g.upsertNamedRange(BudgetNameDrittLW, BudgetColLC, BudgetRowDritt)
+	g.upsertNamedRange(BudgetNameDrittEUR, BudgetColEUR, BudgetRowDritt)
+
+	// KMW-Mittel
+	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColLC, reg.InputBudgetKMWLC)
+	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColY1, reg.InputBudgetKMWY1)
+	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColY2, reg.InputBudgetKMWY2)
+	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColY3, reg.InputBudgetKMWY3)
+	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColEUR, reg.InputBudgetKMWEUR)
+	g.upsertNamedRange(BudgetNameKMWLW, BudgetColLC, BudgetRowKMW)
+	g.upsertNamedRange(BudgetNameKMWEUR, BudgetColEUR, BudgetRowKMW)
+
+	// GESAMTPROJEKTMITTEL (Formeln)
+	sumOf := func(col int) string {
+		return fmt.Sprintf("=%s+%s+%s",
+			cellName(col, BudgetRowEigen),
+			cellName(col, BudgetRowDritt),
+			cellName(col, BudgetRowKMW),
+		)
+	}
+	g.setFormula(ws, cellName(BudgetColLC, BudgetRowGesamt), sumOf(BudgetColLC), StyleOptions{NumFormat: BudgetFmtLC})
+	g.setFormula(ws, cellName(BudgetColY1, BudgetRowGesamt), sumOf(BudgetColY1), StyleOptions{NumFormat: BudgetFmtLC})
+	g.setFormula(ws, cellName(BudgetColY2, BudgetRowGesamt), sumOf(BudgetColY2), StyleOptions{NumFormat: BudgetFmtLC})
+	g.setFormula(ws, cellName(BudgetColY3, BudgetRowGesamt), sumOf(BudgetColY3), StyleOptions{NumFormat: BudgetFmtLC})
+	g.setFormula(ws, cellName(BudgetColEUR, BudgetRowGesamt), sumOf(BudgetColEUR), StyleOptions{NumFormat: BudgetFmtEUR})
+	g.upsertNamedRange(BudgetNameGesamtLW, BudgetColLC, BudgetRowGesamt)
+	g.upsertNamedRange(BudgetNameGesamtEUR, BudgetColEUR, BudgetRowGesamt)
+
+	// Budget-Kurs-Formel (Gesamt LC / Gesamt EUR)
+	totalLoc := absName(BudgetColLC, BudgetRowGesamt)
+	totalEur := absName(BudgetColEUR, BudgetRowGesamt)
+	rateCellOpts := StyleOptions{
+		NumFormat: BudgetFmtRate, Italic: true,
+		BorderTop: 2, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BudgetClrBorder,
+	}
+	g.setFormula(ws, cellName(BudgetColY3, BudgetRowSection1),
+		fmt.Sprintf(`=IFERROR(%s/%s,0)`, totalLoc, totalEur), rateCellOpts)
+
+	// Ausgaben-Hilfszeilen (Kategorien-Summen)
+	var reserveEurAddr string
+	for i, cat := range ListKostenkategorien {
+		hr := 4 + i
+		g.setFormula(ws, cellName(BudgetColHelpLC, hr),
+			fmt.Sprintf(`=SUMIFS(%s[Betrag (LC)],%s[Kostenkategorie],"%s")`, BG_TABLE_AUSG, BG_TABLE_AUSG, cat),
+			StyleOptions{})
+		g.setFormula(ws, cellName(BudgetColHelpEUR, hr),
+			fmt.Sprintf(`=SUMIFS(%s[Betrag (EUR)],%s[Kostenkategorie],"%s")`, BG_TABLE_AUSG, BG_TABLE_AUSG, cat),
+			StyleOptions{})
+		g.upsertNamedRange(bgKostenName(cat, "LW"), BudgetColHelpLC, hr)
+		g.upsertNamedRange(bgKostenName(cat, "EUR"), BudgetColHelpEUR, hr)
+		if cat == "Reserve" {
+			reserveEurAddr = absName(BudgetColHelpEUR, hr)
+		}
+	}
+	_ = reserveEurAddr // wird via BudgetHelpReserveRow direkt referenziert
+
+	gesHr := 4 + len(ListKostenkategorien)
+	g.setFormula(ws, cellName(BudgetColHelpLC, gesHr),
+		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (LC)])`, BG_TABLE_AUSG), StyleOptions{})
+	g.setFormula(ws, cellName(BudgetColHelpEUR, gesHr),
+		fmt.Sprintf(`=SUBTOTAL(109,%s[Betrag (EUR)])`, BG_TABLE_AUSG), StyleOptions{})
+	g.upsertNamedRange(BudgetNameAusgLW, BudgetColHelpLC, gesHr)
+	g.upsertNamedRange(BudgetNameAusgEUR, BudgetColHelpEUR, gesHr)
+
+	_ = f.SetColVisible(ws, colLetter(BudgetColHelpLC), false)
+	_ = f.SetColVisible(ws, colLetter(BudgetColHelpEUR), false)
+	_ = f.SetColVisible(ws, colLetter(BudgetColListGeber), false)
+	_ = f.SetColVisible(ws, colLetter(BudgetColListID), false)
+
+	return nil
+}
+
+func (g *Generator) bindBudgetAusgaben(ws string, reg *TemplateRegistry, dyn budgetDynRows) error {
+	f := g.file
+
+	// Excel-Tabelle anlegen
+	_ = f.AddTable(ws, &excelize.Table{
+		Range:          fmt.Sprintf("%s:%s", cellName(BudgetColLabel, BudgetRowAusgHdr), cellName(BudgetColEUR, dyn.AusgTotal-1)),
+		Name:           BG_TABLE_AUSG,
+		StyleName:      "",
+		ShowRowStripes: falsePtr(),
+	})
+
+	// Kategorie-Dropdown über alle Ausgaben-Zeilen
+	dv := excelize.NewDataValidation(true)
+	dv.Sqref = fmt.Sprintf("%s:%s",
+		cellName(BudgetColLabel, BudgetRowAusgStart),
+		cellName(BudgetColLabel, BudgetRowAusgStart+dyn.AusgDataRows-1))
+	dv.SetDropList(ListKostenkategorien)
+	_ = f.AddDataValidation(ws, dv)
+
+	// ID-Liste für Lookup-Formeln
+	g.setDynArrayFormula(ws, cellName(BudgetColListID, 1),
+		fmt.Sprintf(`IFERROR(_xlfn._xlws.FILTER(%s[ID],%s[ID]<>""),"")`, BG_TABLE_AUSG, BG_TABLE_AUSG),
+		StyleOptions{})
+	g.upsertNamedFormula(BudgetNameIDList,
+		fmt.Sprintf("OFFSET('%s'!%s, 0, 0, COUNTA('%s'!%s:%s), 1)",
+			ws, absName(BudgetColListID, 1),
+			ws, colLetter(BudgetColListID), colLetter(BudgetColListID)))
+
+	return nil
+}
+
+// ─── Bestehende Hilfsfunktionen (intern, unverändert) ────────────────────────
+
+func bgKostenName(cat string, cur string) string {
+	return fmt.Sprintf("Kosten_%s_%s", cat, cur)
+}
+
+func falsePtr() *bool {
+	b := false
+	return &b
+}
+
+func (g *Generator) bgSectionHeader(ws string, r int, title string) {
+	for c := BudgetColLabel; c <= BudgetColEUR; c++ {
+		g.setStyle(ws, cellName(c, r), cellName(c, r), BudgetSectionHdrStyle)
+	}
+	g.setValue(ws, cellName(BudgetColLabel, r), title, BudgetSectionHdrStyle)
+	_ = g.file.SetRowHeight(ws, r, 24)
+}
+
+func (g *Generator) bgSubHeader(ws string, r int, title string) {
+	for c := BudgetColLabel; c <= BudgetColEUR; c++ {
+		g.setStyle(ws, cellName(c, r), cellName(c, r), BudgetSubHdrStyle)
+	}
+	g.setValue(ws, cellName(BudgetColLabel, r), title, BudgetSubHdrStyle)
+	_ = g.file.SetRowHeight(ws, r, 20)
+}
+
+func (g *Generator) budgetValueHeaderCells(ws string, r int) {
+	g.setValue(ws, cellName(BudgetColLC, r), "Betrag (LC)", StyleOptions{})
+	g.setValue(ws, cellName(BudgetColY1, r), BG_YEARS[0], StyleOptions{})
+	g.setValue(ws, cellName(BudgetColY2, r), BG_YEARS[1], StyleOptions{})
+	g.setValue(ws, cellName(BudgetColY3, r), BG_YEARS[2], StyleOptions{})
+	g.setValue(ws, cellName(BudgetColEUR, r), "Betrag (EUR)", StyleOptions{})
+}
+
+func (g *Generator) bgTableHeader(ws string, r int, c1 int, c2 int) {
+	for c := c1; c <= c2; c++ {
+		g.setStyle(ws, cellName(c, r), cellName(c, r), BudgetTableHdrStyle)
+	}
+}
+
+func (g *Generator) bgYearRow(ws string, r int, fields []InputField) {
+	for i, c := range []int{BudgetColLC, BudgetColY1, BudgetColY2, BudgetColY3} {
+		g.bgInput(ws, cellName(c, r), BudgetFmtLC)
+		if i < len(fields) {
+			_ = g.bindInputField(ws, r, c, fields[i])
+		}
+	}
+	g.bgInput(ws, cellName(BudgetColEUR, r), BudgetFmtEUR)
+	if len(fields) > 4 {
+		_ = g.bindInputField(ws, r, BudgetColEUR, fields[4])
+	}
+}
+
+func (g *Generator) bgFillIncomeRow(ws string, r int, inc IncomeRow) {
+	g.bgFillInput(ws, cellName(BudgetColLC, r), inc.LC)
+	g.bgFillInput(ws, cellName(BudgetColY1, r), inc.Y1)
+	g.bgFillInput(ws, cellName(BudgetColY2, r), inc.Y2)
+	g.bgFillInput(ws, cellName(BudgetColY3, r), inc.Y3)
+	g.bgFillInput(ws, cellName(BudgetColEUR, r), inc.EUR)
+}
+
+func (g *Generator) bgSummeCell(ws string, r int, c int, formula string, fmtStr string) {
+	g.setFormula(ws, cellName(c, r), formula, StyleOptions{
+		Bold: true, HAlign: "right", VAlign: "center", NumFormat: fmtStr,
+	})
+}
+
+func (g *Generator) bgInput(ws string, cell string, numFmt string) {
+	g.setStyle(ws, cell, cell, StyleOptions{
+		FillColor: BudgetClrInput, HAlign: "right", VAlign: "center", NumFormat: numFmt,
+		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
+	})
+}
+
+func (g *Generator) bgFillInput(ws, cell string, v *float64) {
+	if v != nil {
+		_ = g.file.SetCellValue(ws, cell, *v)
+	}
+}
+
+func (g *Generator) bgTotalRow(ws string, r int, c1 int, c2 int) {
+	for c := c1; c <= c2; c++ {
+		var opts StyleOptions
+		switch {
+		case c >= BudgetColLC && c <= BudgetColY3:
+			opts = BudgetTotalRowLCStyle
+		case c == BudgetColEUR:
+			opts = BudgetTotalRowEURStyle
+		default:
+			opts = BudgetTotalRowStyle
+		}
+		g.setStyle(ws, cellName(c, r), cellName(c, r), opts)
+	}
+	_ = g.file.SetRowHeight(ws, r, 20)
 }

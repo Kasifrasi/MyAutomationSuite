@@ -36,10 +36,12 @@ func GenerateVorpruefung(outputPath string, cfg GeneratorConfig) error {
 		cfg:            cfg,
 	}
 
-	if err := g.CreateDashboardSheet(); err != nil {
+	reg := NewTemplateRegistry()
+
+	if err := g.CreateDashboardSheet(reg); err != nil {
 		return fmt.Errorf("fehler beim Erstellen des Dashboard-Blatts: %w", err)
 	}
-	if err := g.CreateBudgetSheet(); err != nil {
+	if err := g.CreateBudgetSheet(reg); err != nil {
 		return fmt.Errorf("fehler beim Erstellen des Budget-Blatts: %w", err)
 	}
 	if err := g.CreateKMWMittelSheet(); err != nil {

@@ -12,7 +12,23 @@ type ValidationList []string
 var (
 	ListJaNein           ValidationList = []string{"Ja", "Nein"}
 	ListAbzug            ValidationList = []string{"Abzug", "Kein Abzug"}
-	ListWaehrung         ValidationList = []string{"EUR", "USD", "CHF"}
+	ListWaehrung         ValidationList = []string{
+		"AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN", "BAM", "BBD",
+		"BDT", "BHD", "BIF", "BMD", "BND", "BOB", "BRL", "BSD", "BTN", "BWP", "BYN",
+		"BZD", "CAD", "CDF", "CHF", "CLP", "CNY", "COP", "CRC", "CUP", "CVE", "CZK",
+		"DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB", "EUR", "FJD", "FKP", "GBP",
+		"GEL", "GHS", "GIP", "GMD", "GNF", "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF",
+		"IDR", "ILS", "INR", "IQD", "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS",
+		"KHR", "KMF", "KPW", "KRW", "KWD", "KYD", "KZT", "LAK", "LBP", "LKR", "LRD",
+		"LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT", "MOP", "MRU", "MUR",
+		"MVR", "MWK", "MXN", "MYR", "MZN", "NAD", "NGN", "NIO", "NOK", "NPR", "NZD",
+		"OMR", "PAB", "PEN", "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD",
+		"RUB", "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SOS",
+		"SRD", "SSP", "STN", "SVC", "SYP", "SZL", "THB", "TJS", "TMT", "TND", "TOP",
+		"TRY", "TTD", "TWD", "TZS", "UAH", "UGX", "USD", "UYU", "UZS", "VED", "VES",
+		"VND", "VUV", "WST", "XAF", "XCD", "XCG", "XOF", "XPF", "YER", "ZAR", "ZMW",
+		"ZWG",
+	}   
 	ListMonate           ValidationList = []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
 	ListKostenkategorien ValidationList = []string{"Bauausgaben", "Investitionen", "Personalkosten", "Projektaktivitaeten", "Projektverwaltung", "Evaluierung", "Audit", "Reserve"}
 )
@@ -77,20 +93,20 @@ func (f TableFactory) Get(args ...int) TableField {
 // ─────────────────────────────────────────────────────────────
 
 type InputField struct {
-	Name       string
+	NamedRange string
 	Sheet      string
 	Validation ValidationList
 }
 
-func (i InputField) GetName() string  { return i.Name }
+func (i InputField) GetName() string  { return i.NamedRange }
 func (i InputField) GetSheet() string { return i.Sheet }
 
 type OutputField struct {
-	Name  string
-	Sheet string
+	NamedRange string
+	Sheet      string
 }
 
-func (o OutputField) GetName() string  { return o.Name }
+func (o OutputField) GetName() string  { return o.NamedRange }
 func (o OutputField) GetSheet() string { return o.Sheet }
 
 // ─────────────────────────────────────────────────────────────
@@ -103,7 +119,7 @@ func NewInputField(sheet string, baseName string, val ValidationList) InputField
 		// Panic beim Start ist ok, da es ein statischer Entwicklerfehler bei der Konfiguration ist
 		panic(fmt.Sprintf("[Developer Error] Bitte kein 'Inp_' mehr angeben. Das wird automatisch hinzugefügt für: %s", namedRange))
 	}
-	return InputField{Name: namedRange, Sheet: sheet, Validation: val}
+	return InputField{NamedRange: namedRange, Sheet: sheet, Validation: val}
 }
 
 func NewOutputField(sheet string, baseName string) OutputField {
@@ -111,7 +127,7 @@ func NewOutputField(sheet string, baseName string) OutputField {
 	if strings.HasPrefix(baseName, "Out_") {
 		panic(fmt.Sprintf("[Developer Error] Bitte kein 'Out_' mehr angeben. Das wird automatisch hinzugefügt für: %s", namedRange))
 	}
-	return OutputField{Name: namedRange, Sheet: sheet}
+	return OutputField{NamedRange: namedRange, Sheet: sheet}
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -273,6 +289,10 @@ func (b SheetBuilder) MAOutKatFact(format string, maxPerioden, maxSlots int) MAO
 // ─────────────────────────────────────────────────────────────
 
 type TemplateRegistry struct {
+	// Budget-Tabellen
+	TableBudgetAusgaben    TableField
+	TableBudgetDrittmittel TableField
+
 	// Dashboard
 	InputDashProjektnummer       InputField
 	InputDashVorprojekt          InputField
@@ -305,20 +325,31 @@ type TemplateRegistry struct {
 	OutputDashSaldovortragEUR    OutputField
 
 	// Budget
+	OutputBudgetWK             OutputField
+	OutputBudgetReserveEUR     OutputField
 	InputBudgetReserveFreigabe InputField
-	InputBudgetDrittmittelY1   InputField
-	InputBudgetDrittmittelY2   InputField
-	InputBudgetDrittmittelY3   InputField
+	InputBudgetBegruendung     InputField
 	InputBudgetEigenmittelLC   InputField
 	InputBudgetEigenmittelY1   InputField
 	InputBudgetEigenmittelY2   InputField
 	InputBudgetEigenmittelY3   InputField
 	InputBudgetEigenmittelEUR  InputField
+	OutputBudgetDrittmittelLC  OutputField
+	InputBudgetDrittmittelY1   InputField
+	InputBudgetDrittmittelY2   InputField
+	InputBudgetDrittmittelY3   InputField
+	OutputBudgetDrittmittelEUR OutputField
 	InputBudgetKMWLC           InputField
 	InputBudgetKMWY1           InputField
 	InputBudgetKMWY2           InputField
 	InputBudgetKMWY3           InputField
 	InputBudgetKMWEUR          InputField
+	OutputBudgetGesamtLC       OutputField
+	OutputBudgetGesamtY1       OutputField
+	OutputBudgetGesamtY2       OutputField
+	OutputBudgetGesamtY3       OutputField
+	OutputBudgetGesamtEUR      OutputField
+	
 
 	// KMW-Mittel
 	InputKMWPeriode  InputFactory
@@ -368,6 +399,134 @@ type TemplateRegistry struct {
 	InputMAPruefungMonateY3      InputField
 }
 
+// ─────────────────────────────────────────────────────────────
+// 6. Paket-weite Field-Accessoren (für Generator & API)
+// ─────────────────────────────────────────────────────────────
+
+var fields = NewTemplateRegistry()
+
+// Dashboard
+var (
+	FieldDashProjektnummer       = fields.InputDashProjektnummer
+	FieldDashVorprojekt          = fields.InputDashVorprojekt
+	FieldDashProjekttitel        = fields.InputDashProjekttitel
+	FieldDashProjekttraeger      = fields.InputDashProjekttraeger
+	FieldDashBerichtswaehrung    = fields.InputDashBerichtswaehrung
+	FieldDashProjektstart        = fields.InputDashProjektstart
+	FieldDashProjektende         = fields.InputDashProjektende
+	FieldDashVPNummer            = fields.InputDashVPNummer
+	FieldDashVPBerichtswaehrung  = fields.InputDashVPBerichtswaehrung
+	FieldDashVPEnde              = fields.InputDashVPEnde
+	FieldDashVPWechselkurs       = fields.InputDashVPWechselkurs
+	FieldDashVPSaldoLC           = fields.InputDashVPSaldoLC
+	FieldDashVPSaldoEUR          = fields.InputDashVPSaldoEUR
+	FieldDashVPFolgeprojektstart = fields.InputDashVPFolgeprojektstart
+	FieldDashVPFolgeWechselkurs  = fields.InputDashVPFolgeWechselkurs
+	FieldDashVPFolgeSaldoLC      = fields.InputDashVPFolgeSaldoLC
+	FieldDashVPFolgeSaldoEUR     = fields.InputDashVPFolgeSaldoEUR
+)
+
+func FieldDashChecklist(i int) InputField {
+	checks := [6]InputField{
+		fields.InputDashVPSaldoCheck,
+		fields.InputDashVertragCheck,
+		fields.InputDashBudgetCheck,
+		fields.InputDashBankBelegeCheck,
+		fields.InputDashFBCheck,
+		fields.InputDashMACheck,
+	}
+	if i < 1 || i > len(checks) {
+		panic(fmt.Sprintf("FieldDashChecklist: ungültiger Index %d (1-%d)", i, len(checks)))
+	}
+	return checks[i-1]
+}
+
+// Budget-Tabellen
+var (
+	TableBudgetAusgaben    = fields.TableBudgetAusgaben
+	TableBudgetDrittmittel = fields.TableBudgetDrittmittel
+)
+
+// Budget
+var (
+	OutputBudgetWK             = fields.OutputBudgetWK
+	OutputBudgetReserveEUR     = fields.OutputBudgetReserveEUR
+	FieldBudgetReserveFreigabe = fields.InputBudgetReserveFreigabe
+	FieldBudgetBegruendung     = fields.InputBudgetBegruendung
+	FieldBudgetEigenmittelLC   = fields.InputBudgetEigenmittelLC
+	FieldBudgetEigenmittelY1   = fields.InputBudgetEigenmittelY1
+	FieldBudgetEigenmittelY2   = fields.InputBudgetEigenmittelY2
+	FieldBudgetEigenmittelY3   = fields.InputBudgetEigenmittelY3
+	FieldBudgetEigenmittelEUR  = fields.InputBudgetEigenmittelEUR
+	FieldBudgetDrittmittelLC   = fields.OutputBudgetDrittmittelLC
+	FieldBudgetDrittmittelY1   = fields.InputBudgetDrittmittelY1
+	FieldBudgetDrittmittelY2   = fields.InputBudgetDrittmittelY2
+	FieldBudgetDrittmittelY3   = fields.InputBudgetDrittmittelY3
+	FieldBudgetDrittmittelEUR  = fields.OutputBudgetDrittmittelEUR
+	FieldBudgetKMWLC           = fields.InputBudgetKMWLC
+	FieldBudgetKMWY1           = fields.InputBudgetKMWY1
+	FieldBudgetKMWY2           = fields.InputBudgetKMWY2
+	FieldBudgetKMWY3           = fields.InputBudgetKMWY3
+	FieldBudgetKMWEUR          = fields.InputBudgetKMWEUR
+	OutputBudgetGesamtLC       = fields.OutputBudgetGesamtLC
+	OutputBudgetGesamtY1       = fields.OutputBudgetGesamtY1
+	OutputBudgetGesamtY2       = fields.OutputBudgetGesamtY2
+	OutputBudgetGesamtY3       = fields.OutputBudgetGesamtY3
+	OutputBudgetGesamtEUR      = fields.OutputBudgetGesamtEUR
+)
+
+// KMW
+func FieldKMWPeriode(i int) InputField  { return fields.InputKMWPeriode.Get(i) }
+func FieldKMWWaehrung(i int) InputField { return fields.InputKMWWaehrung.Get(i) }
+func FieldKMWBetrag(i int) InputField   { return fields.InputKMWBetrag.Get(i) }
+func FieldKMWDatum(i int) InputField    { return fields.InputKMWDatum.Get(i) }
+
+// Finanzberichte
+func FieldFBVon(i int) InputField              { return fields.InputFBVon.Get(i) }
+func FieldFBBis(i int) InputField              { return fields.InputFBBis.Get(i) }
+func FieldFBAufschlBank(i int) InputField      { return fields.InputFBAufschlBank.Get(i) }
+func FieldFBAufschlKasse(i int) InputField     { return fields.InputFBAufschlKasse.Get(i) }
+func FieldFBAufschlSonstiges(i int) InputField { return fields.InputFBAufschlSonstiges.Get(i) }
+
+// Prüfung FB
+var (
+	FieldFBPruefungAuswahl    = fields.InputFBPruefungAuswahl
+	FieldFBPruefungAbzugSaldo = fields.InputFBPruefungAbzugSaldo
+	FieldFBPruefungAbzugMehr  = fields.InputFBPruefungAbzugMehr
+)
+
+// MA (Input)
+func FieldMAVon(i int) InputField           { return fields.InputMAVon.Get(i) }
+func FieldMABis(i int) InputField           { return fields.InputMABis.Get(i) }
+func FieldMAKurs(i int) InputField          { return fields.InputMAKurs.Get(i) }
+func FieldMAEigenmittelLC(i int) InputField { return fields.InputMAEigenmittelLC.Get(i) }
+func FieldMADrittmittelLC(i int) InputField { return fields.InputMADrittmittelLC.Get(i) }
+func FieldMASaldoLC(i int) InputField       { return fields.InputMASaldoLC.Get(i) }
+func FieldMAManBetrag(i int) InputField     { return fields.InputMAManBetrag.Get(i) }
+func FieldMAKat(j, k int) InputField        { return fields.InputMAKat.Get(j, k) }
+func FieldMAKmwLC(i int) InputField         { return fields.InputMAKmwLC.Get(i) }
+
+// MA (Output → liefert Named-Range-String für Formeln)
+func FieldMAPeriode(i int) string        { return fields.OutputMAPeriode.Get(i).NamedRange }
+func FieldMAZeitraum(i int) string       { return fields.OutputMAZeitraum.Get(i).NamedRange }
+func FieldMASumLC(i int) string          { return fields.OutputMASumLC.Get(i).NamedRange }
+func FieldMASumEUR(i int) string         { return fields.OutputMASumEUR.Get(i).NamedRange }
+func FieldMAEigenmittelEUR(i int) string { return fields.OutputMAEigenmittelEUR.Get(i).NamedRange }
+func FieldMADrittmittelEUR(i int) string { return fields.OutputMADrittmittelEUR.Get(i).NamedRange }
+func FieldMAKatEUR(j, k int) string      { return fields.OutputMAKatEUR.Get(j, k).NamedRange }
+func FieldMAKmwEUR(i int) string         { return fields.OutputMAKmwEUR.Get(i).NamedRange }
+
+// Prüfung MA
+var (
+	FieldMAPruefungAuswahl       = fields.InputMAPruefungAuswahl
+	FieldMAPruefungAbzugSaldo    = fields.InputMAPruefungAbzugSaldo
+	FieldMAPruefungAbzugMehr     = fields.InputMAPruefungAbzugMehr
+	FieldMAPruefungAbzugPrognose = fields.InputMAPruefungAbzugPrognose
+	FieldMAPruefungMonateY1      = fields.InputMAPruefungMonateY1
+	FieldMAPruefungMonateY2      = fields.InputMAPruefungMonateY2
+	FieldMAPruefungMonateY3      = fields.InputMAPruefungMonateY3
+)
+
 func NewTemplateRegistry() *TemplateRegistry {
 	dash := SheetBuilder{Sheet: constants.VPSheetDASHBOARD, Prefix: "Dash_"}
 	budget := SheetBuilder{Sheet: constants.VPSheetBUDGET, Prefix: "Budget_"}
@@ -378,6 +537,33 @@ func NewTemplateRegistry() *TemplateRegistry {
 	maPrue := SheetBuilder{Sheet: constants.VPSheetMA_PRUEFUNG, Prefix: "MAPruef_"}
 
 	return &TemplateRegistry{
+		// Budget-Tabellen
+		TableBudgetAusgaben: TableField{
+			Name:         "TblBudgetAusgaben",
+			Sheet:        constants.VPSheetBUDGET,
+			HasTotalsRow: false,
+			Columns: []TableColumn{
+				{Header: "Kostenkategorie"},
+				{Header: "ID"},
+				{Header: "Kostenposition"},
+				{Header: "Betrag (LC)", Format: "#,##0.00"},
+				{Header: "Jahr 1", Format: "#,##0.00"},
+				{Header: "Jahr 2", Format: "#,##0.00"},
+				{Header: "Jahr 3", Format: "#,##0.00"},
+				{Header: "Betrag (EUR)", Format: `#,##0.00" €"`},
+			},
+		},
+		TableBudgetDrittmittel: TableField{
+			Name:         "TblDrittmittel",
+			Sheet:        constants.VPSheetBUDGET,
+			HasTotalsRow: false,
+			Columns: []TableColumn{
+				{Header: "Name des Gebers"},
+				{Header: "Betrag (LC)", Format: "#,##0.00"},
+				{Header: "Betrag (EUR)", Format: `#,##0.00" €"`},
+			},
+		},
+
 		// Dashboard
 		InputDashProjektnummer:       dash.Inp("Projektnummer", nil),
 		InputDashVorprojekt:          dash.Inp("Vorprojekt", ListJaNein),
@@ -395,13 +581,13 @@ func NewTemplateRegistry() *TemplateRegistry {
 		InputDashVPFolgeprojektstart: dash.Inp("VPFolgeprojektstart", nil),
 		InputDashVPFolgeWechselkurs:  dash.Inp("VPFolgeWechselkurs", nil),
 		InputDashVPFolgeSaldoLC:      dash.Inp("VPFolgeSaldoLC", nil),
-		InputDashVPFolgeSaldoEUR:     dash.Inp("VPFolgeSaldoEUR", nil),
-		InputDashVPSaldoCheck:        dash.Inp("VPSaldoCheck", nil),
-		InputDashVertragCheck:        dash.Inp("VertragCheck", nil),
-		InputDashBudgetCheck:         dash.Inp("BudgetCheck", nil),
-		InputDashBankBelegeCheck:     dash.Inp("BankBelegeCheck", nil),
-		InputDashFBCheck:             dash.Inp("FBCheck", nil),
-		InputDashMACheck:             dash.Inp("MACheck", nil),
+		InputDashVPFolgeSaldoEUR:     dash.Inp("VPFolgeSaldoEUR", ListJaNein),
+		InputDashVPSaldoCheck:        dash.Inp("VPSaldoCheck", ListJaNein),
+		InputDashVertragCheck:        dash.Inp("VertragCheck", ListJaNein),
+		InputDashBudgetCheck:         dash.Inp("BudgetCheck", ListJaNein),
+		InputDashBankBelegeCheck:     dash.Inp("BankBelegeCheck", ListJaNein),
+		InputDashFBCheck:             dash.Inp("FBCheck", ListJaNein),
+		InputDashMACheck:             dash.Inp("MACheck", ListJaNein),
 
 		OutputDashProjektlaufzeit:     dash.Out("Projektlaufzeit"),
 		OutputDashMonate:              dash.Out("Monate"),
