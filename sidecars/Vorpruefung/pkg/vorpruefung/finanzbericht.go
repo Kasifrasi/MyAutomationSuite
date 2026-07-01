@@ -475,8 +475,8 @@ func (g *Generator) fbBindPeriodHeader(ws string, reg *TemplateRegistry, l fbLay
 	_ = g.bindInputField(ws, l.rowVon, l.colLC, reg.InputFBVon.Get(l.periode))
 	_ = g.bindInputField(ws, l.rowBis, l.colLC, reg.InputFBBis.Get(l.periode))
 
-	vonCell := cellName(l.colLC, l.rowVon)
-	bisCell := cellName(l.colLC, l.rowBis)
+	vonCell := reg.InputFBVon.Get(l.periode).NamedRange
+	bisCell := reg.InputFBBis.Get(l.periode).NamedRange
 	_ = g.file.SetCellFormula(ws, cellName(l.colLC, l.rowZeitraum), fmt.Sprintf(
 		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s,"m")+1)`, vonCell, bisCell, vonCell, bisCell))
 	g.dbUpsertNamedRange(ws, reg.OutputFBZeitraum.Get(l.periode).NamedRange, l.colLC, l.rowZeitraum)
@@ -532,7 +532,7 @@ func (g *Generator) fbBindEinnahmen(ws string, reg *TemplateRegistry, l fbLayout
 func (g *Generator) fbBindAusgaben(ws string, reg *TemplateRegistry, l fbLayout) error {
 	f := g.file
 	ausgName := reg.TableFBAusgaben.Get(l.periode).Name
-	rateAddr := absName(l.colLC, l.rowKurs)
+	rateAddr := reg.OutputFBKurs.Get(l.periode).NamedRange
 
 	// Datenbereich für den VSTACK der Datei-Übersicht registrieren.
 	dataRange := fmt.Sprintf("'%s'!%s:%s", ws,
@@ -577,15 +577,14 @@ func (g *Generator) fbBindAusgaben(ws string, reg *TemplateRegistry, l fbLayout)
 		}
 	}
 
-	// Gesamtausgaben (SUBTOTAL über den Datenbereich).
-	subtotal := func(col int) string {
-		rng := fmt.Sprintf("%s:%s", absName(col, l.rowAusgTblHdr+1), absName(col, l.rowAusgTblHdr+l.ausgCount))
-		return fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s),2)`, rng)
+	// Gesamtausgaben (SUBTOTAL über die strukturierten Tabellenspalten).
+	subtotal := func(colHeader string) string {
+		return fmt.Sprintf(`=ROUND(SUBTOTAL(109,%s[%s]),2)`, ausgName, colHeader)
 	}
-	_ = f.SetCellFormula(ws, cellName(l.colLC, l.rowAusgTotals), subtotal(l.colLC))
-	_ = f.SetCellFormula(ws, cellName(l.colEUR, l.rowAusgTotals), subtotal(l.colEUR))
-	_ = f.SetCellFormula(ws, cellName(l.colKumLC, l.rowAusgTotals), subtotal(l.colKumLC))
-	_ = f.SetCellFormula(ws, cellName(l.colKumEUR, l.rowAusgTotals), subtotal(l.colKumEUR))
+	_ = f.SetCellFormula(ws, cellName(l.colLC, l.rowAusgTotals), subtotal("Ausgaben (LC)"))
+	_ = f.SetCellFormula(ws, cellName(l.colEUR, l.rowAusgTotals), subtotal("Ausgaben (EUR)"))
+	_ = f.SetCellFormula(ws, cellName(l.colKumLC, l.rowAusgTotals), subtotal("Kum. Ausgaben (LC)"))
+	_ = f.SetCellFormula(ws, cellName(l.colKumEUR, l.rowAusgTotals), subtotal("Kum. Ausgaben (EUR)"))
 
 	return nil
 }
@@ -594,15 +593,17 @@ func (g *Generator) fbBindAusgaben(ws string, reg *TemplateRegistry, l fbLayout)
 func (g *Generator) fbBindSaldo(ws string, reg *TemplateRegistry, l fbLayout) {
 	f := g.file
 	r := l.rowSaldoFB
+	ausgName := reg.TableFBAusgaben.Get(l.periode).Name
 
-	diff := func(einnahmenCol, ausgabenCol int) string {
-		return fmt.Sprintf(`=ROUND(IFERROR(%s-%s,""),2)`,
-			cellName(einnahmenCol, l.rowGesamtEinnahmen), cellName(ausgabenCol, l.rowAusgTotals))
+	// Saldo = Gesamteinnahmen (benannt) − Gesamtausgaben (strukturierte Tabellen-Summe).
+	diff := func(einnahmenRef, ausgHeader string) string {
+		return fmt.Sprintf(`=ROUND(IFERROR(%s-SUBTOTAL(109,%s[%s]),""),2)`,
+			einnahmenRef, ausgName, ausgHeader)
 	}
-	_ = f.SetCellFormula(ws, cellName(l.colLC, r), diff(l.colLC, l.colLC))
-	_ = f.SetCellFormula(ws, cellName(l.colEUR, r), diff(l.colEUR, l.colEUR))
-	_ = f.SetCellFormula(ws, cellName(l.colKumLC, r), diff(l.colKumLC, l.colKumLC))
-	_ = f.SetCellFormula(ws, cellName(l.colKumEUR, r), diff(l.colKumEUR, l.colKumEUR))
+	_ = f.SetCellFormula(ws, cellName(l.colLC, r), diff(reg.OutputFBGEinnahmenLC.Get(l.periode).NamedRange, "Ausgaben (LC)"))
+	_ = f.SetCellFormula(ws, cellName(l.colEUR, r), diff(reg.OutputFBGEinnahmenEUR.Get(l.periode).NamedRange, "Ausgaben (EUR)"))
+	_ = f.SetCellFormula(ws, cellName(l.colKumLC, r), diff(reg.OutputFBKumGEinnahmenLC.Get(l.periode).NamedRange, "Kum. Ausgaben (LC)"))
+	_ = f.SetCellFormula(ws, cellName(l.colKumEUR, r), diff(reg.OutputFBKumGEinnahmenEUR.Get(l.periode).NamedRange, "Kum. Ausgaben (EUR)"))
 
 	g.dbUpsertNamedRange(ws, reg.OutputFBSaldoLC.Get(l.periode).NamedRange, l.colLC, r)
 	g.dbUpsertNamedRange(ws, reg.OutputFBSaldoEUR.Get(l.periode).NamedRange, l.colEUR, r)
@@ -611,14 +612,13 @@ func (g *Generator) fbBindSaldo(ws string, reg *TemplateRegistry, l fbLayout) {
 // fbBindAufschluesselung bindet die LC-Eingaben und verteilt den EUR-Saldo.
 func (g *Generator) fbBindAufschluesselung(ws string, reg *TemplateRegistry, l fbLayout) {
 	f := g.file
-	saldoEUR := cellName(l.colEUR, l.rowSaldoFB)
+	saldoEUR := reg.OutputFBSaldoEUR.Get(l.periode).NamedRange
 	sumLC := fmt.Sprintf(`ROUND(SUM(%s:%s), 2)`,
 		cellName(l.colLC, l.rowAufschlStart), cellName(l.colLC, l.rowAufschlEnd))
 
 	for i, cat := range INFO_CATEGORIES {
 		row := l.rowAufschlStart + i
 		isLast := i == len(INFO_CATEGORIES)-1
-		currentLC := cellName(l.colLC, row)
 
 		var field InputField
 		var eurOut OutputField
@@ -635,6 +635,8 @@ func (g *Generator) fbBindAufschluesselung(ws string, reg *TemplateRegistry, l f
 		}
 		_ = g.bindInputField(ws, row, l.colLC, field)
 		g.dbUpsertNamedRange(ws, eurOut.NamedRange, l.colEUR, row)
+		// Aufschlüsselungsbetrag (LC) dieser Zeile über seinen benannten Bereich.
+		currentLC := field.NamedRange
 
 		var formulaEUR string
 		if !isLast {
@@ -657,12 +659,13 @@ func (g *Generator) fbBindAufschluesselung(ws string, reg *TemplateRegistry, l f
 func (g *Generator) fbBindDifferenz(ws string, reg *TemplateRegistry, l fbLayout) {
 	f := g.file
 	r := l.rowDifferenz
-	check := func(col int) string {
+	// Kontrolle: Saldo (benannt) − Summe der Aufschlüsselung (Mehrzeilenblock).
+	check := func(saldoRef string, col int) string {
 		return fmt.Sprintf(`=ROUND(IFERROR(%s-SUM(%s:%s),""),2)`,
-			cellName(col, l.rowSaldoFB), cellName(col, l.rowAufschlStart), cellName(col, l.rowAufschlEnd))
+			saldoRef, cellName(col, l.rowAufschlStart), cellName(col, l.rowAufschlEnd))
 	}
-	_ = f.SetCellFormula(ws, cellName(l.colLC, r), check(l.colLC))
-	_ = f.SetCellFormula(ws, cellName(l.colEUR, r), check(l.colEUR))
+	_ = f.SetCellFormula(ws, cellName(l.colLC, r), check(reg.OutputFBSaldoLC.Get(l.periode).NamedRange, l.colLC))
+	_ = f.SetCellFormula(ws, cellName(l.colEUR, r), check(reg.OutputFBSaldoEUR.Get(l.periode).NamedRange, l.colEUR))
 
 	g.dbUpsertNamedRange(ws, reg.OutputFBDifferenzLC.Get(l.periode).NamedRange, l.colLC, r)
 	g.dbUpsertNamedRange(ws, reg.OutputFBDifferenzEUR.Get(l.periode).NamedRange, l.colEUR, r)
@@ -672,9 +675,9 @@ func (g *Generator) fbBindDifferenz(ws string, reg *TemplateRegistry, l fbLayout
 // Durchschnittskurs-Formel und die SUMIF-Formeln der Einnahmen-Typzeilen.
 func (g *Generator) fbBindDetailTables(ws string, reg *TemplateRegistry, l fbLayout) error {
 	f := g.file
-	saldoVorLC := cellName(l.colLC, l.rowSaldoVortrag)
-	saldoVorEUR := cellName(l.colEUR, l.rowSaldoVortrag)
-	rateAddr := absName(l.colLC, l.rowKurs)
+	saldoVorLC := reg.OutputFBVSaldoLC.Get(l.periode).NamedRange
+	saldoVorEUR := reg.OutputFBVSaldoEUR.Get(l.periode).NamedRange
+	rateAddr := reg.OutputFBKurs.Get(l.periode).NamedRange
 
 	// Durchschnittskurs-Named-Range (Wert wird nach Tabelle 1 gesetzt).
 	g.dbUpsertNamedRange(ws, reg.OutputFBKurs.Get(l.periode).NamedRange, l.colLC, l.rowKurs)
@@ -688,18 +691,22 @@ func (g *Generator) fbBindDetailTables(ws string, reg *TemplateRegistry, l fbLay
 		return err
 	}
 
-	// Durchschnittskurs (Zeile 8) = Kurs der Summenzeile von Tabelle 1.
+	tbl1Name := reg.TableFBEinnahmen.Get(l.periode).Name
+	tbl2Name := reg.TableFBEinnahmenWK.Get(l.periode).Name
+
+	// Durchschnittskurs (Zeile 8) = Gesamt-LC / Gesamt-EUR der Detailtabelle 1
+	// (strukturierte Tabellensummen statt Bezug auf die Summenzeile).
 	_ = f.SetCellFormula(ws, cellName(l.colLC, l.rowKurs),
-		fmt.Sprintf(`=ROUND(IFERROR(%s,0),6)`, cellName(l.colStart+FBDetOffKurs, l.rowDetail1Totals)))
+		fmt.Sprintf(`=ROUND(IFERROR(SUBTOTAL(109,%s[Einnahmen (LC)])/SUBTOTAL(109,%s[Einnahmen (EUR)]),0),6)`, tbl1Name, tbl1Name))
 
-	// SUMIF-Bereiche der beiden Detailtabellen.
-	tbl1Typ := fmt.Sprintf("%s:%s", absName(l.colStart+FBDetOffTyp, l.rowDetail1Hdr+1), absName(l.colStart+FBDetOffTyp, l.rowDetail1Hdr+FBDetailRowsExplizit))
-	tbl1LC := fmt.Sprintf("%s:%s", absName(l.colStart+FBDetOffLC, l.rowDetail1Hdr+1), absName(l.colStart+FBDetOffLC, l.rowDetail1Hdr+FBDetailRowsExplizit))
-	tbl1EUR := fmt.Sprintf("%s:%s", absName(l.colStart+FBDetOffEUR, l.rowDetail1Hdr+1), absName(l.colStart+FBDetOffEUR, l.rowDetail1Hdr+FBDetailRowsExplizit))
+	// SUMIF-Spalten der beiden Detailtabellen als strukturierte Tabellenbezüge.
+	tbl1Typ := fmt.Sprintf("%s[Typ]", tbl1Name)
+	tbl1LC := fmt.Sprintf("%s[Einnahmen (LC)]", tbl1Name)
+	tbl1EUR := fmt.Sprintf("%s[Einnahmen (EUR)]", tbl1Name)
 
-	tbl2Typ := fmt.Sprintf("%s:%s", absName(l.colStart+FBDetOffTyp, l.rowDetail2Hdr+1), absName(l.colStart+FBDetOffTyp, l.rowDetail2Hdr+FBDetailRowsWK))
-	tbl2LC := fmt.Sprintf("%s:%s", absName(l.colStart+FBDetOffLC, l.rowDetail2Hdr+1), absName(l.colStart+FBDetOffLC, l.rowDetail2Hdr+FBDetailRowsWK))
-	tbl2EUR := fmt.Sprintf("%s:%s", absName(l.colStart+FBDetOffEUR, l.rowDetail2Hdr+1), absName(l.colStart+FBDetOffEUR, l.rowDetail2Hdr+FBDetailRowsWK))
+	tbl2Typ := fmt.Sprintf("%s[Typ]", tbl2Name)
+	tbl2LC := fmt.Sprintf("%s[Einnahmen (LC)]", tbl2Name)
+	tbl2EUR := fmt.Sprintf("%s[Einnahmen (EUR)]", tbl2Name)
 
 	// Einnahmen-Typzeilen (feste Reihenfolge EM/DM/KMW/Zins, vgl. TYPE_NAMES) an die
 	// Registry-Ausgabefelder binden: je Typ LC/EUR und kumuliert LC/EUR.
@@ -712,9 +719,14 @@ func (g *Generator) fbBindDetailTables(ws string, reg *TemplateRegistry, l fbLay
 
 	for i := 0; i < l.incomeCount; i++ {
 		typeRow := l.rowIncomeStart + i
-		labelAddr := absName(l.colLabel, typeRow)
-		lcFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,%s,%s)+SUMIF(%s,%s,%s),2)`, tbl1Typ, labelAddr, tbl1LC, tbl2Typ, labelAddr, tbl2LC)
-		eurFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,%s,%s)+SUMIF(%s,%s,%s),2)`, tbl1Typ, labelAddr, tbl1EUR, tbl2Typ, labelAddr, tbl2EUR)
+		// SUMIF-Kriterium: der feste Einnahmentyp als Literal (statt Bezug auf die
+		// Label-Zelle); Fallback auf den Zellbezug, falls kein Typ definiert ist.
+		crit := absName(l.colLabel, typeRow)
+		if i < len(TYPE_NAMES) {
+			crit = `"` + TYPE_NAMES[i] + `"`
+		}
+		lcFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,%s,%s)+SUMIF(%s,%s,%s),2)`, tbl1Typ, crit, tbl1LC, tbl2Typ, crit, tbl2LC)
+		eurFormula := fmt.Sprintf(`=ROUND(SUMIF(%s,%s,%s)+SUMIF(%s,%s,%s),2)`, tbl1Typ, crit, tbl1EUR, tbl2Typ, crit, tbl2EUR)
 
 		_ = f.SetCellFormula(ws, cellName(l.colLC, typeRow), lcFormula)
 		_ = f.SetCellFormula(ws, cellName(l.colEUR, typeRow), eurFormula)
@@ -727,12 +739,21 @@ func (g *Generator) fbBindDetailTables(ws string, reg *TemplateRegistry, l fbLay
 		}
 
 		if l.isFollowUp {
+			// Vorperioden-Kum und aktueller Wert über ihre benannten Bereiche.
+			curLC := cellName(l.colLC, typeRow)
+			curEUR := cellName(l.colEUR, typeRow)
 			prevKumLC := cellName(l.prevColStart+FBOffKumLC, typeRow)
 			prevKumEUR := cellName(l.prevColStart+FBOffKumEUR, typeRow)
+			if i < len(incomeFields) {
+				curLC = incomeFields[i][0].Get(l.periode).NamedRange
+				curEUR = incomeFields[i][1].Get(l.periode).NamedRange
+				prevKumLC = incomeFields[i][2].Get(l.periode - 1).NamedRange
+				prevKumEUR = incomeFields[i][3].Get(l.periode - 1).NamedRange
+			}
 			_ = f.SetCellFormula(ws, cellName(l.colKumLC, typeRow),
-				fmt.Sprintf(`=IFERROR(ROUND(%s + %s, 2), %s)`, prevKumLC, cellName(l.colLC, typeRow), cellName(l.colLC, typeRow)))
+				fmt.Sprintf(`=IFERROR(ROUND(%s + %s, 2), %s)`, prevKumLC, curLC, curLC))
 			_ = f.SetCellFormula(ws, cellName(l.colKumEUR, typeRow),
-				fmt.Sprintf(`=IFERROR(ROUND(%s + %s, 2), %s)`, prevKumEUR, cellName(l.colEUR, typeRow), cellName(l.colEUR, typeRow)))
+				fmt.Sprintf(`=IFERROR(ROUND(%s + %s, 2), %s)`, prevKumEUR, curEUR, curEUR))
 		} else {
 			_ = f.SetCellFormula(ws, cellName(l.colKumLC, typeRow), lcFormula)
 			_ = f.SetCellFormula(ws, cellName(l.colKumEUR, typeRow), eurFormula)
@@ -871,9 +892,9 @@ func (g *Generator) fbCreateEinnahmenTabelle(
 	_ = g.setValue(ws, cellName(colStart+FBDetOffGeber, totalsRow), "Durchschnittskurs:", FBDetailTotalGeberStyle)
 
 	_ = f.SetCellFormula(ws, cellName(colStart+FBDetOffLC, totalsRow),
-		fmt.Sprintf("=ROUND(SUBTOTAL(109,%s:%s),2)", absName(colStart+FBDetOffLC, startRow+1), absName(colStart+FBDetOffLC, startRow+dataRows)))
+		fmt.Sprintf("=ROUND(SUBTOTAL(109,%s[Einnahmen (LC)]),2)", tblName))
 	_ = f.SetCellFormula(ws, cellName(colStart+FBDetOffEUR, totalsRow),
-		fmt.Sprintf("=ROUND(SUBTOTAL(109,%s:%s),2)", absName(colStart+FBDetOffEUR, startRow+1), absName(colStart+FBDetOffEUR, startRow+dataRows)))
+		fmt.Sprintf("=ROUND(SUBTOTAL(109,%s[Einnahmen (EUR)]),2)", tblName))
 	_ = f.SetCellFormula(ws, cellName(colStart+FBDetOffKurs, totalsRow),
 		fmt.Sprintf("=ROUND(IFERROR(%s/%s,0),6)", cellName(colStart+FBDetOffLC, totalsRow), cellName(colStart+FBDetOffEUR, totalsRow)))
 

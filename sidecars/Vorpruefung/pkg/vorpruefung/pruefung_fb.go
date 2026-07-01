@@ -78,7 +78,8 @@ func (g *Generator) CreateFBPruefungSheet() error {
 
 	fbSelNumCell, fbNext := g.evalDrawFBPanel(ws, r)
 	r = fbNext + EV_TABLE_GAP
-	sel := evalSelRefs{fbSelNum: fbSelNumCell}
+	// Ausgewählte FB-Periode wird über ihren benannten Bereich referenziert.
+	sel := evalSelRefs{fbSelNum: Registry.OutputFBPruefungAusgewaehltePeriode.NamedRange}
 	g.evalFBSelNumAddr = fmt.Sprintf("'%s'!%s", ws, fbSelNumCell)
 
 	fbKMW := g.evalDrawKMWSektion(ws, r, false, sel)
@@ -88,9 +89,12 @@ func (g *Generator) CreateFBPruefungSheet() error {
 	resFBInc := g.evalDrawComparisonTable(ws, r, "Finanzierungsanteile", true, false, sel, finBind)
 	r = resFBInc.nextRow + EV_TABLE_GAP
 
+	// Mehreinnahmen = (Gesamt-Ist – KMW-Ist) – (Gesamt-Budget – KMW-Budget), alles
+	// über die benannten Gesamt-/KMW-Bereiche der Finanzierungsanteile-Tabelle.
 	mehrFormula := fmt.Sprintf(
-		`=IFERROR(ROUND(MAX(0,(SUM(%s)-%s)-(SUM(%s)-%s)),2),0)`,
-		resFBInc.actEURRange, resFBInc.kmwActEUR, resFBInc.budEURRange, resFBInc.kmwBudEUR)
+		`=IFERROR(ROUND(MAX(0,(%s-%s)-(%s-%s)),2),0)`,
+		Registry.OutputFBPruefungFinGesamtActEUR.NamedRange, Registry.OutputFBPruefungFinKMWActEUR.NamedRange,
+		Registry.OutputFBPruefungFinGesamtBudEUR.NamedRange, Registry.OutputFBPruefungFinKMWBudEUR.NamedRange)
 	g.evalDeduct(ws, fbKMW.mehrCell, mehrFormula)
 
 	sollIstBind := evalCompBindingFor(Registry, "OutputFBPruefungSollIst", []string{"Bau", "Inv", "Pers", "Aktiv", "Verw", "Eval", "Audit", "Reserve"})
@@ -147,6 +151,33 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	const lblL1, lblL2, valL = EV_COL_LABEL, EV_COL_LABEL + 1, EV_COL_LABEL + 2 // B C | D
 	const tog, lblR1, lblR2, valR = EV_COL_LABEL + 4, EV_COL_LABEL + 5, EV_COL_LABEL + 6, EV_COL_LABEL + 7
 
+	// Benannte Bereiche der KMW-Ergebnis-/Abzugsfelder (FB- oder MA-Variante).
+	// Alle folgenden Formeln referenzieren ausschließlich diese Named Ranges.
+	nBew := Registry.OutputFBPruefungKMWBewilligt
+	nRes := Registry.OutputFBPruefungKMWReserve
+	nOp := Registry.OutputFBPruefungKMWOperativ
+	nBer := Registry.OutputFBPruefungKMWBereitgestellt
+	nVerf := Registry.OutputFBPruefungKMWVerfuegbar
+	nSaldo := Registry.OutputFBPruefungSaldovortrag
+	nMehr := Registry.OutputFBPruefungMehreinnahmen
+	nAbzug := Registry.OutputFBPruefungAbzugGesamt
+	nBereinigt := Registry.OutputFBPruefungKMWVerfuegbarBereinigt
+	togSaldo := Registry.InputFBPruefungAbzugSaldo
+	togMehr := Registry.InputFBPruefungAbzugMehr
+	if isMA {
+		nBew = Registry.OutputMAPruefungKMWBewilligt
+		nRes = Registry.OutputMAPruefungKMWReserve
+		nOp = Registry.OutputMAPruefungKMWOperativ
+		nBer = Registry.OutputMAPruefungKMWBereitgestellt
+		nVerf = Registry.OutputMAPruefungKMWVerfuegbar
+		nSaldo = Registry.OutputMAPruefungSaldovortrag
+		nMehr = Registry.OutputMAPruefungMehreinnahmen
+		nAbzug = Registry.OutputMAPruefungAbzugGesamt
+		nBereinigt = Registry.OutputMAPruefungKMWVerfuegbarBereinigt
+		togSaldo = Registry.InputMAPruefungAbzugSaldo
+		togMehr = Registry.InputMAPruefungAbzugMehr
+	}
+
 	startRow := r
 
 	// --- LINKER BLOCK (Basis) ---
@@ -164,7 +195,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		EVKmwLabelStyle)
 	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf(
 		`=IF(%s="Ja",ROUND(%s,2),ROUND(%s-%s,2))`,
-		BudgetNameReserve, absName(valL, rBew), absName(valL, rBew), absName(valL, rRes)), false)
+		BudgetNameReserve, nBew.NamedRange, nBew.NamedRange, nRes.NamedRange), false)
 	r++
 	rBer := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Bereitgestellte KMW-Mittel", false)
@@ -172,75 +203,55 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	r++
 	rVerf := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Verfügbare KMW-Mittel", true)
-	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-%s,2)", absName(valL, rOp), absName(valL, rBer)), true)
-	addrVerf := absName(valL, rVerf)
+	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-%s,2)", nOp.NamedRange, nBer.NamedRange), true)
+	addrVerf := nVerf.NamedRange
 	leftBottom := r
 
 	// Registry-Bindung linker Block (Basis-KMW-Mittel).
-	if isMA {
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWBewilligt.NamedRange, valL, rBew)
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWReserve.NamedRange, valL, rRes)
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWOperativ.NamedRange, valL, rOp)
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWBereitgestellt.NamedRange, valL, rBer)
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWVerfuegbar.NamedRange, valL, rVerf)
-	} else {
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWBewilligt.NamedRange, valL, rBew)
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWReserve.NamedRange, valL, rRes)
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWOperativ.NamedRange, valL, rOp)
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWBereitgestellt.NamedRange, valL, rBer)
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWVerfuegbar.NamedRange, valL, rVerf)
-	}
+	g.dbUpsertNamedRange(ws, nBew.NamedRange, valL, rBew)
+	g.dbUpsertNamedRange(ws, nRes.NamedRange, valL, rRes)
+	g.dbUpsertNamedRange(ws, nOp.NamedRange, valL, rOp)
+	g.dbUpsertNamedRange(ws, nBer.NamedRange, valL, rBer)
+	g.dbUpsertNamedRange(ws, nVerf.NamedRange, valL, rVerf)
 
 	// --- RECHTER BLOCK (Abzugsoptionen, mit Abzug/Kein-Abzug-Schaltern) ---
 	rr := startRow
 	_ = g.mergeCells(ws, cellName(tog, rr), cellName(valR, rr), "Abzugsoptionen KMW-Mittel", EVAbzugHeaderStyle)
 	rr++
 
-	type dedRow struct{ togCell, valCell string }
+	// togName/valName sind benannte Bereiche (Schalter bzw. Abzugswert); valCell
+	// bleibt die Zelladresse für die bedingte Formatierung (Ziel-Sqref).
+	type dedRow struct{ togName, valCell, valName string }
 	var deds []dedRow
 
 	// Saldovortrag (berechnet)
-	if isMA {
-		g.evalToggle(ws, cellName(tog, rr), Registry.InputMAPruefungAbzugSaldo)
-	} else {
-		g.evalToggle(ws, cellName(tog, rr), Registry.InputFBPruefungAbzugSaldo)
-	}
+	g.evalToggle(ws, cellName(tog, rr), togSaldo)
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Saldovortrag", false)
 	g.evalDeduct(ws, cellName(valR, rr), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", Registry.OutputDashSaldovortragEUR.NamedRange))
 	saldoCell := cellName(valR, rr)
-	if isMA {
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungSaldovortrag.NamedRange, valR, rr)
-	} else {
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungSaldovortrag.NamedRange, valR, rr)
-	}
-	deds = append(deds, dedRow{absName(tog, rr), absName(valR, rr)})
+	g.dbUpsertNamedRange(ws, nSaldo.NamedRange, valR, rr)
+	deds = append(deds, dedRow{togSaldo.NamedRange, absName(valR, rr), nSaldo.NamedRange})
 	rr++
 
 	// Mehreinnahmen (Formel wird nachgelagert gesetzt)
-	if isMA {
-		g.evalToggle(ws, cellName(tog, rr), Registry.InputMAPruefungAbzugMehr)
-	} else {
-		g.evalToggle(ws, cellName(tog, rr), Registry.InputFBPruefungAbzugMehr)
-	}
+	g.evalToggle(ws, cellName(tog, rr), togMehr)
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Mehreinnahmen", false)
 	g.evalDeductPlaceholder(ws, cellName(valR, rr))
 	mehrCell := cellName(valR, rr)
-	if isMA {
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungMehreinnahmen.NamedRange, valR, rr)
-	} else {
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungMehreinnahmen.NamedRange, valR, rr)
-	}
-	deds = append(deds, dedRow{absName(tog, rr), absName(valR, rr)})
+	g.dbUpsertNamedRange(ws, nMehr.NamedRange, valR, rr)
+	deds = append(deds, dedRow{togMehr.NamedRange, absName(valR, rr), nMehr.NamedRange})
 	rr++
 
 	prognCell := ""
 	if isMA {
-		g.evalToggle(ws, cellName(tog, rr), Registry.InputMAPruefungAbzugPrognose)
+		togProgn := Registry.InputMAPruefungAbzugPrognose
+		valProgn := Registry.OutputMAPruefungPrognostizierteMehreinnahmen
+		g.evalToggle(ws, cellName(tog, rr), togProgn)
 		g.evalKmwLabel(ws, rr, lblR1, lblR2, "Prognostizierte Mehreinnahmen", false)
 		g.evalDeductPlaceholder(ws, cellName(valR, rr))
 		prognCell = cellName(valR, rr)
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungPrognostizierteMehreinnahmen.NamedRange, valR, rr)
-		deds = append(deds, dedRow{absName(tog, rr), absName(valR, rr)})
+		g.dbUpsertNamedRange(ws, valProgn.NamedRange, valR, rr)
+		deds = append(deds, dedRow{togProgn.NamedRange, absName(valR, rr), valProgn.NamedRange})
 		rr++
 	}
 
@@ -249,7 +260,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	// Regel 1 – Füllung/Schrift + drei dünne Gitterlinien (links/oben/unten)
 	// Regel 2 – dicker rechter Außenrahmen (passend zu styleOuterBorder)
 	for _, d := range deds {
-		cond := fmt.Sprintf(`%s="Kein Abzug"`, d.togCell)
+		cond := fmt.Sprintf(`%s="Kein Abzug"`, d.togName)
 		g.addConditionalFormat(ws, d.valCell, cond, EVDeductOffCFStyle)
 		g.addConditionalFormat(ws, d.valCell, cond, EVRightBorderCFStyle)
 	}
@@ -259,26 +270,18 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Abzugsoptionen KMW insgesamt", true)
 	var terms []string
 	for _, d := range deds {
-		terms = append(terms, fmt.Sprintf(`IF(%s="Abzug",MAX(0,%s),0)`, d.togCell, d.valCell))
+		terms = append(terms, fmt.Sprintf(`IF(%s="Abzug",MAX(0,%s),0)`, d.togName, d.valName))
 	}
 	g.evalKmwCalc(ws, cellName(valR, rr), fmt.Sprintf("=ROUND(%s,2)", strings.Join(terms, "+")), true)
-	addrInsgesamt := absName(valR, rIns)
-	if isMA {
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungAbzugGesamt.NamedRange, valR, rIns)
-	} else {
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungAbzugGesamt.NamedRange, valR, rIns)
-	}
+	addrInsgesamt := nAbzug.NamedRange
+	g.dbUpsertNamedRange(ws, nAbzug.NamedRange, valR, rIns)
 	rr++
 
 	// Verfügbare KMW-Mittel (bereinigt)
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Verfügbare KMW-Mittel (bereinigt)", true)
 	g.evalKmwCalc(ws, cellName(valR, rr), fmt.Sprintf("=ROUND(%s-%s,2)", addrVerf, addrInsgesamt), true)
-	addrBereinigt := absName(valR, rr)
-	if isMA {
-		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWVerfuegbarBereinigt.NamedRange, valR, rr)
-	} else {
-		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWVerfuegbarBereinigt.NamedRange, valR, rr)
-	}
+	addrBereinigt := nBereinigt.NamedRange
+	g.dbUpsertNamedRange(ws, nBereinigt.NamedRange, valR, rr)
 	rightBottom := rr
 
 	g.styleOuterBorder(ws, startRow, lblL1, leftBottom, valL, 2, EV_CLR_BORDER)
@@ -309,10 +312,10 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
 		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrVerf, addrReqL), true)
-		addrVerblL1 := absName(valL, r)
+		addrVerblL1 := Registry.OutputMAPruefungVerbleibendKMW.NamedRange
 		g.evalKmwLabel(ws, r, tog, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
 		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrBereinigt, addrReqR), true)
-		addrVerblR1 := absName(valR, r)
+		addrVerblR1 := Registry.OutputMAPruefungVerbleibendKMWBereinigt.NamedRange
 		p1Bottom := r
 		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungVerbleibendKMW.NamedRange, valL, p1Bottom)
 		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungVerbleibendKMWBereinigt.NamedRange, valR, p1Bottom)
@@ -332,10 +335,10 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		r++
 		g.evalKmwLabel(ws, r, lblL1, lblL2, "Verbleibende KMW-Mittel", true)
 		g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrVerf, addrManL), true)
-		addrVerblL2 := absName(valL, r)
+		addrVerblL2 := Registry.OutputMAPruefungVerbleibendKMWManuell.NamedRange
 		g.evalKmwLabel(ws, r, tog, lblR2, "Verbleibende KMW-Mittel (bereinigt)", true)
 		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrBereinigt, addrManR), true)
-		addrVerblR2 := absName(valR, r)
+		addrVerblR2 := Registry.OutputMAPruefungVerbleibendKMWManuellBereinigt.NamedRange
 		p2Bottom := r
 		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungVerbleibendKMWManuell.NamedRange, valL, p2Bottom)
 		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungVerbleibendKMWManuellBereinigt.NamedRange, valR, p2Bottom)
@@ -579,29 +582,38 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 		g.evalCellFormula(ws, cellName(EV_COL_BUD_LC, row), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", budLCName), EV_FMT_LC, EV_CLR_CALC)
 		g.evalCellFormula(ws, cellName(EV_COL_BUD_EUR, row), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", budEURName), EV_FMT_EUR, EV_CLR_CALC)
 
+		// Differenz/Abweichung referenzieren die benannten Ist-/Budget-Bereiche der
+		// Zeile (fallback auf Zelladresse, falls keine Bindung existiert).
+		actLCRef, budLCRef := absName(EV_COL_ACT_LC, row), absName(EV_COL_BUD_LC, row)
+		actEURRef, budEURRef := absName(EV_COL_ACT_EUR, row), absName(EV_COL_BUD_EUR, row)
+		if i < len(bind.rows) {
+			cf := bind.rows[i]
+			actLCRef, budLCRef = cf.actLC.NamedRange, cf.budLC.NamedRange
+			actEURRef, budEURRef = cf.actEUR.NamedRange, cf.budEUR.NamedRange
+		}
 		g.evalCellFormula(ws, cellName(EV_COL_DIF_LC, row),
-			fmt.Sprintf("=ROUND(IFERROR(%s-%s,0),2)", absName(EV_COL_ACT_LC, row), absName(EV_COL_BUD_LC, row)), EV_FMT_LC, "")
+			fmt.Sprintf("=ROUND(IFERROR(%s-%s,0),2)", actLCRef, budLCRef), EV_FMT_LC, "")
 		g.evalCellFormula(ws, cellName(EV_COL_ABW_LC, row),
-			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", absName(EV_COL_ACT_LC, row), absName(EV_COL_BUD_LC, row)), EV_FMT_PCT, "")
+			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", actLCRef, budLCRef), EV_FMT_PCT, "")
 		g.evalCellFormula(ws, cellName(EV_COL_DIF_EUR, row),
-			fmt.Sprintf("=ROUND(IFERROR(%s-%s,0),2)", absName(EV_COL_ACT_EUR, row), absName(EV_COL_BUD_EUR, row)), EV_FMT_EUR, "")
+			fmt.Sprintf("=ROUND(IFERROR(%s-%s,0),2)", actEURRef, budEURRef), EV_FMT_EUR, "")
 		g.evalCellFormula(ws, cellName(EV_COL_ABW_EUR, row),
-			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", absName(EV_COL_ACT_EUR, row), absName(EV_COL_BUD_EUR, row)), EV_FMT_PCT, "")
+			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", actEURRef, budEURRef), EV_FMT_PCT, "")
 
 		// Alle Wertzellen der Zeile an die Registry-Ausgabefelder binden.
 		if i < len(bind.rows) {
 			g.evalBindCompRow(ws, row, bind.rows[i])
 		}
 
-		if isIncome && name == "KMW-Mittel" {
-			kmwActEUR = absName(EV_COL_ACT_EUR, row)
-			kmwBudEUR = absName(EV_COL_BUD_EUR, row)
+		if isIncome && name == "KMW-Mittel" && i < len(bind.rows) {
+			kmwActEUR = bind.rows[i].actEUR.NamedRange
+			kmwBudEUR = bind.rows[i].budEUR.NamedRange
 		}
 	}
 
 	dataEnd := dataStart + nRows - 1
 	totalRow := dataEnd + 1
-	g.evalTotalRow(ws, totalRow, dataStart, dataEnd)
+	g.evalTotalRow(ws, totalRow, dataStart, dataEnd, bind.total)
 	g.evalBindCompRow(ws, totalRow, bind.total)
 
 	// Abweichungs-Ampel auf beiden Währungsspalten (Einnahmen wie Ausgaben):
@@ -635,16 +647,18 @@ func (g *Generator) evalComparisonLabels(isIncome, isMA bool) []string {
 // evalActualFormulas: Ist-/Prognose-Formeln je Zeile.
 func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int, sel evalSelRefs) (string, string) {
 	if isIncome && isMA {
+		facLC, facEUR := evalFBIncomeKumFactories(idx)
 		maL := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_LC, isIncome)
 		maE := evalMAExpenseActual(g, sel, idx, EV_DTN_MAG_EUR, isIncome)
-		fbL := evalFBChooseRef(sel.fbSelNum, FB_INCOME_FIRST_ROW+idx, FBOffKumLC)
-		fbE := evalFBChooseRef(sel.fbSelNum, FB_INCOME_FIRST_ROW+idx, FBOffKumEUR)
+		fbL := evalFBChooseNamed(sel.fbSelNum, facLC)
+		fbE := evalFBChooseNamed(sel.fbSelNum, facEUR)
 		return fmt.Sprintf("=%s + %s", maL[1:], fbL[1:]),
 			fmt.Sprintf("=%s + %s", maE[1:], fbE[1:])
 	}
 	if isIncome {
-		return evalFBChooseRef(sel.fbSelNum, FB_INCOME_FIRST_ROW+idx, FBOffKumLC),
-			evalFBChooseRef(sel.fbSelNum, FB_INCOME_FIRST_ROW+idx, FBOffKumEUR)
+		facLC, facEUR := evalFBIncomeKumFactories(idx)
+		return evalFBChooseNamed(sel.fbSelNum, facLC),
+			evalFBChooseNamed(sel.fbSelNum, facEUR)
 	}
 	if isMA {
 		// MA-Ausgabenprognose bleibt positionsbasiert (1:1 auf FB-Ausgabenzeile).
@@ -667,8 +681,8 @@ func (g *Generator) evalActualFormulas(isIncome, isMA bool, name string, idx int
 // Periodenspalte des Finanzberichts. colOffset = FBOffKumLC/FBOffKumEUR.
 func (g *Generator) evalFBExpenseActualByCategory(selNum, cat string, colOffset int) string {
 	nPos := g.budgetExpenseCount()
-	catRange := fmt.Sprintf("'%s'!%s:%s", BudgetSheetName,
-		absName(BudgetColLabel, BudgetRowAusgStart), absName(BudgetColLabel, BudgetRowAusgStart+nPos-1))
+	// Kategoriespalte als strukturierter Tabellenbezug (statt fester B-Spalten-Range).
+	catRange := fmt.Sprintf("%s[Kostenkategorie]", BudgetTableAusg)
 	parts := make([]string, 0, FBPeriodenAnzahl)
 	for p := 1; p <= FBPeriodenAnzahl; p++ {
 		col := FBStartCol + (p-1)*(FBTableCols+FBTableSpacing) + colOffset
@@ -713,25 +727,26 @@ func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {
 	return budLC, budEUR
 }
 
-func (g *Generator) evalTotalRow(ws string, totalRow, dataStart, dataEnd int) {
+func (g *Generator) evalTotalRow(ws string, totalRow, dataStart, dataEnd int, total evalCompFields) {
 	_ = g.setValue(ws, cellName(EV_COL_LABEL, totalRow), "GESAMT", EVTotalLabelStyle)
 	sumCol := func(col int, style StyleOptions) {
 		rng := fmt.Sprintf("%s:%s", absName(col, dataStart), absName(col, dataEnd))
 		_ = g.setFormula(ws, cellName(col, totalRow), fmt.Sprintf("=ROUND(SUM(%s),2)", rng), style)
 	}
-	pctCol := func(col, actCol, budCol int) {
+	// Abweichung der GESAMT-Zeile über die benannten Ist-/Budget-Bereiche.
+	pctCol := func(col int, actName, budName string) {
 		_ = g.setFormula(ws, cellName(col, totalRow),
-			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", absName(actCol, totalRow), absName(budCol, totalRow)),
+			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", actName, budName),
 			EVTotalPctStyle)
 	}
 	sumCol(EV_COL_ACT_LC, EVTotalLCStyle)
 	sumCol(EV_COL_BUD_LC, EVTotalLCStyle)
 	sumCol(EV_COL_DIF_LC, EVTotalLCStyle)
-	pctCol(EV_COL_ABW_LC, EV_COL_ACT_LC, EV_COL_BUD_LC)
+	pctCol(EV_COL_ABW_LC, total.actLC.NamedRange, total.budLC.NamedRange)
 	sumCol(EV_COL_ACT_EUR, EVTotalEURStyle)
 	sumCol(EV_COL_BUD_EUR, EVTotalEURStyle)
 	sumCol(EV_COL_DIF_EUR, EVTotalEURStyle)
-	pctCol(EV_COL_ABW_EUR, EV_COL_ACT_EUR, EV_COL_BUD_EUR)
+	pctCol(EV_COL_ABW_EUR, total.actEUR.NamedRange, total.budEUR.NamedRange)
 	_ = g.file.SetRowHeight(ws, totalRow, 20.0)
 }
 
@@ -766,4 +781,45 @@ func evalFBChooseRef(selNum string, baseRow, colOffset int) string {
 		parts = append(parts, fmt.Sprintf("'%s'!%s", EVAL_FB_SHEET, absName(col, baseRow)))
 	}
 	return fmt.Sprintf(`=IFERROR(ROUND(CHOOSE(%s,%s),2),0)`, selNum, strings.Join(parts, ","))
+}
+
+// evalFBChooseNamed referenziert die kumulierte Kum-Zelle des gewählten
+// Finanzberichts per CHOOSE über alle Perioden – analog zu evalFBChooseRef, aber
+// ausschließlich über die benannten Bereiche der Kum-Output-Factory (Einnahmen).
+func evalFBChooseNamed(selNum string, fac OutputFactory) string {
+	parts := make([]string, 0, FBPeriodenAnzahl)
+	for p := 1; p <= FBPeriodenAnzahl; p++ {
+		parts = append(parts, fac.Get(p).NamedRange)
+	}
+	return fmt.Sprintf(`=IFERROR(ROUND(CHOOSE(%s,%s),2),0)`, selNum, strings.Join(parts, ","))
+}
+
+// evalFBIncomeFactories liefert die vier Output-Factories (LC, EUR, Kum-LC,
+// Kum-EUR) einer FB-Einnahmenkategorie (idx 0..3) – für die Spiegelung.
+func evalFBIncomeFactories(idx int) [4]OutputFactory {
+	switch idx {
+	case 0:
+		return [4]OutputFactory{Registry.OutputFBEMlLC, Registry.OutputFBEMEUR, Registry.OutputFBKumEMLC, Registry.OutputFBKumEMEUR}
+	case 1:
+		return [4]OutputFactory{Registry.OutputFBDMLC, Registry.OutputFBDMEUR, Registry.OutputFBKumDMLC, Registry.OutputFBKumDMEUR}
+	case 2:
+		return [4]OutputFactory{Registry.OutputFBKMWLC, Registry.OutputFBKMWEUR, Registry.OutputFBKumKMWLC, Registry.OutputFBKumKMWEUR}
+	default:
+		return [4]OutputFactory{Registry.OutputFBZinsLC, Registry.OutputFBZinsEUR, Registry.OutputFBKumZinsLC, Registry.OutputFBKumZinsEUR}
+	}
+}
+
+// evalFBIncomeKumFactories liefert die Kum-LC/-EUR-Output-Factories einer
+// FB-Einnahmenkategorie (idx 0=Eigenmittel,1=Drittmittel,2=KMW,3=Zins).
+func evalFBIncomeKumFactories(idx int) (OutputFactory, OutputFactory) {
+	switch idx {
+	case 0:
+		return Registry.OutputFBKumEMLC, Registry.OutputFBKumEMEUR
+	case 1:
+		return Registry.OutputFBKumDMLC, Registry.OutputFBKumDMEUR
+	case 2:
+		return Registry.OutputFBKumKMWLC, Registry.OutputFBKumKMWEUR
+	default:
+		return Registry.OutputFBKumZinsLC, Registry.OutputFBKumZinsEUR
+	}
 }

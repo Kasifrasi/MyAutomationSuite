@@ -156,8 +156,10 @@ func (g *Generator) CreateBudgetSheet(reg *TemplateRegistry) error {
 	if err := g.drawBudgetDrittmittelTable(ws); err != nil {
 		return err
 	}
-	reserveEurAddr := absName(BudgetColHelpEUR, BudgetHelpReserveRow)
-	reserveCheckAddr := absName(BudgetColStatus, BudgetReserveRowCheck)
+	// Reserve-Betrag und Reserve-Check referenzieren ausschließlich benannte
+	// Bereiche (statt fester Zellbezüge auf Hilfsspalte/Status-Spalte).
+	reserveEurAddr := reg.OutputBudgetReserveEUR.NamedRange
+	reserveCheckAddr := reg.InputBudgetReserveFreigabe.NamedRange
 	g.drawBudgetReserveBox(ws, reserveEurAddr)
 	g.drawBudgetBegruendung(ws, reserveCheckAddr)
 
@@ -173,25 +175,27 @@ func (g *Generator) CreateBudgetSheet(reg *TemplateRegistry) error {
 	// ── Abschluß (braucht bindete Adressen) ──────────────────────────────────
 	g.styleOuterBorder(ws, BudgetRowTitle, BudgetColLabel, dyn.AusgTotal, BudgetColEUR, 2, BudgetClrBorder)
 
+	// Prüfungs-Formeln referenzieren die benannten Gesamt-Bereiche bzw. – wo kein
+	// benannter Bereich existiert (Ausgaben-Summen) – strukturierte Tabellenbezüge.
 	incYearsAddr := fmt.Sprintf("%s+%s+%s",
-		absName(BudgetColY1, BudgetRowGesamt),
-		absName(BudgetColY2, BudgetRowGesamt),
-		absName(BudgetColY3, BudgetRowGesamt),
+		reg.OutputBudgetGesamtY1.NamedRange,
+		reg.OutputBudgetGesamtY2.NamedRange,
+		reg.OutputBudgetGesamtY3.NamedRange,
 	)
-	expYearsAddr := fmt.Sprintf("%s+%s+%s",
-		absName(BudgetColY1, dyn.AusgTotal),
-		absName(BudgetColY2, dyn.AusgTotal),
-		absName(BudgetColY3, dyn.AusgTotal),
+	expYearsAddr := fmt.Sprintf("SUBTOTAL(109,%s[%s])+SUBTOTAL(109,%s[%s])+SUBTOTAL(109,%s[%s])",
+		BudgetTableAusg, BudgetYears[0],
+		BudgetTableAusg, BudgetYears[1],
+		BudgetTableAusg, BudgetYears[2],
 	)
 	g.drawBudgetChecks(ws,
 		dyn.AusgTotal+2,
-		absName(BudgetColLC, BudgetRowGesamt),
-		absName(BudgetColEUR, BudgetRowGesamt),
+		reg.OutputBudgetGesamtLC.NamedRange,
+		reg.OutputBudgetGesamtEUR.NamedRange,
 		incYearsAddr,
-		absName(BudgetColHelpLC, BudgetHelpTotalRow),
-		absName(BudgetColHelpEUR, BudgetHelpTotalRow),
+		fmt.Sprintf("SUBTOTAL(109,%s[Betrag (LC)])", BudgetTableAusg),
+		fmt.Sprintf("SUBTOTAL(109,%s[Betrag (EUR)])", BudgetTableAusg),
 		expYearsAddr,
-		absName(BudgetColY3, BudgetRowSection1),
+		reg.OutputBudgetWK.NamedRange,
 	)
 
 	return nil
@@ -397,7 +401,8 @@ func (g *Generator) drawBudgetReserveBox(ws string, reserveEurAddr string) {
 		BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
 	})
 
-	checkAddr := absName(col, BudgetReserveRowCheck)
+	// Reserve-Freigabe wird über ihren benannten Bereich referenziert.
+	checkAddr := BudgetNameReserve
 	statusFormula := fmt.Sprintf(`=IF(%s="Ja","FREIGEGEBEN","NICHT FREIGEGEBEN")`, checkAddr)
 	statusStyleID, _ := g.getOrCreateStyle(StyleOptions{
 		Bold: true, Size: 9, FontColor: BudgetClrResTxt, FillColor: BudgetClrResOff,
@@ -523,34 +528,34 @@ func (g *Generator) bindBudgetFinancing(ws string, reg *TemplateRegistry, dyn bu
 	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColY3, reg.InputBudgetKMWY3)
 	_ = g.bindInputField(ws, BudgetRowKMW, BudgetColEUR, reg.InputBudgetKMWEUR)
 
-	// GESAMTPROJEKTMITTEL (Formeln + Named Ranges aus Registry)
-	sumOf := func(col int) string {
-		return fmt.Sprintf("=%s+%s+%s",
-			cellName(col, BudgetRowEigen),
-			cellName(col, BudgetRowDritt),
-			cellName(col, BudgetRowKMW),
-		)
+	// GESAMTPROJEKTMITTEL – Summen aus Eigenmittel/Drittmittel/KMW-Mittel,
+	// ausschließlich über die benannten Bereiche der jeweiligen Zeile.
+	gesamt := []struct {
+		col               int
+		eigen, dritt, kmw string
+		out               OutputField
+		fmtStr            string
+	}{
+		{BudgetColLC, reg.InputBudgetEigenmittelLC.NamedRange, reg.OutputBudgetDrittmittelLC.NamedRange, reg.InputBudgetKMWLC.NamedRange, reg.OutputBudgetGesamtLC, BudgetFmtLC},
+		{BudgetColY1, reg.InputBudgetEigenmittelY1.NamedRange, reg.InputBudgetDrittmittelY1.NamedRange, reg.InputBudgetKMWY1.NamedRange, reg.OutputBudgetGesamtY1, BudgetFmtLC},
+		{BudgetColY2, reg.InputBudgetEigenmittelY2.NamedRange, reg.InputBudgetDrittmittelY2.NamedRange, reg.InputBudgetKMWY2.NamedRange, reg.OutputBudgetGesamtY2, BudgetFmtLC},
+		{BudgetColY3, reg.InputBudgetEigenmittelY3.NamedRange, reg.InputBudgetDrittmittelY3.NamedRange, reg.InputBudgetKMWY3.NamedRange, reg.OutputBudgetGesamtY3, BudgetFmtLC},
+		{BudgetColEUR, reg.InputBudgetEigenmittelEUR.NamedRange, reg.OutputBudgetDrittmittelEUR.NamedRange, reg.InputBudgetKMWEUR.NamedRange, reg.OutputBudgetGesamtEUR, BudgetFmtEUR},
 	}
-	g.setFormula(ws, cellName(BudgetColLC, BudgetRowGesamt), sumOf(BudgetColLC), StyleOptions{NumFormat: BudgetFmtLC})
-	g.setFormula(ws, cellName(BudgetColY1, BudgetRowGesamt), sumOf(BudgetColY1), StyleOptions{NumFormat: BudgetFmtLC})
-	g.setFormula(ws, cellName(BudgetColY2, BudgetRowGesamt), sumOf(BudgetColY2), StyleOptions{NumFormat: BudgetFmtLC})
-	g.setFormula(ws, cellName(BudgetColY3, BudgetRowGesamt), sumOf(BudgetColY3), StyleOptions{NumFormat: BudgetFmtLC})
-	g.setFormula(ws, cellName(BudgetColEUR, BudgetRowGesamt), sumOf(BudgetColEUR), StyleOptions{NumFormat: BudgetFmtEUR})
-	g.upsertNamedRange(reg.OutputBudgetGesamtLC.NamedRange, BudgetColLC, BudgetRowGesamt)
-	g.upsertNamedRange(reg.OutputBudgetGesamtY1.NamedRange, BudgetColY1, BudgetRowGesamt)
-	g.upsertNamedRange(reg.OutputBudgetGesamtY2.NamedRange, BudgetColY2, BudgetRowGesamt)
-	g.upsertNamedRange(reg.OutputBudgetGesamtY3.NamedRange, BudgetColY3, BudgetRowGesamt)
-	g.upsertNamedRange(reg.OutputBudgetGesamtEUR.NamedRange, BudgetColEUR, BudgetRowGesamt)
+	for _, gs := range gesamt {
+		g.setFormula(ws, cellName(gs.col, BudgetRowGesamt),
+			fmt.Sprintf("=%s+%s+%s", gs.eigen, gs.dritt, gs.kmw),
+			StyleOptions{NumFormat: gs.fmtStr})
+		g.upsertNamedRange(gs.out.NamedRange, gs.col, BudgetRowGesamt)
+	}
 
-	// Budget-Kurs-Formel
-	totalLoc := absName(BudgetColLC, BudgetRowGesamt)
-	totalEur := absName(BudgetColEUR, BudgetRowGesamt)
+	// Budget-Kurs-Formel (Gesamt LC / Gesamt EUR über benannte Bereiche)
 	rateCellOpts := StyleOptions{
 		NumFormat: BudgetFmtRate, Italic: true,
 		BorderTop: 2, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: BudgetClrBorder,
 	}
 	g.setFormula(ws, cellName(BudgetColY3, BudgetRowSection1),
-		fmt.Sprintf(`=IFERROR(%s/%s,0)`, totalLoc, totalEur), rateCellOpts)
+		fmt.Sprintf(`=IFERROR(%s/%s,0)`, reg.OutputBudgetGesamtLC.NamedRange, reg.OutputBudgetGesamtEUR.NamedRange), rateCellOpts)
 
 	// Ausgaben-Hilfszeilen (Kategorien-Summen, per-category = dynamisch)
 	for i, cat := range ListKostenkategorien {

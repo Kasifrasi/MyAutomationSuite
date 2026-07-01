@@ -22,6 +22,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	g.mergeCells(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
 	col, row, _ := excelize.CellNameToCoordinates(labelCell)
 	_ = g.bindInputField(ws, row, col, Registry.InputMAPruefungAuswahl)
+	lblName := Registry.InputMAPruefungAuswahl.NamedRange
 
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
@@ -41,9 +42,10 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	maxMAP := fmt.Sprintf(`%s+1`, maxFbPer)
 	pFormula := fmt.Sprintf(
 		`=IF(%s="Neueste MA",%s,IFERROR(VALUE(MID(%s,FIND("Periode ",%s)+8,FIND(" ",%s,FIND("Periode ",%s)+8)-(FIND("Periode ",%s)+8))),0))`,
-		labelCell, maxMAP, labelCell, labelCell, labelCell, labelCell, labelCell)
+		lblName, maxMAP, lblName, lblName, lblName, lblName, lblName)
 	g.evalMergedFormula(ws, pCell, cellName(EV_PB_C2, r), pFormula, num0)
 	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungAusgewaehltePeriode.NamedRange, EV_PB_V1, r)
+	pName := Registry.OutputMAPruefungAusgewaehltePeriode.NamedRange
 	r++
 
 	g.evalSelLabel(ws, r, "Ausgewählte Anforderung (#)")
@@ -53,14 +55,15 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	// das SUMPRODUCT(MAX(...))-Idiom nutzt nur Legacy-Funktionen und erzwingt die
 	// Array-Auswertung – identisch zum Vorgehen der Spiegel-Panels.
 	maxMAK := fmt.Sprintf(`IFERROR(SUMPRODUCT(MAX(('%s'!%s=%s)*('%s'!%s=1)*'%s'!%s)),0)`,
-		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), pCell,
+		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), pName,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_FILL, 1, MA_TABLE_COUNT),
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT))
 	kFormula := fmt.Sprintf(
 		`=IF(%s="Neueste MA",MAX(1,%s),IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0))`,
-		labelCell, maxMAK, labelCell, labelCell, labelCell, labelCell)
+		lblName, maxMAK, lblName, lblName, lblName, lblName)
 	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
 	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungAusgewaehlteAnforderung.NamedRange, EV_PB_V1, r)
+	kName := Registry.OutputMAPruefungAusgewaehlteAnforderung.NamedRange
 	r++
 
 	warnCol1 := EV_PB_C2 + 1 // Spalte H (8)
@@ -112,30 +115,30 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
 	for s := 1; s <= EV_MA_SLOTS; s++ {
 		row := firstSlot + s - 1
-		lbl := fmt.Sprintf(`=IF(%d<=%s,"Periode "&%s&" (#%d)","")`, s, kCell, pCell, s)
+		lbl := fmt.Sprintf(`=IF(%d<=%s,"Periode "&%s&" (#%d)","")`, s, kName, pName, s)
 		g.evalMergedFormula(ws, cellName(EV_PB_C1, row), cellName(EV_PB_L2, row), lbl, lblSt)
 
 		lcF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
-			s, kCell,
+			s, kName,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_LC, 1, g.maGridRows()),
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, g.maGridRows()),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pName,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()), s)
 		_ = g.setFormula(ws, cellName(EV_PB_V1, row), lcF, valSt)
 
 		euF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"KMW-Mittel",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
-			s, kCell,
+			s, kName,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, g.maGridRows()),
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, g.maGridRows()),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pName,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()), s)
 		_ = g.setFormula(ws, cellName(EV_PB_SLC2, row), euF, euSt)
 
 		manF := fmt.Sprintf(`=IF(%d<=%s,IFERROR(SUMIFS('%s'!%s,'%s'!%s,"Manueller Betrag",'%s'!%s,%s,'%s'!%s,%d),0),"")`,
-			s, kCell,
+			s, kName,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_EUR, 1, g.maGridRows()),
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_CAT, 1, g.maGridRows()),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_PER, 1, g.maGridRows()), pName,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()), s)
 		_ = g.setFormula(ws, cellName(EV_PB_SEU1, row), manF, euSt)
 
@@ -213,7 +216,7 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 		})
 		c, r, _ := excelize.CellNameToCoordinates(cell)
 		_ = g.bindInputField(ws, r, c, field)
-		return absName(vMID, row)
+		return field.NamedRange
 	}
 	// Leere (aber gerahmte) Mittelzelle für reine Währungs-Paarzeilen.
 	blankMid := func(row int) {
@@ -249,10 +252,10 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	g.evalLimitCalc(ws, cellName(vLC, r), anfSum(EV_DTN_MA_META_SUMLC), EV_FMT_LC, false)
 	blankMid(r)
 	g.evalLimitCalc(ws, cellName(vEUR, r), anfSum(EV_DTN_MA_META_SUMEU), EV_FMT_EUR, false)
-	anfLCAddr := absName(vLC, rAnf)
-	anfEURAddr := absName(vEUR, rAnf)
 	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitAnforderungLC.NamedRange, vLC, rAnf)
 	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitAnforderungEUR.NamedRange, vEUR, rAnf)
+	anfLCAddr := Registry.OutputMAPruefungLimitAnforderungLC.NamedRange
+	anfEURAddr := Registry.OutputMAPruefungLimitAnforderungEUR.NamedRange
 	r++
 
 	// ─── Jahresbudget je Haushaltsjahr inkl. einfließendem Monatsanteil ──────
@@ -271,14 +274,14 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 		label(r, "Jahresbudget "+year, false)
 		budF := fmt.Sprintf("=IFERROR(ROUND(SUBTOTAL(109,%s[%s]),2),0)", BudgetTableAusg, year)
 		g.evalLimitCalc(ws, cellName(vLC, r), budF, EV_FMT_LC, false)
-		yearBudLCAddrs[i] = absName(vLC, r)
+		yearBudLCAddrs[i] = budLCOut[i].NamedRange
 		dm := 0
 		if i < len(defaultMonths) {
 			dm = defaultMonths[i]
 		}
 		yearMonthAddrs[i] = monthsInput(r, dm, fields[i])
 		g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", yearBudLCAddrs[i], rate), EV_FMT_EUR, false)
-		yearBudEURAddrs[i] = absName(vEUR, r)
+		yearBudEURAddrs[i] = budEUROut[i].NamedRange
 		g.dbUpsertNamedRange(ws, budLCOut[i].NamedRange, vLC, r)
 		g.dbUpsertNamedRange(ws, budEUROut[i].NamedRange, vEUR, r)
 		r++
@@ -309,10 +312,10 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	g.evalLimitCalc(ws, cellName(vLC, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", strings.Join(limTermsLC, "+")), EV_FMT_LC, true)
 	blankMid(r)
 	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", strings.Join(limTermsEUR, "+")), EV_FMT_EUR, true)
-	limitLCAddr := absName(vLC, rLimit)
-	limitEURAddr := absName(vEUR, rLimit)
 	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitMonatslimitLC.NamedRange, vLC, rLimit)
 	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitMonatslimitEUR.NamedRange, vEUR, rLimit)
+	limitLCAddr := Registry.OutputMAPruefungLimitMonatslimitLC.NamedRange
+	limitEURAddr := Registry.OutputMAPruefungLimitMonatslimitEUR.NamedRange
 	r++
 
 	label(r, "Status", true)
@@ -403,6 +406,7 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	_ = g.file.SetColVisible(ws, colLetter(EV_HELP_COL), false)
 
 	// mirror liefert eine CHOOSE-Formel über alle 18 MA-Tabellen, gewählt per j.
+	// Nur noch für Zellen ohne benannten Bereich (Gesamtbedarf-Zeile, Saldo-Label).
 	mirror := func(colOffset, srcRow int) string {
 		parts := make([]string, 0, MA_TABLE_COUNT)
 		for t := 1; t <= MA_TABLE_COUNT; t++ {
@@ -413,6 +417,27 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 			parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+colOffset, srcRow+offsetR)))
 		}
 		return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),"")`, jAddr, strings.Join(parts, ","))
+	}
+	// mirrorOutMA/mirrorInpMA spiegeln über die benannten MA-Bereiche (Registry
+	// First): get(t) liefert das Feld der MA-Tabelle t; CHOOSE wählt per j.
+	mirrorOutMA := func(get func(t int) OutputField) string {
+		parts := make([]string, 0, MA_TABLE_COUNT)
+		for t := 1; t <= MA_TABLE_COUNT; t++ {
+			parts = append(parts, get(t).NamedRange)
+		}
+		return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),"")`, jAddr, strings.Join(parts, ","))
+	}
+	mirrorInpMA := func(get func(t int) InputField) string {
+		parts := make([]string, 0, MA_TABLE_COUNT)
+		for t := 1; t <= MA_TABLE_COUNT; t++ {
+			parts = append(parts, get(t).NamedRange)
+		}
+		return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),"")`, jAddr, strings.Join(parts, ","))
+	}
+	// maKatCoord bildet den Tabellenindex t auf (Periode, Level) für die
+	// Kategorien-Factory ab (analog zur Aufteilung in mirror).
+	maKatCoord := func(t int) (int, int) {
+		return ((t - 1) % MA_PERIOD_COUNT) + 1, ((t - 1) / MA_PERIOD_COUNT) + 1
 	}
 
 	r := top
@@ -444,15 +469,15 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 		})
 		_ = g.file.SetCellFormula(ws, c1, formula)
 	}
-	infoRow("Periode:", mirror(1, 4), "")
+	infoRow("Periode:", mirrorOutMA(func(t int) OutputField { return Registry.OutputMAPeriode.Get(t) }), "")
 	r++
-	infoRow("Von:", mirror(1, 5), "DD.MM.YYYY")
+	infoRow("Von:", mirrorInpMA(func(t int) InputField { return Registry.InputMAVon.Get(t) }), "DD.MM.YYYY")
 	r++
-	infoRow("Bis:", mirror(1, 6), "DD.MM.YYYY")
+	infoRow("Bis:", mirrorInpMA(func(t int) InputField { return Registry.InputMABis.Get(t) }), "DD.MM.YYYY")
 	r++
-	infoRow("Zeitraum:", mirror(1, 7), `0" Monate"`)
+	infoRow("Zeitraum:", mirrorOutMA(func(t int) OutputField { return Registry.OutputMAZeitraum.Get(t) }), `0" Monate"`)
 	r++
-	infoRow("OANDA-Kurs:", mirror(1, 8), "0.0000")
+	infoRow("OANDA-Kurs:", mirrorInpMA(func(t int) InputField { return Registry.InputMAKurs.Get(t) }), "0.0000")
 	r += 2 // Leerzeile
 
 	// Tabellenkopf
@@ -483,42 +508,50 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	}
 
 	for i, cat := range MA_CATEGORIES {
-		src := 10 + i
+		idx := i + 1
 		labCell(cat, false, "FFFFFF")
-		valCell(pLC, mirror(1, src), "#,##0.00", "FFFFFF")
-		valCell(pEUR, mirror(2, src), `#,##0.00" €"`, "FFFFFF")
+		valCell(pLC, mirrorInpMA(func(t int) InputField {
+			p, level := maKatCoord(t)
+			return Registry.InputMAKat.Get(p, level, idx)
+		}), "#,##0.00", "FFFFFF")
+		valCell(pEUR, mirrorOutMA(func(t int) OutputField {
+			p, level := maKatCoord(t)
+			return Registry.OutputMAKatEUR.Get(p, level, idx)
+		}), `#,##0.00" €"`, "FFFFFF")
 		r++
 	}
 
 	labCell("SUMME", true, MAClrGray)
-	bold(pLC, mirror(1, 18), "#,##0.00", MAClrGray)
-	bold(pEUR, mirror(2, 18), `#,##0.00" €"`, MAClrGray)
+	bold(pLC, mirrorOutMA(func(t int) OutputField { return Registry.OutputMASumLC.Get(t) }), "#,##0.00", MAClrGray)
+	bold(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMASumEUR.Get(t) }), `#,##0.00" €"`, MAClrGray)
 	r += 2 // Leerzeile
 
+	// Gesamtbedarf-Zeile trägt keinen benannten Bereich (positionsbasiert gespiegelt).
 	labCell("Gesamtbedarf an Mitteln:", false, "FFFFFF")
 	valCell(pLC, mirror(1, 20), "#,##0.00", "FFFFFF")
 	valCell(pEUR, mirror(2, 20), `#,##0.00" €"`, "FFFFFF")
 	r++
 	labCell("abzüglich Eigenmittel:", false, "FFFFFF")
-	valCell(pLC, mirror(1, 21), "#,##0.00", "FFFFFF")
-	valCell(pEUR, mirror(2, 21), `#,##0.00" €"`, "FFFFFF")
+	valCell(pLC, mirrorInpMA(func(t int) InputField { return Registry.InputMAEigenmittelLC.Get(t) }), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMAEigenmittelEUR.Get(t) }), `#,##0.00" €"`, "FFFFFF")
 	r++
 	labCell("abzüglich Drittmittel:", false, "FFFFFF")
-	valCell(pLC, mirror(1, 22), "#,##0.00", "FFFFFF")
-	valCell(pEUR, mirror(2, 22), `#,##0.00" €"`, "FFFFFF")
+	valCell(pLC, mirrorInpMA(func(t int) InputField { return Registry.InputMADrittmittelLC.Get(t) }), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMADrittmittelEUR.Get(t) }), `#,##0.00" €"`, "FFFFFF")
 	r++
-	// Saldo-Beschriftung dynamisch aus der Quelle spiegeln (Vorprojekt/Vorperiode).
+	// Saldo-Beschriftung dynamisch aus der Quelle spiegeln (Vorprojekt/Vorperiode) –
+	// die Label-Zelle trägt keinen benannten Bereich.
 	_ = g.setFormula(ws, cellName(pLbl, r), mirror(0, 23), StyleOptions{
 		HAlign: "left", VAlign: "center", FillColor: "FFFFFF",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 	})
-	valCell(pLC, mirror(1, 23), "#,##0.00", "FFFFFF")
-	valCell(pEUR, mirror(2, 23), `#,##0.00" €"`, "FFFFFF")
+	valCell(pLC, mirrorOutMA(func(t int) OutputField { return Registry.OutputMASaldoLC.Get(t) }), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMASaldoEUR.Get(t) }), `#,##0.00" €"`, "FFFFFF")
 	r += 2 // Leerzeile
 
 	labCell("KMW-Mittel Anforderung:", true, MAClrKMW)
-	bold(pLC, mirror(1, 25), "#,##0.00", MAClrKMW)
-	bold(pEUR, mirror(2, 25), `#,##0.00" €"`, MAClrKMW)
+	bold(pLC, mirrorInpMA(func(t int) InputField { return Registry.InputMAAnforderungLC.Get(t) }), "#,##0.00", MAClrKMW)
+	bold(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMAAnforderungEUR.Get(t) }), `#,##0.00" €"`, MAClrKMW)
 	bottom := r
 
 	g.styleOuterBorder(ws, top, pLbl, bottom, pEUR, 2, EV_CLR_BORDER)

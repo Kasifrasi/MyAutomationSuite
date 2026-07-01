@@ -57,7 +57,8 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 
 	nAddr := sel.fbSelNum
 	// mirror spiegelt eine Quellzelle (colOffset innerhalb der Periode, srcRow) über
-	// CHOOSE(N, …) je Finanzbericht-Periode.
+	// CHOOSE(N, …) je Finanzbericht-Periode. Nur noch für Zellen ohne benannten
+	// Bereich (FB-Ausgabenpositionen, Labels/IDs, Kum-Saldo) verwendet.
 	mirror := func(colOffset, srcRow int) string {
 		parts := make([]string, 0, FBPeriodenAnzahl)
 		for p := 1; p <= FBPeriodenAnzahl; p++ {
@@ -65,6 +66,40 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 			parts = append(parts, fmt.Sprintf("'%s'!%s", FBSheetName, absName(colStart+colOffset, srcRow)))
 		}
 		return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),"")`, nAddr, strings.Join(parts, ","))
+	}
+	// mirrorOut/mirrorInp spiegeln über die benannten Perioden-Bereiche (Registry
+	// First) statt über feste Zellbezüge auf das FB-Blatt.
+	mirrorOut := func(fac OutputFactory) string {
+		parts := make([]string, 0, FBPeriodenAnzahl)
+		for p := 1; p <= FBPeriodenAnzahl; p++ {
+			parts = append(parts, fac.Get(p).NamedRange)
+		}
+		return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),"")`, nAddr, strings.Join(parts, ","))
+	}
+	mirrorInp := func(fac InputFactory) string {
+		parts := make([]string, 0, FBPeriodenAnzahl)
+		for p := 1; p <= FBPeriodenAnzahl; p++ {
+			parts = append(parts, fac.Get(p).NamedRange)
+		}
+		return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),"")`, nAddr, strings.Join(parts, ","))
+	}
+	// mirrorOutVals baut die vier Wertformeln (LC, EUR, Kum-LC, Kum-EUR) einer
+	// Zeile aus den benannten Perioden-Bereichen.
+	mirrorOutVals := func(facs [4]OutputFactory) [4]string {
+		var out [4]string
+		for i, f := range facs {
+			out[i] = mirrorOut(f)
+		}
+		return out
+	}
+	// mirrorPosVals baut die vier Wertformeln positionsbasiert (für Zellen ohne
+	// benannten Bereich: FB-Ausgaben, Kum-Saldo).
+	mirrorPosVals := func(srcRow int) [4]string {
+		var out [4]string
+		for i := 0; i < 4; i++ {
+			out[i] = mirror(i+1, srcRow)
+		}
+		return out
 	}
 
 	r := top
@@ -89,15 +124,15 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 		})
 		_ = g.file.SetCellFormula(ws, c1, formula)
 	}
-	infoRow("Periode:", mirror(FBOffLC, FBRowPeriode), "")
+	infoRow("Periode:", mirrorOut(Registry.OutputFBPeriode), "")
 	r++
-	infoRow("Von:", mirror(FBOffLC, FBRowVon), "DD.MM.YYYY")
+	infoRow("Von:", mirrorInp(Registry.InputFBVon), "DD.MM.YYYY")
 	r++
-	infoRow("Bis:", mirror(FBOffLC, FBRowBis), "DD.MM.YYYY")
+	infoRow("Bis:", mirrorInp(Registry.InputFBBis), "DD.MM.YYYY")
 	r++
-	infoRow("Zeitraum:", mirror(FBOffLC, FBRowZeitraum), `0" Monate"`)
+	infoRow("Zeitraum:", mirrorOut(Registry.OutputFBZeitraum), `0" Monate"`)
 	r++
-	infoRow("Durchschnittskurs:", mirror(FBOffLC, FBRowKurs), "0.000000")
+	infoRow("Durchschnittskurs:", mirrorOut(Registry.OutputFBKurs), "0.000000")
 	r += 2 // Leerzeile
 
 	section := func(title string) {
@@ -112,9 +147,9 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 		_ = g.file.SetRowHeight(ws, r, 26.0)
 		r++
 	}
-	// dataRow spiegelt LC/EUR/Kum-LC/Kum-EUR (Offsets 1..4) einer Quellzeile.
+	// dataRow spiegelt LC/EUR/Kum-LC/Kum-EUR (vals) einer Quellzeile.
 	fmts := []string{"#,##0.00", `#,##0.00" €"`, "#,##0.00", `#,##0.00" €"`}
-	dataRow := func(label string, labelIsFormula bool, srcRow int, fill string, bld bool, align string) {
+	dataRow := func(label string, labelIsFormula bool, vals [4]string, fill string, bld bool, align string) {
 		lblOpts := StyleOptions{Bold: bld, HAlign: align, VAlign: "center", FillColor: fill,
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT}
 		if labelIsFormula {
@@ -123,7 +158,7 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 			_ = g.setValue(ws, cellName(cLbl, r), label, lblOpts)
 		}
 		for i := 0; i < 4; i++ {
-			_ = g.setFormula(ws, cellName(cLC+i, r), mirror(i+1, srcRow), StyleOptions{
+			_ = g.setFormula(ws, cellName(cLC+i, r), vals[i], StyleOptions{
 				Bold: bld, HAlign: "right", VAlign: "center", NumFormat: fmts[i], FillColor: fill,
 				BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 			})
@@ -134,30 +169,43 @@ func (g *Generator) evalDrawFBMirrorPanel(ws string, top int, sel evalSelRefs) {
 	// ─── EINNAHMEN ───
 	section("Einnahmen")
 	colHeaders("Typ / ID", []string{"Einnahmen (LC)", "Einnahmen (EUR)", "Kum. Einnahmen (LC)", "Kum. Einnahmen (EUR)"})
-	dataRow(mirror(FBOffLabel, FBRowSaldoVortrag), true, FBRowSaldoVortrag, FBClrWhite, false, "left") // Vorperiodensaldo (Label gespiegelt)
+	// Vorperiodensaldo (Label positionsbasiert gespiegelt, Werte über Named Ranges)
+	dataRow(mirror(FBOffLabel, FBRowSaldoVortrag), true,
+		mirrorOutVals([4]OutputFactory{Registry.OutputFBVSaldoLC, Registry.OutputFBVSaldoEUR, Registry.OutputFBVSaldoKumLC, Registry.OutputFBVSaldoKumEUR}),
+		FBClrWhite, false, "left")
 	for i, t := range TYPE_NAMES {
-		dataRow(t, false, FBRowIncomeStart+i, FBClrWhite, false, "left")
+		dataRow(t, false, mirrorOutVals(evalFBIncomeFactories(i)), FBClrWhite, false, "left")
 	}
-	gesamtEinnahmenRow := FBRowIncomeStart + len(TYPE_NAMES)
-	dataRow("Gesamteinnahmen", false, gesamtEinnahmenRow, FBClrTotal, true, "left")
+	dataRow("Gesamteinnahmen", false,
+		mirrorOutVals([4]OutputFactory{Registry.OutputFBGEinnahmenLC, Registry.OutputFBGEinnahmenEUR, Registry.OutputFBKumGEinnahmenLC, Registry.OutputFBKumGEinnahmenEUR}),
+		FBClrTotal, true, "left")
 
 	// ─── AUSGABEN ───
 	// Positionsbasiert: eine Zeile je Kostenposition (Anzahl folgt dem Budget).
+	// Die FB-Ausgabenzellen tragen keine benannten Bereiche (Tabellenzellen) und
+	// werden daher positionsbasiert gespiegelt.
 	section("Ausgaben")
 	colHeaders("ID", []string{"Ausgaben (LC)", "Ausgaben (EUR)", "Kum. Ausgaben (LC)", "Kum. Ausgaben (EUR)"})
 	nPos := g.budgetExpenseCount()
 	for i := 0; i < nPos; i++ {
-		dataRow(mirror(FBOffLabel, FB_AUSG_FIRST_ROW+i), true, FB_AUSG_FIRST_ROW+i, FBClrWhite, false, "center") // ID gespiegelt
+		dataRow(mirror(FBOffLabel, FB_AUSG_FIRST_ROW+i), true, mirrorPosVals(FB_AUSG_FIRST_ROW+i), FBClrWhite, false, "center") // ID gespiegelt
 	}
 	gesamtAusgRow := FB_AUSG_FIRST_ROW + nPos // = ausgTotalsRow auf dem FB-Blatt
-	dataRow("Gesamtausgaben", false, gesamtAusgRow, FBClrTotal, true, "left")
+	dataRow("Gesamtausgaben", false, mirrorPosVals(gesamtAusgRow), FBClrTotal, true, "left")
 	r++ // Leerzeile
 
 	// ─── SALDO DES FINANZBERICHTS ───
 	_ = g.setValue(ws, cellName(cLbl, r), "Saldo des Finanzberichts", EVMirrorInfoLabelStyle)
 	saldoSrcRow := gesamtAusgRow + 2 // FB-Saldo liegt zwei Zeilen unter Gesamtausgaben
+	// LC/EUR über benannte Bereiche; Kum-LC/Kum-EUR haben keinen Named Range.
+	saldoVals := [4]string{
+		mirrorOut(Registry.OutputFBSaldoLC),
+		mirrorOut(Registry.OutputFBSaldoEUR),
+		mirror(3, saldoSrcRow),
+		mirror(4, saldoSrcRow),
+	}
 	for i := 0; i < 4; i++ {
-		_ = g.setFormula(ws, cellName(cLC+i, r), mirror(i+1, saldoSrcRow), StyleOptions{
+		_ = g.setFormula(ws, cellName(cLC+i, r), saldoVals[i], StyleOptions{
 			Bold: true, HAlign: "right", VAlign: "center", NumFormat: fmts[i],
 			BorderTop: 6, BorderBottom: 6, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 		})

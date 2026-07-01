@@ -34,13 +34,18 @@ func (g *Generator) CreateMAPruefungSheet() error {
 	g.evalMainHeader(ws, r, "MITTELANFORDERUNGSPRÜFUNG", "Basis: ausgewählte Mittelanforderung (Folgeperiode des Finanzberichts)")
 	r += 3
 
-	// Auswahl-Panel (zentriert, oben) zuerst – liefert maSelP-/maSelK-Steuerzellen.
-	maSelPCell, maSelKCell, r := g.evalDrawMAPanel(ws, r)
+	// Auswahl-Panel (zentriert, oben) zuerst – registriert die benannten Bereiche
+	// der Steuerzellen (Periode/Anforderung).
+	_, _, r = g.evalDrawMAPanel(ws, r)
 	r += EV_TABLE_GAP
 
-	// Assuming FB_Prüfung runs first, we extract the cell value from g.evalFBSelNumAddr
-	fbSelNumCell := strings.ReplaceAll(strings.Split(g.evalFBSelNumAddr, "!")[1], "$", "")
-	sel := evalSelRefs{maSelP: maSelPCell, maSelK: maSelKCell, fbSelNum: fbSelNumCell}
+	// Die Auswahl-Steuerzellen werden ausschließlich über ihre benannten Bereiche
+	// referenziert. fbSelNum ist der Named Range der FB-Prüfung (läuft zuvor).
+	sel := evalSelRefs{
+		maSelP:   Registry.OutputMAPruefungAusgewaehltePeriode.NamedRange,
+		maSelK:   Registry.OutputMAPruefungAusgewaehlteAnforderung.NamedRange,
+		fbSelNum: Registry.OutputFBPruefungAusgewaehltePeriode.NamedRange,
+	}
 
 	// Jetzt maSelP = N+1 setzen (Folgeperiode des gewählten Finanzberichts).
 	// ...wurde entfernt, da maSelP nun direkt aus dem MA-Auswahl-Dropdown gelesen wird.
@@ -71,8 +76,8 @@ func (g *Generator) CreateMAPruefungSheet() error {
 		maEig := fmt.Sprintf(
 			`SUMIFS('%s'!%s,'%s'!%s,%s,'%s'!%s,"<="&%s,'%s'!%s,">=1")`,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_EIGDR, 1, MA_TABLE_COUNT),
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), maSelPCell,
-			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), maSelKCell,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_PER, 1, MA_TABLE_COUNT), sel.maSelP,
+			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK,
 			EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT))
 		prognFormula := fmt.Sprintf(
 			`=IFERROR(ROUND(MAX(0,MAX(0,(%s)+%s-(%s))-%s),2),0)`, realAct, maEig, realBud, fbMehrFormula)
@@ -129,8 +134,9 @@ func evalMAExpenseActual(g *Generator, sel evalSelRefs, idx int, valCol int, isI
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MAG_RANK, 1, g.maGridRows()))
 }
 
-// evalMAChooseManBetrag liefert einen CHOOSE-Ausdruck über die MA_ManBetrag_<n>-Namen
-// aller 18 Perioden, gewählt per maSelP – analog zu evalMAChooseKurs.
+// evalMAChooseManBetrag liefert einen CHOOSE-Ausdruck über die benannten
+// Manueller-Betrag-Bereiche (Inp_MA_ManBetragEUR_<n>) aller 18 Perioden, gewählt
+// per maSelP – analog zu evalMAChooseKurs.
 func evalMAChooseManBetrag(sel evalSelRefs) string {
 	j := fmt.Sprintf(`IFERROR(SUMPRODUCT('%s'!%s,('%s'!%s=%s)*('%s'!%s=%s)),0)`,
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_J, 1, MA_TABLE_COUNT),
@@ -138,7 +144,7 @@ func evalMAChooseManBetrag(sel evalSelRefs) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
-		parts[i] = fmt.Sprintf("MA_ManBetrag_%d", i+1)
+		parts[i] = Registry.InputMAManBetragEUR.Get(i + 1).NamedRange
 	}
 	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }
@@ -182,11 +188,7 @@ func evalMASelectedZeitraum(sel evalSelRefs) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, 0, MA_TABLE_COUNT)
 	for t := 1; t <= MA_TABLE_COUNT; t++ {
-		p := ((t - 1) % MA_PERIOD_COUNT) + 1
-		level := ((t - 1) / MA_PERIOD_COUNT) + 1
-		offsetR := (level - 1) * 30
-		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
-		parts = append(parts, fmt.Sprintf("'%s'!%s", MA_SHEET_NAME, absName(colS+1, 7+offsetR)))
+		parts = append(parts, Registry.OutputMAZeitraum.Get(t).NamedRange)
 	}
 	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }
@@ -201,7 +203,8 @@ func (g *Generator) evalFBMehreinnahmenParts(sel evalSelRefs) (string, string) {
 		if i == 2 {
 			continue
 		}
-		fbIstParts = append(fbIstParts, evalFBChooseRef(sel.fbSelNum, 12+i, 4)[1:])
+		_, facEUR := evalFBIncomeKumFactories(i)
+		fbIstParts = append(fbIstParts, evalFBChooseNamed(sel.fbSelNum, facEUR)[1:])
 		_, budName := g.evalBudgetNames(true, i)
 		budParts = append(budParts, fmt.Sprintf("IFERROR(%s,0)", budName))
 	}

@@ -108,7 +108,7 @@ func (g *Generator) CreateDashboardSheet(reg *TemplateRegistry) error {
 	if err = g.bindDashChecklist(ws, reg); err != nil {
 		return err
 	}
-	if err = g.applyDashConditionalFormatting(ws); err != nil {
+	if err = g.applyDashConditionalFormatting(ws, reg); err != nil {
 		return err
 	}
 
@@ -354,8 +354,8 @@ func (g *Generator) bindDashFields(ws string, reg *TemplateRegistry) error {
 	fmtDate := func(addr string) string {
 		return fmt.Sprintf(`TEXT(DAY(%s),"00")&"."&TEXT(MONTH(%s),"00")&"."&TEXT(YEAR(%s),"0000")`, addr, addr, addr)
 	}
-	startAddr := absName(DashColInputLeft, DashRowProjektstart)
-	endeAddr := absName(DashColInputRight, DashRowProjektstart)
+	startAddr := reg.InputDashProjektstart.NamedRange
+	endeAddr := reg.InputDashProjektende.NamedRange
 	laufzeitFormula := fmt.Sprintf(
 		`=IF(AND(ISNUMBER(%s),ISNUMBER(%s)),%s&" - "&%s,"")`,
 		startAddr, endeAddr, fmtDate(startAddr), fmtDate(endeAddr),
@@ -387,8 +387,8 @@ func (g *Generator) bindDashFields(ws string, reg *TemplateRegistry) error {
 	_ = g.bindInputField(ws, DashRowVPSaldo, DashColInputLeft, reg.InputDashVPSaldoLC)
 	saldoEURFormula := fmt.Sprintf(
 		"=IFERROR(ROUND(%s/%s,2),0)",
-		absName(DashColInputLeft, DashRowVPSaldo),
-		absName(DashColInputRight, DashRowVPEnde),
+		reg.InputDashVPSaldoLC.NamedRange,
+		reg.InputDashVPWechselkurs.NamedRange,
 	)
 	if err := g.setFormula(ws, cellName(DashColInputRight, DashRowVPSaldo), saldoEURFormula, DashOutputEURStyle); err != nil {
 		return err
@@ -404,8 +404,8 @@ func (g *Generator) bindDashFields(ws string, reg *TemplateRegistry) error {
 	_ = g.bindInputField(ws, DashRowVPSaldovortrag, DashColInputLeft, reg.InputDashVPFolgeSaldoLC)
 	saldovortragEURFormula := fmt.Sprintf(
 		"=IFERROR(ROUND(%s/%s,2),0)",
-		absName(DashColInputLeft, DashRowVPSaldovortrag),
-		absName(DashColInputRight, DashRowVPFolgestart),
+		reg.InputDashVPFolgeSaldoLC.NamedRange,
+		reg.InputDashVPFolgeWechselkurs.NamedRange,
 	)
 	if err := g.setFormula(ws, cellName(DashColInputRight, DashRowVPSaldovortrag), saldovortragEURFormula, DashOutputEURStyle); err != nil {
 		return err
@@ -432,8 +432,9 @@ func (g *Generator) bindDashChecklist(ws string, reg *TemplateRegistry) error {
 	return nil
 }
 
-func (g *Generator) applyDashConditionalFormatting(ws string) error {
-	vpAddr := absName(DashColInputRight, DashRowProjektNummer)
+func (g *Generator) applyDashConditionalFormatting(ws string, reg *TemplateRegistry) error {
+	// "Vorprojekt vorhanden?"-Auswahl über ihren benannten Bereich.
+	vpAddr := reg.InputDashVorprojekt.NamedRange
 	docEnd := DashRowChecklistStart + len(DashDocs) - 1
 
 	vpCfOpts := StyleOptions{FillColor: DashClrDisabled, FontColor: DashClrFontGray}
