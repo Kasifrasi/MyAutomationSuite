@@ -193,7 +193,8 @@ func (g *Generator) getOrCreateConditionalStyle(opts StyleOptions) (int, error) 
 func (g *Generator) setStyle(sheet, hCell, vCell string, opts StyleOptions) error {
 	id, err := g.getOrCreateStyle(opts)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 	return g.file.SetCellStyle(sheet, hCell, vCell, id)
 }
@@ -201,7 +202,8 @@ func (g *Generator) setStyle(sheet, hCell, vCell string, opts StyleOptions) erro
 func (g *Generator) setValue(sheet, cell string, val interface{}, opts StyleOptions) error {
 	err := g.file.SetCellValue(sheet, cell, val)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 	return g.setStyle(sheet, cell, cell, opts)
 }
@@ -209,7 +211,8 @@ func (g *Generator) setValue(sheet, cell string, val interface{}, opts StyleOpti
 func (g *Generator) setFormula(sheet, cell, formula string, opts StyleOptions) error {
 	err := g.file.SetCellFormula(sheet, cell, formula)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 	return g.setStyle(sheet, cell, cell, opts)
 }
@@ -223,11 +226,13 @@ func (g *Generator) setDynArrayFormula(sheet, cell, formula string, opts StyleOp
 func (g *Generator) mergeCells(sheet, hCell, vCell string, val interface{}, opts StyleOptions) error {
 	err := g.file.MergeCell(sheet, hCell, vCell)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 	err = g.file.SetCellValue(sheet, hCell, val)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 	return g.setStyle(sheet, hCell, vCell, opts)
 }
@@ -266,7 +271,8 @@ func (g *Generator) drawSectionHeader(sheet string, row int, title string) error
 	}
 	err := g.mergeCells(sheet, cellName(BudgetColLabel, row), cellName(BudgetColEUR, row), title, opts)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 	_ = g.file.SetRowHeight(sheet, row, 24.0)
 	return nil
@@ -286,7 +292,8 @@ func (g *Generator) drawSubHeader(sheet string, row int, title string) error {
 	}
 	err := g.mergeCells(sheet, cellName(BudgetColLabel, row), cellName(BudgetColEUR, row), title, opts)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 	_ = g.file.SetRowHeight(sheet, row, 20.0)
 	return nil
@@ -301,7 +308,8 @@ func (g *Generator) drawYearRow(sheet string, row int, label string, labelName, 
 	}
 	err := g.setValue(sheet, cellName(BudgetColLabel, row), label, lblOpts)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 
 	inputLCOpts := StyleOptions{
@@ -318,7 +326,8 @@ func (g *Generator) drawYearRow(sheet string, row int, label string, labelName, 
 	for c := BudgetColLC; c <= BudgetColY3; c++ {
 		err = g.setValue(sheet, cellName(c, row), "", inputLCOpts)
 		if err != nil {
-			fmt.Println("ERR:", err); return err
+			fmt.Println("ERR:", err)
+			return err
 		}
 	}
 
@@ -326,7 +335,8 @@ func (g *Generator) drawYearRow(sheet string, row int, label string, labelName, 
 	inputEuroOpts.NumFormat = BudgetFmtEUR
 	err = g.setValue(sheet, cellName(BudgetColEUR, row), "", inputEuroOpts)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 
 	if lwName != "" {
@@ -355,7 +365,8 @@ func (g *Generator) styleHeader(sheet string, r1, c1, r2, c2 int) error {
 		for c := c1; c <= c2; c++ {
 			err := g.setStyle(sheet, cellName(c, r), cellName(c, r), opts)
 			if err != nil {
-				fmt.Println("ERR:", err); return err
+				fmt.Println("ERR:", err)
+				return err
 			}
 		}
 	}
@@ -493,7 +504,8 @@ func (g *Generator) styleTotalRow(sheet string, row int) error {
 	for c := BudgetColLabel; c <= BudgetColEUR; c++ {
 		err := g.setStyle(sheet, cellName(c, row), cellName(c, row), opts)
 		if err != nil {
-			fmt.Println("ERR:", err); return err
+			fmt.Println("ERR:", err)
+			return err
 		}
 	}
 	_ = g.file.SetRowHeight(sheet, row, 20.0)
@@ -503,7 +515,8 @@ func (g *Generator) styleTotalRow(sheet string, row int) error {
 func (g *Generator) addConditionalFormat(sheet, cell, formula string, opts StyleOptions) error {
 	styleID, err := g.getOrCreateConditionalStyle(opts)
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 	formula = strings.TrimPrefix(formula, "=")
 	return g.file.SetConditionalFormat(sheet, cell, []excelize.ConditionalFormatOptions{
@@ -522,7 +535,8 @@ func (g *Generator) bindInputField(sheet string, row, col int, field InputField)
 		RefersTo: fmt.Sprintf("'%s'!%s", sheet, absName(col, row)),
 	})
 	if err != nil {
-		fmt.Println("ERR:", err); return err
+		fmt.Println("ERR:", err)
+		return err
 	}
 
 	// Validierung setzen, falls vorhanden

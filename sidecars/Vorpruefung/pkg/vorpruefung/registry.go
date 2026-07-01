@@ -934,12 +934,51 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputBudgetGesamtEUR:      budget.Out("GesamtEUR"),
 
 		// Finanzberichte
-		OutputFBPeriode:           fb.OutFact("Periode"),
-		InputFBVon:                fb.InpFact("Von_%d", nil),
-		InputFBBis:                fb.InpFact("Bis_%d", nil),
-		InputFBAufschlBankLC:      fb.InpFact("aufschl_Bank_%d", nil),
-		InputFBAufschlKasseLC:     fb.InpFact("aufschl_Kasse_%d", nil),
-		InputFBAufschlSonstigesLC: fb.InpFact("aufschl_Sonstiges_%d", nil),
+		OutputFBPeriode:  fb.OutFact("Periode_%d"),
+		InputFBVon:       fb.InpFact("Von_%d", nil),
+		InputFBBis:       fb.InpFact("Bis_%d", nil),
+		OutputFBZeitraum: fb.OutFact("Zeitraum_%d"),
+		OutputFBKurs:     fb.OutFact("Kurs_%d"),
+
+		OutputFBVSaldoLC:     fb.OutFact("VSaldoLC_%d"),
+		OutputFBVSaldoEUR:    fb.OutFact("VSaldoEUR_%d"),
+		OutputFBVSaldoKumLC:  fb.OutFact("VSaldoKumLC_%d"),
+		OutputFBVSaldoKumEUR: fb.OutFact("VSaldoKumEUR_%d"),
+
+		OutputFBEMlLC:      fb.OutFact("EMlLC_%d"),
+		OutputFBEMEUR:      fb.OutFact("EMEUR_%d"),
+		OutputFBKumEMLC:    fb.OutFact("KumEMLC_%d"),
+		OutputFBKumEMEUR:   fb.OutFact("KumEMEUR_%d"),
+		OutputFBDMLC:       fb.OutFact("DMLC_%d"),
+		OutputFBDMEUR:      fb.OutFact("DMEUR_%d"),
+		OutputFBKumDMLC:    fb.OutFact("KumDMLC_%d"),
+		OutputFBKumDMEUR:   fb.OutFact("KumDMEUR_%d"),
+		OutputFBKMWLC:      fb.OutFact("KMWLC_%d"),
+		OutputFBKMWEUR:     fb.OutFact("KMWEUR_%d"),
+		OutputFBKumKMWLC:   fb.OutFact("KumKMWLC_%d"),
+		OutputFBKumKMWEUR:  fb.OutFact("KumKMWEUR_%d"),
+		OutputFBZinsLC:     fb.OutFact("ZinsLC_%d"),
+		OutputFBZinsEUR:    fb.OutFact("ZinsEUR_%d"),
+		OutputFBKumZinsLC:  fb.OutFact("KumZinsLC_%d"),
+		OutputFBKumZinsEUR: fb.OutFact("KumZinsEUR_%d"),
+
+		OutputFBGEinnahmenLC:     fb.OutFact("GEinnahmenLC_%d"),
+		OutputFBGEinnahmenEUR:    fb.OutFact("GEinnahmenEUR_%d"),
+		OutputFBKumGEinnahmenLC:  fb.OutFact("KumGEinnahmenLC_%d"),
+		OutputFBKumGEinnahmenEUR: fb.OutFact("KumGEinnahmenEUR_%d"),
+
+		OutputFBSaldoLC:  fb.OutFact("SaldoLC_%d"),
+		OutputFBSaldoEUR: fb.OutFact("SaldoEUR_%d"),
+
+		InputFBAufschlBankLC:        fb.InpFact("aufschl_Bank_%d", nil),
+		OutputFBAufschlBankEUR:      fb.OutFact("AufschlBankEUR_%d"),
+		InputFBAufschlKasseLC:       fb.InpFact("aufschl_Kasse_%d", nil),
+		OutputFBAufschlKasseEUR:     fb.OutFact("AufschlKasseEUR_%d"),
+		InputFBAufschlSonstigesLC:   fb.InpFact("aufschl_Sonstiges_%d", nil),
+		OutputFBAufschlSonstigesEUR: fb.OutFact("AufschlSonstigesEUR_%d"),
+
+		OutputFBDifferenzLC:  fb.OutFact("DifferenzLC_%d"),
+		OutputFBDifferenzEUR: fb.OutFact("DifferenzEUR_%d"),
 
 		// Pruefung FB
 		InputFBPruefungAuswahl:    fbPrue.Inp("Auswahl", nil),

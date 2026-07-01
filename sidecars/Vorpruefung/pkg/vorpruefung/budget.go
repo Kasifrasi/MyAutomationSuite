@@ -34,7 +34,7 @@ const (
 
 	// Feste Zeilen
 	BudgetRowTitle     = 2
-	BudgetRowSection1  = 4  // Abschnittsheader + Kurs-Zeile (gleiche Zeile)
+	BudgetRowSection1  = 4 // Abschnittsheader + Kurs-Zeile (gleiche Zeile)
 	BudgetRowFinanzHdr = 5
 	BudgetRowEigenHead = 6
 	BudgetRowEigen     = 7
@@ -329,8 +329,8 @@ func (g *Generator) drawBudgetAusgaben(ws string, dyn budgetDynRows) error {
 
 func (g *Generator) drawBudgetDrittmittelTable(ws string) error {
 	cName, cLc, cEur := BudgetColStatus, BudgetColCheck, BudgetColBegr2
-	titleRow := BudgetRowSection2        // = 17
-	headerRow := BudgetRowAusgHdr        // = 18
+	titleRow := BudgetRowSection2 // = 17
+	headerRow := BudgetRowAusgHdr // = 18
 	geberRows := 10
 	dataRows := geberRows + 1
 
@@ -384,7 +384,7 @@ func (g *Generator) drawBudgetReserveBox(ws string, reserveEurAddr string) {
 	if reserveEurAddr != "" {
 		g.setFormula(ws, cellName(col, BudgetReserveRowAmount), fmt.Sprintf("=%s", reserveEurAddr), StyleOptions{
 			Bold: true, Size: 9, FontColor: BudgetClrFont, HAlign: "center", VAlign: "center",
-			NumFormat: BudgetFmtEUR,
+			NumFormat:  BudgetFmtEUR,
 			BorderLeft: 1, BorderRight: 1, BorderTop: 1, BorderBottom: 1, BorderColor: BudgetClrGrid,
 		})
 	}
