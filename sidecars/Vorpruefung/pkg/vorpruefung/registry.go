@@ -46,6 +46,11 @@ type ExcelElement interface {
 // Table Definitionen
 // ─────────────────────────────────────────────────────────────
 
+// FBPeriodenAnzahl ist die Anzahl der Berichtsperioden im Finanzbericht.
+// Für jede Periode wird pro Tabellen-Factory (Ausgaben/Einnahmen) eine
+// dynamische Tabelle 1..FBPeriodenAnzahl erzeugt.
+const FBPeriodenAnzahl = 18
+
 type TableColumn struct {
 	Header string
 	Width  float64
@@ -293,6 +298,14 @@ type TemplateRegistry struct {
 	TableBudgetAusgaben    TableField
 	TableBudgetDrittmittel TableField
 
+	// KMW-Mittel-Tabelle
+	TableKMWMittel TableField
+
+	// Finanzberichte-Tabellen (dynamisch pro Periode)
+	TableFBAusgaben    TableFactory
+	TableFBEinnahmen   TableFactory
+	TableFBEinnahmenWK TableFactory
+
 	// Dashboard
 	InputDashProjektnummer       InputField
 	InputDashVorprojekt          InputField
@@ -351,11 +364,47 @@ type TemplateRegistry struct {
 	OutputBudgetGesamtEUR      OutputField
 
 	// Finanzberichte
+	OutputFBPeriode         OutputFactory
 	InputFBVon              InputFactory
 	InputFBBis              InputFactory
-	InputFBAufschlBank      InputFactory
-	InputFBAufschlKasse     InputFactory
-	InputFBAufschlSonstiges InputFactory
+	OutputFBZeitraum        OutputFactory
+	OutputFBKurs            OutputFactory
+	OutputFBVSaldoLC        OutputFactory
+	OutputFBVSaldoEUR       OutputFactory
+	OutputFBVSaldoKumLC     OutputFactory
+	OutputFBVSaldoKumEUR    OutputFactory
+	OutputFBEMlLC           OutputFactory
+	OutputFBEMEUR          	OutputFactory
+	OutputFBKumEMLC         OutputFactory
+	OutputFBKumEMEUR        OutputFactory
+	OutputFBDMLC            OutputFactory
+	OutputFBDMEUR           OutputFactory
+	OutputFBKumDMLC         OutputFactory
+	OutputFBKumDMEUR        OutputFactory
+	OutputFBKMWLC           OutputFactory
+	OutputFBKMWEUR          OutputFactory
+	OutputFBKumKMWLC        OutputFactory
+	OutputFBKumKMWEUR       OutputFactory
+	OutputFBZinsLC           OutputFactory
+	OutputFBZinsEUR          OutputFactory
+	OutputFBKumZinsLC        OutputFactory
+	OutputFBKumZinsEUR       OutputFactory
+	OutputFBGEinnahmenLC     OutputFactory
+	OutputFBGEinnahmenEUR    OutputFactory
+	OutputFBKumGEinnahmenLC  OutputFactory
+	OutputFBKumGEinnahmenEUR OutputFactory
+	OutputFBSaldoLC          OutputFactory
+	OutputFBSaldoEUR         OutputFactory
+	
+	InputFBAufschlBankLC      InputFactory
+	OutputFBAufschlBankEUR    OutputFactory
+	InputFBAufschlKasseLC     InputFactory
+	OutputFBAufschlKasseEUR   OutputFactory
+	InputFBAufschlSonstigesLC InputFactory
+	OutputFBAufschlSonstigesEUR OutputFactory
+
+	OutputFBDifferenzLC  OutputFactory
+	OutputFBDifferenzEUR OutputFactory
 
 	// Pruefung FB
 	InputFBPruefungAuswahl    InputField
@@ -397,7 +446,6 @@ var Registry = NewTemplateRegistry()
 func NewTemplateRegistry() *TemplateRegistry {
 	dash := SheetBuilder{Sheet: constants.VPSheetDASHBOARD, Prefix: "Dash_"}
 	budget := SheetBuilder{Sheet: constants.VPSheetBUDGET, Prefix: "Budget_"}
-	kmw := SheetBuilder{Sheet: constants.VPSheetKMW_MITTEL, Prefix: "KMW_"}
 	fb := SheetBuilder{Sheet: constants.VPSheetFINANZBERICHTE, Prefix: "FB_"}
 	fbPrue := SheetBuilder{Sheet: constants.VPSheetFB_PRUEFUNG, Prefix: "FBPruef_"}
 	ma := SheetBuilder{Sheet: constants.VPSheetMA, Prefix: "MA_"}
@@ -428,6 +476,57 @@ func NewTemplateRegistry() *TemplateRegistry {
 				{Header: "Name des Gebers"},
 				{Header: "Betrag (LC)", Format: "#,##0.00"},
 				{Header: "Betrag (EUR)", Format: `#,##0.00" €"`},
+			},
+		},
+
+		// KMW-Mittel-Tabelle
+		TableKMWMittel: TableField{
+			Name:         "TblKMWMittel",
+			Sheet:        constants.VPSheetKMW_MITTEL,
+			HasTotalsRow: true,
+			Columns: []TableColumn{
+				{Header: "Periode"},
+				{Header: "Waehrung"},
+				{Header: "Betrag", Format: "#,##0.00"},
+				{Header: "Datum"},
+			},
+		},
+
+		// Finanzberichte-Tabellen (dynamisch pro Periode 1..FBPeriodenAnzahl)
+		TableFBAusgaben: TableFactory{
+			Sheet:        constants.VPSheetFINANZBERICHTE,
+			Format:       "Ausgaben_%d",
+			HasTotalsRow: true,
+			Columns: []TableColumn{
+				{Header: "ID"},
+				{Header: "Ausgaben (LC)", Format: "#,##0.00"},
+				{Header: "Ausgaben (EUR)", Format: `#,##0.00" €"`},
+				{Header: "Kum. Ausgaben (LC)", Format: "#,##0.00"},
+				{Header: "Kum. Ausgaben (EUR)", Format: `#,##0.00" €"`},
+			},
+		},
+		TableFBEinnahmen: TableFactory{
+			Sheet:        constants.VPSheetFINANZBERICHTE,
+			Format:       "Einnahmen_%d",
+			HasTotalsRow: true,
+			Columns: []TableColumn{
+				{Header: "Typ"},
+				{Header: "Geber"},
+				{Header: "Einnahmen (LC)", Format: "#,##0.00"},
+				{Header: "Einnahmen (EUR)", Format: `#,##0.00" €"`},
+				{Header: "Kurs", Format: "0.000000"},
+			},
+		},
+		TableFBEinnahmenWK: TableFactory{
+			Sheet:        constants.VPSheetFINANZBERICHTE,
+			Format:       "Einnahmen_WK_%d",
+			HasTotalsRow: true,
+			Columns: []TableColumn{
+				{Header: "Typ"},
+				{Header: "Geber"},
+				{Header: "Einnahmen (LC)", Format: "#,##0.00"},
+				{Header: "Einnahmen (EUR)", Format: `#,##0.00" €"`},
+				{Header: "Kurs", Format: "0.000000"},
 			},
 		},
 
@@ -487,13 +586,8 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputBudgetGesamtY3:       budget.Out("GesamtY3"),
 		OutputBudgetGesamtEUR:      budget.Out("GesamtEUR"),
 
-		// KMW-Mittel
-		InputKMWPeriode:  kmw.InpFact("Periode_%d", nil),
-		InputKMWWaehrung: kmw.InpFact("Waehrung_%d", nil),
-		InputKMWBetrag:   kmw.InpFact("Betrag_%d", nil),
-		InputKMWDatum:    kmw.InpFact("Datum_%d", nil),
-
 		// Finanzberichte
+		OutputFBPeriode:         fb.Out("Periode"),
 		InputFBVon:              fb.InpFact("Von_%d", nil),
 		InputFBBis:              fb.InpFact("Bis_%d", nil),
 		InputFBAufschlBank:      fb.InpFact("aufschl_Bank_%d", nil),
