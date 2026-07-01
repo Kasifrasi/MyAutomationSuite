@@ -93,6 +93,12 @@ func (g *Generator) CreateMAPruefungSheet() error {
 
 // evalMAExpenseActual summiert die ausgewählten Mittelanforderungen (#1..#k) der
 // Periode P je Kategorie über das MA-Grid auf dem Daten-Blatt.
+//
+// Einnahmenseite (Finanzierungsanteile): 4 feste Kategorien analog zu den
+// FB-Einnahmentypen. Ausgabenseite (Prognoseprüfung): die 8 festen
+// Kostenkategorien (EXPENSE_CATEGORIES – Bauausgaben, Investitionen, …) exakt wie
+// in pruefung_fb.go, adressiert über den echten Kategorienamen (nicht positions-
+// bzw. indexbasiert).
 func evalMAExpenseActual(g *Generator, sel evalSelRefs, idx int, valCol int, isIncome bool) string {
 	cat := ""
 	if isIncome {
@@ -107,7 +113,7 @@ func evalMAExpenseActual(g *Generator, sel evalSelRefs, idx int, valCol int, isI
 			cat = "Manueller Betrag" // Unused but mapping holds
 		}
 	} else {
-		cat = fmt.Sprintf("Expense_%d", idx)
+		cat = EXPENSE_CATEGORIES[idx]
 	}
 
 	// Weil der Rank (sel.maSelK) jetzt fest der Level-Ebene (1, 2, 3) entspricht,
@@ -145,7 +151,7 @@ func evalMAChooseKurs(sel evalSelRefs) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
-		parts[i] = FieldMAKurs(i + 1).NamedRange
+		parts[i] = Registry.InputMAKurs.Get(i + 1).NamedRange
 	}
 	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }

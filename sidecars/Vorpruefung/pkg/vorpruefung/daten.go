@@ -97,9 +97,9 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_J, j), j)
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_PER, j), p)
 
-		kmwCellLC := FieldMAKmwLC(j).NamedRange
-		kmwCellEUR := FieldMAKmwEUR(j)
-		manCellEUR := FieldMAManBetrag(j).NamedRange
+		kmwCellLC := Registry.InputMAAnforderungLC.Get(j).NamedRange
+		kmwCellEUR := Registry.OutputMAAnforderungEUR.Get(j).NamedRange
+		manCellEUR := Registry.InputMAManBetragEUR.Get(j).NamedRange
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_FILL, j),
 			fmt.Sprintf(`=IF(OR(IFERROR(%s,0)>0, IFERROR(%s,0)>0, IFERROR(%s,0)>0),1,0)`,
@@ -123,10 +123,10 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 				dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j), level)
 		}
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j), labelFormula)
-		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j), fmt.Sprintf(`=IFERROR(%s,0)`, FieldMASumLC(j)))
-		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j), fmt.Sprintf(`=IFERROR(%s,0)`, FieldMASumEUR(j)))
-		eigCellEUR := FieldMAEigenmittelEUR(j)
-		drittCellEUR := FieldMADrittmittelEUR(j)
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j), fmt.Sprintf(`=IFERROR(%s,0)`, Registry.OutputMASumLC.Get(j).NamedRange))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j), fmt.Sprintf(`=IFERROR(%s,0)`, Registry.OutputMASumEUR.Get(j).NamedRange))
+		eigCellEUR := Registry.OutputMAEigenmittelEUR.Get(j).NamedRange
+		drittCellEUR := Registry.OutputMADrittmittelEUR.Get(j).NamedRange
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_EIGDR, j),
 			fmt.Sprintf(`=IFERROR(ROUND(%s+%s,2),0)`, eigCellEUR, drittCellEUR))
@@ -142,12 +142,12 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		einName1 := fmt.Sprintf("Einnahmen_%d", p)
 		einName2 := fmt.Sprintf("Einnahmen_WK_%d", p)
 
-		aufschlBank := FieldFBAufschlBank(p).NamedRange
-		aufschlKasse := FieldFBAufschlKasse(p).NamedRange
-		aufschlSonstiges := FieldFBAufschlSonstiges(p).NamedRange
+		aufschlBank := Registry.InputFBAufschlBankLC.Get(p).NamedRange
+		aufschlKasse := Registry.InputFBAufschlKasseLC.Get(p).NamedRange
+		aufschlSonstiges := Registry.InputFBAufschlSonstigesLC.Get(p).NamedRange
 
-		fbVon := FieldFBVon(p).NamedRange
-		fbBis := FieldFBBis(p).NamedRange
+		fbVon := Registry.InputFBVon.Get(p).NamedRange
+		fbBis := Registry.InputFBBis.Get(p).NamedRange
 
 		_ = f.SetCellValue(ws, dc(EV_DTN_FB_META_PER, p), p)
 
@@ -201,16 +201,11 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 
 	gridEntries := make([]maGridEntry, 0, maDataRows+4)
 	for c := 0; c < maDataRows; c++ {
-		// Category labels are on the MA sheet. For now we will just use indices for categories if needed,
-		// or read the actual label from the MA sheet?
-		// Since daten.go is on a different sheet, we could just reference the label cell, but daten sheet
-		// SUMIFS requires plain strings if we use "KMW-Mittel".
-		// We'll leave the cat string empty or placeholder and fill it dynamically or let the API do it?
-		// Wait, daten.go populates the daten sheet. The API won't touch the daten sheet!
-		// But in pruefung_fb.go and pruefung_ma.go, the SUMIFS matches this value.
-		// So we can just use an index string like "Expense_0" for the category in daten.go,
-		// and in pruefung_fb.go/pruefung_ma.go we query for "Expense_0".
-		gridEntries = append(gridEntries, maGridEntry{fmt.Sprintf("Expense_%d", c), 10 + c})
+		// Ausgabenseite: die 8 festen Kostenkategorien (Bauausgaben, Investitionen …)
+		// mit ihrem echten Namen. So greift die kategoriebasierte SUMIFS der
+		// Prognoseprüfung (pruefung_ma.go) exakt wie bei den Finanzberichten
+		// (pruefung_fb.go) – ohne positions-/indexbasierte Platzhalter.
+		gridEntries = append(gridEntries, maGridEntry{EXPENSE_CATEGORIES[c], 10 + c})
 	}
 
 	// The income types (KMW-Mittel etc.) are still hardcoded in the comparison logic?
@@ -224,6 +219,8 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 	)
 	blockSize := len(gridEntries)
 	for j := 1; j <= MA_TABLE_COUNT; j++ {
+		p := ((j - 1) % MA_PERIOD_COUNT) + 1
+		level := ((j - 1) / MA_PERIOD_COUNT) + 1
 		for idx, e := range gridEntries {
 			row := (j-1)*blockSize + idx + 1
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_PER, row), fmt.Sprintf("=$%s$%d", colLetter(EV_DTN_MA_META_PER), j))
@@ -232,23 +229,22 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 
 			var maValLC, maValEUR string
 			if e.cat == "Eigenmittel" {
-				maValLC = FieldMAEigenmittelLC(j).NamedRange
-				maValEUR = FieldMAEigenmittelEUR(j)
+				maValLC = Registry.InputMAEigenmittelLC.Get(j).NamedRange
+				maValEUR = Registry.OutputMAEigenmittelEUR.Get(j).NamedRange
 			} else if e.cat == "Drittmittel" {
-				maValLC = FieldMADrittmittelLC(j).NamedRange
-				maValEUR = FieldMADrittmittelEUR(j)
+				maValLC = Registry.InputMADrittmittelLC.Get(j).NamedRange
+				maValEUR = Registry.OutputMADrittmittelEUR.Get(j).NamedRange
 			} else if e.cat == "KMW-Mittel" {
-				maValLC = FieldMAKmwLC(j).NamedRange
-				maValEUR = FieldMAKmwEUR(j)
+				maValLC = Registry.InputMAAnforderungLC.Get(j).NamedRange
+				maValEUR = Registry.OutputMAAnforderungEUR.Get(j).NamedRange
 			} else if e.cat == "Manueller Betrag" {
 				// Manueller Betrag hat kein LC-Feld, wir nehmen 0
 				maValLC = "0"
-				maValEUR = FieldMAManBetrag(j).NamedRange
-			} else if strings.HasPrefix(e.cat, "Expense_") {
-				var catIdx int
-				fmt.Sscanf(e.cat, "Expense_%d", &catIdx)
-				maValLC = FieldMAKat(j, catIdx+1).NamedRange
-				maValEUR = FieldMAKatEUR(j, catIdx+1)
+				maValEUR = Registry.InputMAManBetragEUR.Get(j).NamedRange
+			} else if idx < maDataRows {
+				// Kostenkategorie-Zeile (idx == Kategorie-Index, siehe gridEntries).
+				maValLC = Registry.InputMAKat.Get(p, level, idx+1).NamedRange
+				maValEUR = Registry.OutputMAKatEUR.Get(p, level, idx+1).NamedRange
 			}
 
 			_ = f.SetCellFormula(ws, dc(EV_DTN_MAG_LC, row), fmt.Sprintf(`=IFERROR(%s,0)`, maValLC))

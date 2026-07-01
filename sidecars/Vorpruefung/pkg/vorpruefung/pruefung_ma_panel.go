@@ -466,9 +466,9 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 
 	for i, cat := range MA_CATEGORIES {
 		src := 10 + i
-		labCell(cat, false, COLOR_WHITE)
-		valCell(pLC, mirror(1, src), "#,##0.00", COLOR_WHITE)
-		valCell(pEUR, mirror(2, src), `#,##0.00" €"`, COLOR_WHITE)
+		labCell(cat, false, "FFFFFF")
+		valCell(pLC, mirror(1, src), "#,##0.00", "FFFFFF")
+		valCell(pEUR, mirror(2, src), `#,##0.00" €"`, "FFFFFF")
 		r++
 	}
 
@@ -477,25 +477,25 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	bold(pEUR, mirror(2, 18), `#,##0.00" €"`, MAClrGray)
 	r += 2 // Leerzeile
 
-	labCell("Gesamtbedarf an Mitteln:", false, COLOR_WHITE)
-	valCell(pLC, mirror(1, 20), "#,##0.00", COLOR_WHITE)
-	valCell(pEUR, mirror(2, 20), `#,##0.00" €"`, COLOR_WHITE)
+	labCell("Gesamtbedarf an Mitteln:", false, "FFFFFF")
+	valCell(pLC, mirror(1, 20), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirror(2, 20), `#,##0.00" €"`, "FFFFFF")
 	r++
-	labCell("abzüglich Eigenmittel:", false, COLOR_WHITE)
-	valCell(pLC, mirror(1, 21), "#,##0.00", COLOR_WHITE)
-	valCell(pEUR, mirror(2, 21), `#,##0.00" €"`, COLOR_WHITE)
+	labCell("abzüglich Eigenmittel:", false, "FFFFFF")
+	valCell(pLC, mirror(1, 21), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirror(2, 21), `#,##0.00" €"`, "FFFFFF")
 	r++
-	labCell("abzüglich Drittmittel:", false, COLOR_WHITE)
-	valCell(pLC, mirror(1, 22), "#,##0.00", COLOR_WHITE)
-	valCell(pEUR, mirror(2, 22), `#,##0.00" €"`, COLOR_WHITE)
+	labCell("abzüglich Drittmittel:", false, "FFFFFF")
+	valCell(pLC, mirror(1, 22), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirror(2, 22), `#,##0.00" €"`, "FFFFFF")
 	r++
 	// Saldo-Beschriftung dynamisch aus der Quelle spiegeln (Vorprojekt/Vorperiode).
 	_ = g.setFormula(ws, cellName(pLbl, r), mirror(0, 23), StyleOptions{
-		HAlign: "left", VAlign: "center", FillColor: COLOR_WHITE,
+		HAlign: "left", VAlign: "center", FillColor: "FFFFFF",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 	})
-	valCell(pLC, mirror(1, 23), "#,##0.00", COLOR_WHITE)
-	valCell(pEUR, mirror(2, 23), `#,##0.00" €"`, COLOR_WHITE)
+	valCell(pLC, mirror(1, 23), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirror(2, 23), `#,##0.00" €"`, "FFFFFF")
 	r += 2 // Leerzeile
 
 	labCell("KMW-Mittel Anforderung:", true, MAClrKMW)

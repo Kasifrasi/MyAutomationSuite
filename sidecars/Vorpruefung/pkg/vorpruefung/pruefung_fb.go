@@ -526,23 +526,15 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 }
 
 // evalComparisonLabels liefert die Zeilenbeschriftungen der Vergleichstabelle.
-// Einnahmen (Finanzierungsanteile) und FB-Ausgaben (Soll-Ist) sind kategoriebasiert;
-// nur die MA-Ausgabenprognose bleibt positionsbasiert (Anzahl folgt dem Budget).
+// Einnahmen (Finanzierungsanteile) sind die 4 festen Einnahmentypen (TYPE_NAMES),
+// Ausgaben (FB-Soll-Ist wie MA-Prognose) die 8 festen Kostenkategorien
+// (EXPENSE_CATEGORIES – Bauausgaben, Investitionen …). Beide Seiten sind damit
+// fest gesetzt und kategoriebasiert – nicht positions-/budgetabhängig.
 func (g *Generator) evalComparisonLabels(isIncome, isMA bool) []string {
 	if isIncome {
 		return TYPE_NAMES
 	}
-	if !isMA {
-		return EXPENSE_CATEGORIES
-	}
-	n := g.budgetExpenseCount()
-	labels := make([]string, n)
-	for i := range labels {
-		if g.cfg.ExpensePositionsCount == 0 && i < len(EXPENSE_CATEGORIES) {
-			labels[i] = EXPENSE_CATEGORIES[i]
-		}
-	}
-	return labels
+	return EXPENSE_CATEGORIES
 }
 
 // evalActualFormulas: Ist-/Prognose-Formeln je Zeile.
