@@ -7,380 +7,418 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// ─── Teil A: Grid-Konstanten ──────────────────────────────────────────────────
+
 const (
-	MA_SHEET_NAME  = constants.VPSheetMA
-	MA_TAB_COLOR   = "FFFF00" // Gelb
-	MA_TABLE_COLS  = 3
-	MA_TABLE_SPACE = 1
-	MA_START_COL   = 2 // Spalte B
-	MA_START_ROW   = 5 // Zeile 5
+	// Sheet
+	MA_SHEET_NAME = constants.VPSheetMA
+	MA_TAB_COLOR  = "FFFF00" // Gelb
 
+	// Spalten-Geometrie: Jede Perioden-Tabelle belegt 3 Inhaltsspalten
+	// (Label | LC | EUR) plus 1 Trennspalte. colS ist die linke Spalte einer
+	// Tabelle; der Abstand zur nächsten Tabelle ist MA_COL_STRIDE.
+	MA_START_COL   = 2 // B – linke Spalte der ersten Perioden-Tabelle
+	MA_TABLE_COLS  = 3 // Label | LC | EUR
+	MA_TABLE_SPACE = 1 // Trennspalte (Pfeil)
+	MA_COL_STRIDE  = MA_TABLE_COLS + MA_TABLE_SPACE
+
+	// Zeilen-Geometrie: Block 1 beginnt in Zeile MA_START_ROW. Für die
+	// Zusatz-Anforderungen (Ausnahme 1/2) wird der komplette Block um jeweils
+	// MA_BLOCK_STRIDE Zeilen nach unten versetzt. Dieser Versatz ist Vertrag mit
+	// pruefung_ma.go / pruefung_ma_panel.go (dortiges (level-1)*30).
+	MA_START_ROW    = 5
+	MA_BLOCK_STRIDE = 30
+
+	// Anzahl Perioden und Anforderungs-Slots (MA #1/#2/#3).
 	MA_PERIOD_COUNT = 18
-	MA_TABLE_COUNT  = 54
+	MA_SLOT_COUNT   = EV_MA_SLOTS
+	MA_TABLE_COUNT  = MA_PERIOD_COUNT * MA_SLOT_COUNT
 
-	MA_CLR_GRAY  = "F2F2F2"
-	MA_CLR_INPUT = "FFFAE5"
-	MA_CLR_SPENT = "F0F0F0"
-	MA_CLR_KMW   = "DCE6F1"
+	// Zeilen-Offsets relativ zum Block-Start startR. Der Perioden-Kopf sitzt eine
+	// Zeile über startR. Die weiteren Zeilen (Summe/Abzüge/Anforderung) werden aus
+	// der Anzahl Kostenkategorien in maComputeLayout abgeleitet.
+	MA_OFF_PERIODE    = -1
+	MA_OFF_VON        = 0
+	MA_OFF_BIS        = 1
+	MA_OFF_ZEITRAUM   = 2
+	MA_OFF_KURS       = 3
+	MA_OFF_TABLE_HDR  = 4
+	MA_OFF_DATA_START = 5
+
+	// Spaltenbreiten
+	MA_W_LABEL = 36.80
+	MA_W_LC    = 24.71
+	MA_W_EUR   = 24.71
 )
 
+// MA_CATEGORIES sind die Kostenkategorie-Zeilen jeder Anforderungstabelle.
 var MA_CATEGORIES = ListKostenkategorien
 
-// CreateMittelanforderungSheet initialisiert das Blatt "IV. MA" und zeichnet 18 Perioden.
-func (g *Generator) CreateMittelanforderungSheet() error {
-	ws := MA_SHEET_NAME
-	f := g.file
+// ─── Teil B: Layout-Dokumentation ────────────────────────────────────────────
+/*
+  LAYOUT MITTELANFORDERUNG (je Perioden-Tabelle, colS = linke Spalte):
+  | Zeile (Block 1) | colS (Label)            | colS+1 (LC)          | colS+2 (EUR)         |
+  |-----------------|-------------------------|----------------------|----------------------|
+  |        4        | Periode:                | [Periode N (merged)]                        |
+  |        5        | Von:                    | [Inp Von (merged)]                          |
+  |        6        | Bis:                    | [Inp Bis (merged)]                          |
+  |        7        | Zeitraum:               | [Σ Monate (merged)]                         |
+  |        8        | OANDA-Kurs:             | [Inp Kurs (merged)]                         |
+  |        9        | Kostenkategorie         | Angefordert (LC)     | Angefordert (EUR)    |
+  |    10..17       | <Kategorie>             | [Inp Kat LC]         | [= LC/Kurs]          |
+  |       18        | SUMME                   | [Σ LC]               | [Σ EUR]              |
+  |       20        | Gesamtbedarf an Mitteln:| [= SUMME]            | [= SUMME]            |
+  |       21        | abzueglich Eigenmittel: | [Inp LC]             | [= LC/Kurs]          |
+  |       22        | abzueglich Drittmittel: | [Inp LC]             | [= LC/Kurs]          |
+  |       23        | abzueglich Saldo …:     | [= FB/Saldovortrag]  | [= LC/Kurs]          |
+  |       25        | Anforderung:            | [= Bedarf-Abzüge]    | [= Bedarf-Abzüge]    |
+  |       27        | Manueller Betrag (EUR): | (merged Label)       | [Inp EUR]            |
 
-	_, err := f.NewSheet(ws)
-	if err != nil {
+  Blöcke: Block 1 (Standard) ab Zeile 5, Block 2/3 (Ausnahme 1/2) um je +30
+  Zeilen versetzt. Perioden 2..18 sind spaltenweise gruppiert/eingeklappt, die
+  Blöcke 2/3 zeilenweise gruppiert/eingeklappt.
+*/
+
+// maLayout hält alle absoluten Zell-Koordinaten einer einzelnen
+// Anforderungstabelle. Draw- und Bind-Funktionen teilen sich diese Auflösung.
+type maLayout struct {
+	periode int // 1..MA_PERIOD_COUNT
+	level   int // 1..MA_SLOT_COUNT (Standard=1, Ausnahme 1=2, Ausnahme 2=3)
+	tableID int // fortlaufende Tabellen-Nummer 1..MA_TABLE_COUNT
+
+	colLbl int
+	colLC  int
+	colEUR int
+
+	rowPeriode   int
+	rowVon       int
+	rowBis       int
+	rowZeitraum  int
+	rowKurs      int
+	rowTableHdr  int
+	rowDataStart int
+	rowDataEnd   int
+	rowSum       int
+	rowGesamt    int
+	rowEigen     int
+	rowDritt     int
+	rowSaldo     int
+	rowAnf       int
+	rowManuell   int
+
+	dataRows int
+}
+
+// maTableID berechnet die fortlaufende Tabellen-Nummer aus Periode und Block.
+// Identisch zur Registry-Formel (calculateTableID), damit die Named Ranges der
+// Registry (Von_%d … über tableID) exakt getroffen werden.
+func maTableID(periode, level int) int {
+	return (periode - 1) + (level-1)*MA_PERIOD_COUNT + 1
+}
+
+// maComputeLayout leitet alle absoluten Zeilen/Spalten einer Tabelle ab.
+func maComputeLayout(colS, startR, periode, level int) maLayout {
+	n := len(MA_CATEGORIES)
+	l := maLayout{
+		periode: periode,
+		level:   level,
+		tableID: maTableID(periode, level),
+
+		colLbl: colS,
+		colLC:  colS + 1,
+		colEUR: colS + 2,
+
+		rowPeriode:   startR + MA_OFF_PERIODE,
+		rowVon:       startR + MA_OFF_VON,
+		rowBis:       startR + MA_OFF_BIS,
+		rowZeitraum:  startR + MA_OFF_ZEITRAUM,
+		rowKurs:      startR + MA_OFF_KURS,
+		rowTableHdr:  startR + MA_OFF_TABLE_HDR,
+		rowDataStart: startR + MA_OFF_DATA_START,
+
+		dataRows: n,
+	}
+	l.rowDataEnd = l.rowDataStart + n - 1
+	l.rowSum = l.rowDataEnd + 1  // Block 1: Zeile 18
+	l.rowGesamt = l.rowSum + 2   // Block 1: Zeile 20 (1 Leerzeile darüber)
+	l.rowEigen = l.rowGesamt + 1 // Block 1: Zeile 21
+	l.rowDritt = l.rowGesamt + 2 // Block 1: Zeile 22
+	l.rowSaldo = l.rowGesamt + 3 // Block 1: Zeile 23
+	l.rowAnf = l.rowSaldo + 2    // Block 1: Zeile 25 (1 Leerzeile darüber)
+	l.rowManuell = l.rowAnf + 2  // Block 1: Zeile 27 (1 Leerzeile darüber)
+	return l
+}
+
+// ─── Teil C: Orchestrator ─────────────────────────────────────────────────────
+
+// CreateMittelanforderungSheet erstellt das Blatt "IV. MA" mit je 18 Perioden in
+// 3 Anforderungs-Blöcken (Standard + 2 Ausnahmen).
+func (g *Generator) CreateMittelanforderungSheet(reg *TemplateRegistry) error {
+	ws := MA_SHEET_NAME
+
+	if err := g.maInitSheet(ws); err != nil {
+		return err
+	}
+	fbExists := g.maFinanzberichtExists()
+
+	for level := 1; level <= MA_SLOT_COUNT; level++ {
+		startR := MA_START_ROW + (level-1)*MA_BLOCK_STRIDE
+		if level > 1 {
+			g.drawMABlockTitle(ws, startR, level)
+		}
+		for p := 1; p <= MA_PERIOD_COUNT; p++ {
+			colS := MA_START_COL + (p-1)*MA_COL_STRIDE
+			l := maComputeLayout(colS, startR, p, level)
+
+			// Spaltenbreiten + Trennpfeil nur einmal (Spalten werden geteilt).
+			if level == 1 {
+				g.maSetupColumnWidths(ws, colS)
+				if p > 1 {
+					g.drawMASeparatorArrow(ws, MA_START_ROW-2, colS-1)
+				}
+			}
+
+			// ── Teil D: Draw ──────────────────────────────────────────────────
+			g.drawMATable(ws, l)
+			// ── Teil E: Bind ──────────────────────────────────────────────────
+			g.bindMATable(ws, reg, l, fbExists)
+		}
+	}
+
+	g.maCollapse(ws)
+	return nil
+}
+
+// ─── Teil D: Draw-Funktionen (nur visuell) ───────────────────────────────────
+
+func (g *Generator) maInitSheet(ws string) error {
+	if _, err := g.file.NewSheet(ws); err != nil {
 		return fmt.Errorf("fehler beim Erstellen des MA-Blatts: %w", err)
 	}
-
 	tabColor := MA_TAB_COLOR
-	_ = f.SetSheetProps(ws, &excelize.SheetPropsOptions{TabColorRGB: &tabColor})
-	_ = f.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
+	_ = g.file.SetSheetProps(ws, &excelize.SheetPropsOptions{TabColorRGB: &tabColor})
+	_ = g.file.SetSheetView(ws, 0, &excelize.ViewOptions{ShowGridLines: falsePtr()})
+	return nil
+}
 
-	// Auswahlliste "Periode 1..18" in ausgeblendeter Spalte A
-	g.maEnsurePeriodList(ws)
+func (g *Generator) maFinanzberichtExists() bool {
+	idx, _ := g.file.GetSheetIndex(constants.VPSheetFINANZBERICHTE)
+	return idx != -1
+}
 
-	fbExists := true
-	if idx, _ := f.GetSheetIndex(constants.VPSheetFINANZBERICHTE); idx == -1 {
-		fbExists = false
+func (g *Generator) maSetupColumnWidths(ws string, colS int) {
+	g.setColWidth(ws, colS, MA_W_LABEL)
+	g.setColWidth(ws, colS+1, MA_W_LC)
+	g.setColWidth(ws, colS+2, MA_W_EUR)
+}
+
+func (g *Generator) drawMASeparatorArrow(ws string, row, col int) {
+	_ = g.setValue(ws, cellName(col, row), "➤", MAArrowStyle)
+}
+
+func (g *Generator) drawMABlockTitle(ws string, startR, level int) {
+	row := startR + MA_OFF_PERIODE - 1 // eine Zeile über dem Perioden-Kopf
+	_ = g.setValue(ws, cellName(MA_START_COL, row),
+		fmt.Sprintf("Zusätzliche Mittelanforderungen (Ausnahme %d)", level-1), MABlockTitleStyle)
+	_ = g.setStyle(ws, cellName(MA_START_COL, row), cellName(MA_START_COL+2, row), MABlockTitleStyle)
+}
+
+// drawMATable zeichnet Beschriftungen, Rahmen und leere/formatierte Zellen einer
+// einzelnen Anforderungstabelle – ohne Formeln, Named Ranges oder Validierungen.
+func (g *Generator) drawMATable(ws string, l maLayout) {
+	// Kopfbereich (Periode / Von / Bis / Zeitraum / Kurs)
+	g.drawMAHeaderRow(ws, l.colLbl, l.colLC, l.colEUR, l.rowPeriode, "Periode:",
+		fmt.Sprintf("Periode %d", l.periode), MAPeriodeValueStyle)
+	g.drawMAHeaderRow(ws, l.colLbl, l.colLC, l.colEUR, l.rowVon, "Von:", "", MADateInputStyle)
+	g.drawMAHeaderRow(ws, l.colLbl, l.colLC, l.colEUR, l.rowBis, "Bis:", "", MADateInputStyle)
+	g.drawMAHeaderRow(ws, l.colLbl, l.colLC, l.colEUR, l.rowZeitraum, "Zeitraum:", "", MAZeitraumStyle)
+	g.drawMAHeaderRow(ws, l.colLbl, l.colLC, l.colEUR, l.rowKurs, "OANDA-Kurs:", "", MAKursStyle)
+
+	// Kostenkategorie-Tabelle: Kopf
+	_ = g.setValue(ws, cellName(l.colLbl, l.rowTableHdr), "Kostenkategorie", MATableHdrStyle)
+	_ = g.setValue(ws, cellName(l.colLC, l.rowTableHdr), "Angefordert (LC)", MATableHdrStyle)
+	_ = g.setValue(ws, cellName(l.colEUR, l.rowTableHdr), "Angefordert (EUR)", MATableHdrStyle)
+
+	// Kostenkategorie-Tabelle: Datenzeilen
+	for i := 0; i < l.dataRows; i++ {
+		row := l.rowDataStart + i
+		_ = g.setValue(ws, cellName(l.colLbl, row), MA_CATEGORIES[i], MACatCellStyle)
+		_ = g.setStyle(ws, cellName(l.colLC, row), cellName(l.colLC, row), MAInputLCStyle)
+		_ = g.setStyle(ws, cellName(l.colEUR, row), cellName(l.colEUR, row), MAEURCellStyle)
 	}
 
-	for p := 1; p <= MA_PERIOD_COUNT; p++ {
-		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
+	// SUMME
+	_ = g.setValue(ws, cellName(l.colLbl, l.rowSum), "SUMME", MATotalLabelStyle)
+	_ = g.setStyle(ws, cellName(l.colLC, l.rowSum), cellName(l.colLC, l.rowSum), MATotalLCStyle)
+	_ = g.setStyle(ws, cellName(l.colEUR, l.rowSum), cellName(l.colEUR, l.rowSum), MATotalEURStyle)
 
-		g.maSetupColumnWidths(ws, colS)
-		if colS > MA_START_COL {
-			_ = g.drawSeparatorArrow(ws, MA_START_ROW-2, colS-1)
-		}
+	// Gesamtbedarf an Mitteln
+	_ = g.setValue(ws, cellName(l.colLbl, l.rowGesamt), "Gesamtbedarf an Mitteln:", StyleOptions{VAlign: "center"})
+	_ = g.setStyle(ws, cellName(l.colLC, l.rowGesamt), cellName(l.colLC, l.rowGesamt), MAGesamtLCStyle)
+	_ = g.setStyle(ws, cellName(l.colEUR, l.rowGesamt), cellName(l.colEUR, l.rowGesamt), MAGesamtEURStyle)
 
-		err = g.drawMATable(ws, colS, MA_START_ROW, p, p, fbExists, true)
-		if err != nil {
-			return fmt.Errorf("fehler beim Zeichnen von MA Periode %d: %w", p, err)
-		}
+	// abzueglich Eigenmittel / Drittmittel
+	_ = g.setValue(ws, cellName(l.colLbl, l.rowEigen), "abzueglich Eigenmittel:", StyleOptions{VAlign: "center"})
+	_ = g.setStyle(ws, cellName(l.colLC, l.rowEigen), cellName(l.colLC, l.rowEigen), MAAbzugInputStyle)
+	_ = g.setStyle(ws, cellName(l.colEUR, l.rowEigen), cellName(l.colEUR, l.rowEigen), MAAbzugEURStyle)
+
+	_ = g.setValue(ws, cellName(l.colLbl, l.rowDritt), "abzueglich Drittmittel:", StyleOptions{VAlign: "center"})
+	_ = g.setStyle(ws, cellName(l.colLC, l.rowDritt), cellName(l.colLC, l.rowDritt), MAAbzugInputStyle)
+	_ = g.setStyle(ws, cellName(l.colEUR, l.rowDritt), cellName(l.colEUR, l.rowDritt), MAAbzugEURStyle)
+
+	// abzueglich Saldo (Vorprojekt / Vorperiode) – Wert ist stets berechnet.
+	_ = g.setValue(ws, cellName(l.colLbl, l.rowSaldo), maSaldoLabel(l), StyleOptions{VAlign: "center"})
+	_ = g.setStyle(ws, cellName(l.colLC, l.rowSaldo), cellName(l.colLC, l.rowSaldo), MAAbzugFormulaStyle)
+	_ = g.setStyle(ws, cellName(l.colEUR, l.rowSaldo), cellName(l.colEUR, l.rowSaldo), MAAbzugEURStyle)
+
+	// Anforderung (ehemals "KMW-Mittel Anforderung")
+	_ = g.setValue(ws, cellName(l.colLbl, l.rowAnf), "Anforderung:", MAAnforderungLabelStyle)
+	_ = g.setStyle(ws, cellName(l.colLC, l.rowAnf), cellName(l.colLC, l.rowAnf), MAAnforderungLCStyle)
+	_ = g.setStyle(ws, cellName(l.colEUR, l.rowAnf), cellName(l.colEUR, l.rowAnf), MAAnforderungEURStyle)
+
+	// Manueller Betrag (EUR)
+	_ = g.mergeCells(ws, cellName(l.colLbl, l.rowManuell), cellName(l.colLC, l.rowManuell),
+		"Manueller Betrag (EUR):", MAManBetragLabelStyle)
+	_ = g.setStyle(ws, cellName(l.colEUR, l.rowManuell), cellName(l.colEUR, l.rowManuell), MAManBetragEURStyle)
+}
+
+// drawMAHeaderRow zeichnet eine Kopfzeile (Label + merged Wertzelle colLC:colEUR).
+func (g *Generator) drawMAHeaderRow(ws string, colLbl, colLC, colEUR, row int, label string, value interface{}, valStyle StyleOptions) {
+	_ = g.setValue(ws, cellName(colLbl, row), label, MALabelStyle)
+	_ = g.mergeCells(ws, cellName(colLC, row), cellName(colEUR, row), value, valStyle)
+}
+
+// ─── Teil E: Bind-Funktionen (Formeln, Registry, Validierungen) ───────────────
+
+// bindMATable verknüpft die gezeichnete Tabelle mit Formeln und den Named Ranges
+// der TemplateRegistry. Alle Named Ranges kommen ausschließlich aus reg.
+func (g *Generator) bindMATable(ws string, reg *TemplateRegistry, l maLayout, fbExists bool) {
+	id := l.tableID
+
+	bindOut := func(name string, col, row int) {
+		g.upsertNamedFormula(name, fmt.Sprintf("'%s'!%s", ws, absName(col, row)))
 	}
 
-	maDataRows := len(MA_CATEGORIES)
-	maBlockHeight := 10 + maDataRows + 8           // header+data+footer
-	startRowL2 := MA_START_ROW + maBlockHeight + 2 // +2 for spacing
-	startRowL3 := startRowL2 + maBlockHeight + 2
+	kursName := reg.InputMAKurs.Get(id).NamedRange
+	kursAddr := absName(l.colLC, l.rowKurs)
 
-	_ = f.SetCellValue(ws, cellName(MA_START_COL, startRowL2-2), "Zusätzliche Mittelanforderungen (Ausnahme 1)")
-	_ = g.setStyle(ws, cellName(MA_START_COL, startRowL2-2), cellName(MA_START_COL+2, startRowL2-2), StyleOptions{Bold: true})
+	// Kopf: Periode/Zeitraum (Outputs), Von/Bis/Kurs (Inputs)
+	bindOut(reg.OutputMAPeriode.Get(id).NamedRange, l.colLC, l.rowPeriode)
+	_ = g.bindInputField(ws, l.rowVon, l.colLC, reg.InputMAVon.Get(id))
+	_ = g.bindInputField(ws, l.rowBis, l.colLC, reg.InputMABis.Get(id))
+	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowZeitraum), fmt.Sprintf(
+		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s,"m")+1)`,
+		cellName(l.colLC, l.rowVon), cellName(l.colLC, l.rowBis),
+		cellName(l.colLC, l.rowVon), cellName(l.colLC, l.rowBis)))
+	bindOut(reg.OutputMAZeitraum.Get(id).NamedRange, l.colLC, l.rowZeitraum)
+	_ = g.bindInputField(ws, l.rowKurs, l.colLC, reg.InputMAKurs.Get(id))
 
-	for p := 1; p <= MA_PERIOD_COUNT; p++ {
-		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
-		tableId := p + MA_PERIOD_COUNT
+	// Kostenkategorien: LC = Input, EUR = LC/Kurs (Output)
+	dataRange := fmt.Sprintf("'%s'!%s:%s", ws,
+		absName(l.colLbl, l.rowDataStart), absName(l.colEUR, l.rowDataEnd))
+	g.rangesMA = append(g.rangesMA, dataRange)
 
-		err = g.drawMATable(ws, colS, startRowL2, tableId, p, fbExists, false)
-		if err != nil {
-			return fmt.Errorf("fehler beim Zeichnen von MA (Zusatz 1) %d: %w", tableId, err)
-		}
+	for i := 0; i < l.dataRows; i++ {
+		row := l.rowDataStart + i
+		_ = g.bindInputField(ws, row, l.colLC, reg.InputMAKat.Get(l.periode, l.level, i+1))
+		g.file.SetCellFormula(ws, cellName(l.colEUR, row),
+			fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(l.colLC, row), kursName))
+		bindOut(reg.OutputMAKatEUR.Get(l.periode, l.level, i+1).NamedRange, l.colEUR, row)
 	}
 
-	_ = f.SetCellValue(ws, cellName(MA_START_COL, startRowL3-2), "Zusätzliche Mittelanforderungen (Ausnahme 2)")
-	_ = g.setStyle(ws, cellName(MA_START_COL, startRowL3-2), cellName(MA_START_COL+2, startRowL3-2), StyleOptions{Bold: true})
+	// SUMME (Outputs)
+	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowSum),
+		fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(l.colLC, l.rowDataStart), cellName(l.colLC, l.rowDataEnd)))
+	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowSum),
+		fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(l.colEUR, l.rowDataStart), cellName(l.colEUR, l.rowDataEnd)))
+	bindOut(reg.OutputMASumLC.Get(id).NamedRange, l.colLC, l.rowSum)
+	bindOut(reg.OutputMASumEUR.Get(id).NamedRange, l.colEUR, l.rowSum)
 
-	for p := 1; p <= MA_PERIOD_COUNT; p++ {
-		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
-		tableId := p + MA_PERIOD_COUNT*2
+	// Gesamtbedarf an Mitteln = SUMME
+	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowGesamt), fmt.Sprintf(`=ROUND(%s,2)`, absName(l.colLC, l.rowSum)))
+	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowGesamt), fmt.Sprintf(`=ROUND(%s,2)`, absName(l.colEUR, l.rowSum)))
 
-		err = g.drawMATable(ws, colS, startRowL3, tableId, p, fbExists, false)
-		if err != nil {
-			return fmt.Errorf("fehler beim Zeichnen von MA (Zusatz 2) %d: %w", tableId, err)
+	// abzueglich Eigenmittel: LC = Input, EUR = LC/Kurs (Output)
+	_ = g.bindInputField(ws, l.rowEigen, l.colLC, reg.InputMAEigenmittelLC.Get(id))
+	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowEigen),
+		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, absName(l.colLC, l.rowEigen), kursAddr))
+	bindOut(reg.OutputMAEigenmittelEUR.Get(id).NamedRange, l.colEUR, l.rowEigen)
+
+	// abzueglich Drittmittel: LC = Input, EUR = LC/Kurs (Output)
+	_ = g.bindInputField(ws, l.rowDritt, l.colLC, reg.InputMADrittmittelLC.Get(id))
+	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowDritt),
+		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, absName(l.colLC, l.rowDritt), kursAddr))
+	bindOut(reg.OutputMADrittmittelEUR.Get(id).NamedRange, l.colEUR, l.rowDritt)
+
+	// abzueglich Saldo: LC berechnet (FB/Saldovortrag), EUR = LC/Kurs (beides Output)
+	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowSaldo), maSaldoFormula(l, fbExists))
+	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowSaldo),
+		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, absName(l.colLC, l.rowSaldo), kursAddr))
+	bindOut(reg.OutputMASaldoLC.Get(id).NamedRange, l.colLC, l.rowSaldo)
+	bindOut(reg.OutputMASaldoEUR.Get(id).NamedRange, l.colEUR, l.rowSaldo)
+
+	// Anforderung = Gesamtbedarf - Eigenmittel - Drittmittel - Saldo.
+	// LC ist als benanntes Eingabefeld registriert (hält die Formel), EUR ist Output.
+	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowAnf), fmt.Sprintf(
+		`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`,
+		absName(l.colLC, l.rowGesamt), absName(l.colLC, l.rowEigen),
+		absName(l.colLC, l.rowDritt), absName(l.colLC, l.rowSaldo)))
+	_ = g.bindInputField(ws, l.rowAnf, l.colLC, reg.InputMAAnforderungLC.Get(id))
+	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowAnf), fmt.Sprintf(
+		`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`,
+		absName(l.colEUR, l.rowGesamt), absName(l.colEUR, l.rowEigen),
+		absName(l.colEUR, l.rowDritt), absName(l.colEUR, l.rowSaldo)))
+	bindOut(reg.OutputMAAnforderungEUR.Get(id).NamedRange, l.colEUR, l.rowAnf)
+
+	// Manueller Betrag (EUR) – Input
+	_ = g.bindInputField(ws, l.rowManuell, l.colEUR, reg.InputMAManBetragEUR.Get(id))
+}
+
+// maSaldoLabel liefert die (gespiegelte) Beschriftung der Saldo-Abzugszeile.
+func maSaldoLabel(l maLayout) string {
+	if l.level == 1 {
+		if l.tableID == 1 {
+			return "abzueglich Saldo Vorprojekt:"
 		}
+		return "abzueglich Saldo Vorperiode (FB):"
 	}
+	return "abzueglich Saldo Vorperiode (manuell):"
+}
 
-	// Perioden 2–18 gruppieren und zugeklappt ausblenden (nur Inhaltsspalten der Tabelle).
-	f = g.file
+// maSaldoFormula liefert die LC-Formel der Saldo-Abzugszeile. Der Standard-Block
+// zieht den Saldovortrag (Dashboard) bzw. den FB-Saldo der Vorperiode; die
+// Ausnahme-Blöcke haben keine automatische Quelle (0).
+func maSaldoFormula(l maLayout, fbExists bool) string {
+	if l.level == 1 && fbExists {
+		if l.tableID == 1 {
+			return fmt.Sprintf(`=ROUND(IF(%s="",0,%s),2)`, DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW)
+		}
+		return fmt.Sprintf(`=ROUND(IFERROR(%s,0),2)`, fmt.Sprintf(FBNameSaldoLCFmt, l.tableID-1))
+	}
+	return "=0"
+}
+
+// maCollapse gruppiert und klappt die zusätzlichen Perioden (Spalten) sowie die
+// Ausnahme-Blöcke (Zeilen) ein.
+func (g *Generator) maCollapse(ws string) {
+	f := g.file
+
+	// Perioden 2..18 spaltenweise gruppieren und ausblenden.
 	for p := 2; p <= MA_PERIOD_COUNT; p++ {
-		colS := MA_START_COL + (p-1)*(MA_TABLE_COLS+MA_TABLE_SPACE)
-		groupFirst := colS
-		groupLast := colS + MA_TABLE_COLS - 1
-		for c := groupFirst; c <= groupLast; c++ {
+		colS := MA_START_COL + (p-1)*MA_COL_STRIDE
+		for c := colS; c < colS+MA_TABLE_COLS; c++ {
 			_ = f.SetColOutlineLevel(ws, colLetter(c), 1)
 			_ = f.SetColVisible(ws, colLetter(c), false)
 		}
 	}
 
-	// Zeilen-Gruppierungen für Ebene 2 und 3 (jeweils mit 1 ungruppierten Abstandzeile dazwischen)
-	for r := startRowL2 - 2; r <= startRowL2+maBlockHeight; r++ {
-		_ = f.SetRowOutlineLevel(ws, r, 1)
-		_ = f.SetRowVisible(ws, r, false)
-	}
-
-	for r := startRowL3 - 2; r <= startRowL3+maBlockHeight; r++ {
-		_ = f.SetRowOutlineLevel(ws, r, 1)
-		_ = f.SetRowVisible(ws, r, false)
-	}
-
-	return nil
-}
-
-// maEnsurePeriodList is now handled by daten.go
-// but we keep a dummy or just remove it.
-func (g *Generator) maEnsurePeriodList(ws string) {
-	// Das Dropdown verweist nun auf das Daten-Blatt.
-	// Die Erstellung der Liste passiert in CreateDatenSheet()
-}
-
-func (g *Generator) maSetupColumnWidths(ws string, colS int) {
-	g.setColWidth(ws, colS, 36.80) // 15% breiter als vorher (32.00)
-	g.setColWidth(ws, colS+1, 24.71)
-	g.setColWidth(ws, colS+2, 24.71)
-}
-
-func (g *Generator) drawMATable(ws string, colS, startR, tableId, periodNr int, fbExists, isStandard bool) error {
-	f := g.file
-	cLbl := colS
-	cLC := colS + 1
-	cEUR := colS + 2
-
-	// Periode rückt eine Zeile nach oben (Zeile 4), damit Von/Bis/Zeitraum/Kurs
-	// darunter passen und der Tabellenkopf weiterhin auf Zeile 9 bleibt.
-	r := startR - 1
-
-	// ─── Zeile 1: Periode-Kopfzeile (Dropdown 1..18) ──────────────────────────
-	lblPer := cellName(cLbl, r)
-	_ = f.SetCellValue(ws, lblPer, "Periode:")
-	_ = g.setStyle(ws, lblPer, lblPer, StyleOptions{Bold: true, HAlign: "left", VAlign: "center"})
-
-	rngPerStart := cellName(cLC, r)
-	rngPerEnd := cellName(cEUR, r)
-	_ = f.MergeCell(ws, rngPerStart, rngPerEnd)
-
-	_ = f.SetCellValue(ws, rngPerStart, fmt.Sprintf("Periode %d", periodNr))
-	_ = g.setStyle(ws, rngPerStart, rngPerEnd, StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: MA_CLR_GRAY, BorderBottom: 1, BorderColor: "D3D3D3",
-	})
-	r++
-
-	// ─── Zeile 2/3: Zeitraum (Von / Bis) ──────────────────────────────────────
-	vonRow := r
-	for i, zlbl := range []string{"Von:", "Bis:"} {
-		lblZeit := cellName(cLbl, r)
-		_ = f.SetCellValue(ws, lblZeit, zlbl)
-		_ = g.setStyle(ws, lblZeit, lblZeit, StyleOptions{Bold: true, HAlign: "left", VAlign: "center"})
-
-		rngZeitStart := cellName(cLC, r)
-		rngZeitEnd := cellName(cEUR, r)
-		_ = f.MergeCell(ws, rngZeitStart, rngZeitEnd)
-		_ = g.setStyle(ws, rngZeitStart, rngZeitEnd, StyleOptions{
-			HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFmtID: 14,
-		})
-		if i == 0 {
-			_ = g.bindInputField(ws, r, cLC, FieldMAVon(tableId))
-		} else {
-			_ = g.bindInputField(ws, r, cLC, FieldMABis(tableId))
+	// Ausnahme-Blöcke (level 2/3) zeilenweise gruppieren und ausblenden.
+	for level := 2; level <= MA_SLOT_COUNT; level++ {
+		startR := MA_START_ROW + (level-1)*MA_BLOCK_STRIDE
+		l := maComputeLayout(MA_START_COL, startR, 1, level)
+		for r := startR + MA_OFF_PERIODE - 1; r <= l.rowManuell+1; r++ {
+			_ = f.SetRowOutlineLevel(ws, r, 1)
+			_ = f.SetRowVisible(ws, r, false)
 		}
-		r++
 	}
-
-	// ─── Zeile 4: Zeitraum (Monate, berechnet) ────────────────────────────────
-	lblZr := cellName(cLbl, r)
-	_ = f.SetCellValue(ws, lblZr, "Zeitraum:")
-	_ = g.setStyle(ws, lblZr, lblZr, StyleOptions{Bold: true, HAlign: "left", VAlign: "center"})
-
-	zrStart := cellName(cLC, r)
-	zrEnd := cellName(cEUR, r)
-	_ = f.MergeCell(ws, zrStart, zrEnd)
-	_ = f.SetCellFormula(ws, zrStart, fmt.Sprintf(
-		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s,"m")+1)`,
-		cellName(cLC, vonRow), cellName(cLC, vonRow+1), cellName(cLC, vonRow), cellName(cLC, vonRow+1)))
-	_ = g.setStyle(ws, zrStart, zrEnd, StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: MA_CLR_GRAY, BorderBottom: 1, BorderColor: "D3D3D3", NumFormat: `0" Monate"`,
-	})
-	r++
-
-	// ─── Zeile 5: OANDA-Kurs-Eingabe (benannt Inp_MA_Kurs_<p>) ────────────────────
-	rateAddr := absName(cLC, r)
-	maKursName := FieldMAKurs(tableId).NamedRange
-
-	lblRate := cellName(cLbl, r)
-	_ = f.SetCellValue(ws, lblRate, "OANDA-Kurs:")
-	_ = g.setStyle(ws, lblRate, lblRate, StyleOptions{Bold: true, HAlign: "left", VAlign: "center"})
-
-	rngRateStart := cellName(cLC, r)
-	rngRateEnd := cellName(cEUR, r)
-	_ = f.MergeCell(ws, rngRateStart, rngRateEnd)
-	_ = g.setStyle(ws, rngRateStart, rngRateEnd, StyleOptions{
-		HAlign: "center", VAlign: "center", FillColor: MA_CLR_INPUT, BorderBottom: 1, BorderColor: "D3D3D3", NumFormat: "0.0000",
-	})
-	_ = g.bindInputField(ws, r, cLC, FieldMAKurs(tableId))
-	r++ // Tabellenkopf folgt direkt (Periode/Von/Bis/Kurs belegen Zeilen 5–8)
-
-	// ─── Zeile 9: Tabelle MA_<p> (Kostenkategorie | LC | EUR) ──────────────────
-	maHdrRow := r
-
-	_ = f.SetCellValue(ws, cellName(cLbl, maHdrRow), "Kostenkategorie")
-	_ = f.SetCellValue(ws, cellName(cLC, maHdrRow), "Angefordert (LC)")
-	_ = f.SetCellValue(ws, cellName(cEUR, maHdrRow), "Angefordert (EUR)")
-
-	_ = g.setStyle(ws, cellName(cLbl, maHdrRow), cellName(cEUR, maHdrRow), StyleOptions{
-		Bold: true, FillColor: MA_CLR_GRAY, HAlign: "center", VAlign: "center",
-		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080",
-	})
-
-	maDataRows := len(MA_CATEGORIES)
-	maTotalsRow := maHdrRow + maDataRows + 1
-
-	// Add data body range to MA list for VSTACK
-	dataRangeMA := fmt.Sprintf("'%s'!%s:%s", ws, absName(cLbl, maHdrRow+1), absName(cEUR, maHdrRow+maDataRows))
-	g.rangesMA = append(g.rangesMA, dataRangeMA)
-
-	for i := 0; i < maDataRows; i++ {
-		row := maHdrRow + 1 + i
-		labelVal := ""
-		if i < len(MA_CATEGORIES) {
-			labelVal = MA_CATEGORIES[i]
-		}
-		_ = f.SetCellValue(ws, cellName(cLbl, row), labelVal)
-		_ = f.SetCellFormula(ws, cellName(cEUR, row), fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, cellName(cLC, row), maKursName))
-		g.upsertNamedFormula(FieldMAKatEUR(tableId, i+1), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, row)))
-
-		_ = g.setStyle(ws, cellName(cLbl, row), cellName(cLbl, row), StyleOptions{
-			HAlign: "left", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3",
-		})
-		_ = g.setStyle(ws, cellName(cLC, row), cellName(cLC, row), StyleOptions{
-			HAlign: "right", VAlign: "center", FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00",
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3",
-		})
-		_ = g.bindInputField(ws, row, cLC, FieldMAKat(tableId, i+1))
-
-		_ = g.setStyle(ws, cellName(cEUR, row), cellName(cEUR, row), StyleOptions{
-			HAlign: "right", VAlign: "center", NumFormat: `#,##0.00" €"`,
-			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3",
-		})
-	}
-
-	// Totals
-	_ = f.SetCellValue(ws, cellName(cLbl, maTotalsRow), "SUMME")
-	_ = f.SetCellFormula(ws, cellName(cLC, maTotalsRow), fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(cLC, maHdrRow+1), cellName(cLC, maHdrRow+maDataRows)))
-	g.upsertNamedFormula(FieldMASumLC(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cLC, maTotalsRow)))
-	_ = f.SetCellFormula(ws, cellName(cEUR, maTotalsRow), fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(cEUR, maHdrRow+1), cellName(cEUR, maHdrRow+maDataRows)))
-	g.upsertNamedFormula(FieldMASumEUR(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, maTotalsRow)))
-
-	_ = g.setStyle(ws, cellName(cLbl, maTotalsRow), cellName(cLbl, maTotalsRow), StyleOptions{
-		Bold: true, FillColor: MA_CLR_GRAY, HAlign: "left", VAlign: "center",
-		BorderTop: 6, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080",
-	})
-	_ = g.setStyle(ws, cellName(cLC, maTotalsRow), cellName(cLC, maTotalsRow), StyleOptions{
-		Bold: true, FillColor: MA_CLR_GRAY, HAlign: "right", VAlign: "center", NumFormat: "#,##0.00",
-		BorderTop: 6, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080",
-	})
-	_ = g.setStyle(ws, cellName(cEUR, maTotalsRow), cellName(cEUR, maTotalsRow), StyleOptions{
-		Bold: true, FillColor: MA_CLR_GRAY, HAlign: "right", VAlign: "center", NumFormat: `#,##0.00" €"`,
-		BorderTop: 6, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080",
-	})
-
-	addrSumGL := absName(cLC, maTotalsRow)
-	addrSumGE := absName(cEUR, maTotalsRow)
-
-	r = maTotalsRow + 2 // Summe + Leerzeile
-
-	// ─── Gesamtbedarf an Mitteln ──────────────────────────────────────────────
-	_ = f.SetCellValue(ws, cellName(cLbl, r), "Gesamtbedarf an Mitteln:")
-
-	gdLC := cellName(cLC, r)
-	_ = f.SetCellFormula(ws, gdLC, fmt.Sprintf(`=ROUND(%s,2)`, addrSumGL))
-	_ = g.setStyle(ws, gdLC, gdLC, StyleOptions{Italic: true, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center"})
-
-	gdEUR := cellName(cEUR, r)
-	_ = f.SetCellFormula(ws, gdEUR, fmt.Sprintf(`=ROUND(%s,2)`, addrSumGE))
-	_ = g.setStyle(ws, gdEUR, gdEUR, StyleOptions{NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center"})
-	r++
-
-	// ─── abzueglich Eigenmittel ───────────────────────────────────────────────
-	_ = f.SetCellValue(ws, cellName(cLbl, r), "abzueglich Eigenmittel:")
-
-	eigenLC := cellName(cLC, r)
-	_ = g.setStyle(ws, eigenLC, eigenLC, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	_ = g.bindInputField(ws, r, cLC, FieldMAEigenmittelLC(tableId))
-	addrEigenLC := absName(cLC, r)
-
-	eigenEUR := cellName(cEUR, r)
-	_ = f.SetCellFormula(ws, eigenEUR, fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, addrEigenLC, rateAddr))
-	_ = g.setStyle(ws, eigenEUR, eigenEUR, StyleOptions{NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	g.upsertNamedFormula(FieldMAEigenmittelEUR(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, r)))
-	addrEigenEUR := absName(cEUR, r)
-	r++
-
-	// ─── abzueglich Drittmittel ───────────────────────────────────────────────
-	_ = f.SetCellValue(ws, cellName(cLbl, r), "abzueglich Drittmittel:")
-
-	drittLC := cellName(cLC, r)
-	_ = g.setStyle(ws, drittLC, drittLC, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	_ = g.bindInputField(ws, r, cLC, FieldMADrittmittelLC(tableId))
-	addrDrittLC := absName(cLC, r)
-
-	drittEUR := cellName(cEUR, r)
-	_ = f.SetCellFormula(ws, drittEUR, fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, addrDrittLC, rateAddr))
-	_ = g.setStyle(ws, drittEUR, drittEUR, StyleOptions{NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	g.upsertNamedFormula(FieldMADrittmittelEUR(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, r)))
-	addrDrittEUR := absName(cEUR, r)
-	r++
-
-	// ─── abzueglich Saldo Vorperiode (FB) ─────────────────────────────────────
-	addrSaldoLC := absName(cLC, r)
-	saldoLblCell := cellName(cLbl, r)
-	saldoLCCell := cellName(cLC, r)
-
-	if isStandard {
-		if fbExists {
-			safeSaldoVortrag := fmt.Sprintf(`IF(%s="",0,%s)`, DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW)
-			if tableId == 1 {
-				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorprojekt:")
-				_ = f.SetCellFormula(ws, saldoLCCell, fmt.Sprintf(`=ROUND(%s,2)`, safeSaldoVortrag))
-			} else {
-				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (FB):")
-				_ = f.SetCellFormula(ws, saldoLCCell, fmt.Sprintf(`=ROUND(IFERROR(FB_SaldoLC_%d,0),2)`, tableId-1))
-			}
-			_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{Italic: true, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-		} else {
-			if tableId == 1 {
-				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorprojekt:")
-			} else {
-				_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (FB):")
-			}
-			_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-			_ = g.bindInputField(ws, r, cLC, FieldMASaldoLC(tableId))
-		}
-	} else {
-		_ = f.SetCellValue(ws, saldoLblCell, "abzueglich Saldo Vorperiode (manuell):")
-		_ = g.setStyle(ws, saldoLCCell, saldoLCCell, StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-		_ = g.bindInputField(ws, r, cLC, FieldMASaldoLC(tableId))
-	}
-
-	addrSaldoEUR := absName(cEUR, r)
-	saldoEURCell := cellName(cEUR, r)
-	_ = f.SetCellFormula(ws, saldoEURCell, fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, addrSaldoLC, rateAddr))
-	_ = g.setStyle(ws, saldoEURCell, saldoEURCell, StyleOptions{NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	r += 2
-
-	// ─── KMW-Mittel Anforderung ───────────────────────────────────────────────
-	lblKMW := cellName(cLbl, r)
-	_ = f.SetCellValue(ws, lblKMW, "KMW-Mittel Anforderung:")
-	_ = g.setStyle(ws, lblKMW, lblKMW, StyleOptions{Bold: true, Size: 12.0, HAlign: "left", VAlign: "center", BorderTop: 6, BorderColor: "808080"})
-
-	kmwLC := cellName(cLC, r)
-	_ = f.SetCellFormula(ws, kmwLC, fmt.Sprintf(`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`, addrSumGL, addrEigenLC, addrDrittLC, addrSaldoLC))
-	_ = g.setStyle(ws, kmwLC, kmwLC, StyleOptions{Bold: true, Size: 12.0, FillColor: MA_CLR_KMW, NumFormat: "#,##0.00", HAlign: "right", VAlign: "center", BorderTop: 6, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080"})
-	_ = g.bindInputField(ws, r, cLC, FieldMAKmwLC(tableId))
-
-	kmwEUR := cellName(cEUR, r)
-	_ = f.SetCellFormula(ws, kmwEUR, fmt.Sprintf(`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`, addrSumGE, addrEigenEUR, addrDrittEUR, addrSaldoEUR))
-	_ = g.setStyle(ws, kmwEUR, kmwEUR, StyleOptions{Bold: true, Size: 12.0, FillColor: MA_CLR_KMW, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 6, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080"})
-	g.upsertNamedFormula(FieldMAKmwEUR(tableId), fmt.Sprintf("'%s'!%s", ws, absName(cEUR, r)))
-	r += 2
-
-	// ─── Manueller Betrag (EUR) – zwei Zeilen unter KMW-Mittel Anforderung ────
-	_ = f.MergeCell(ws, cellName(cLbl, r), cellName(cLC, r))
-	_ = f.SetCellValue(ws, cellName(cLbl, r), "Manueller Betrag (EUR):")
-	_ = g.setStyle(ws, cellName(cLbl, r), cellName(cLC, r), StyleOptions{HAlign: "left", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	_ = g.setStyle(ws, cellName(cEUR, r), cellName(cEUR, r), StyleOptions{FillColor: MA_CLR_INPUT, NumFormat: `#,##0.00" €"`, HAlign: "right", VAlign: "center", BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "D3D3D3"})
-	_ = g.bindInputField(ws, r, cEUR, FieldMAManBetrag(tableId))
-
-	return nil
 }

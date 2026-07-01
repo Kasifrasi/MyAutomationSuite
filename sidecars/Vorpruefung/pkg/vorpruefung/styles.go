@@ -461,6 +461,273 @@ var KMWTotalBetragStyle = StyleOptions{
 	BorderColor:  KMWClrGrid,
 }
 
+// ─── Mittelanforderung-Farben & Formate ───────────────────────────────────────
+const (
+	MAClrGray         = "F2F2F2" // 242,242,242 – Kopf-/Summen-/Berechnungszeilen
+	MAClrInput        = "FFFAE5" // 255,250,229 – Eingabezellen
+	MAClrKMW          = "DCE6F1" // 220,230,241 – Ergebnis "Anforderung"
+	MAClrGridLight    = "D3D3D3" // 211,211,211 – dünne Innenrahmen
+	MAClrBorderStrong = "808080" // 128,128,128 – kräftige Tabellen-/Summenrahmen
+
+	MAFmtLC     = "#,##0.00"
+	MAFmtEUR    = `#,##0.00" €"`
+	MAFmtRate   = "0.0000"
+	MAFmtMonate = `0" Monate"`
+)
+
+// ─── Mittelanforderung Styles ─────────────────────────────────────────────────
+
+// Kopfbereich (Periode / Von / Bis / Zeitraum / Kurs)
+var MALabelStyle = StyleOptions{
+	Bold:   true,
+	HAlign: "left",
+	VAlign: "center",
+}
+
+var MAPeriodeValueStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	FillColor:    MAClrGray,
+	BorderBottom: 1,
+	BorderColor:  MAClrGridLight,
+}
+
+var MADateInputStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	FillColor:    MAClrInput,
+	NumFmtID:     14, // Excel built-in kurzes Datum
+	BorderBottom: 1,
+	BorderColor:  MAClrGridLight,
+}
+
+var MAZeitraumStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	FillColor:    MAClrGray,
+	NumFormat:    MAFmtMonate,
+	BorderBottom: 1,
+	BorderColor:  MAClrGridLight,
+}
+
+var MAKursStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	FillColor:    MAClrInput,
+	NumFormat:    MAFmtRate,
+	BorderBottom: 1,
+	BorderColor:  MAClrGridLight,
+}
+
+// Kostenkategorie-Tabelle (Kopf / Kategorie / LC-Eingabe / EUR-Berechnung)
+var MATableHdrStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    MAClrGray,
+	HAlign:       "center",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrBorderStrong,
+}
+
+var MACatCellStyle = StyleOptions{
+	HAlign:       "left",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrGridLight,
+}
+
+var MAInputLCStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	FillColor:    MAClrInput,
+	NumFormat:    MAFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrGridLight,
+}
+
+var MAEURCellStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrGridLight,
+}
+
+// Summenzeile der Kostenkategorie-Tabelle
+var MATotalLabelStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    MAClrGray,
+	HAlign:       "left",
+	VAlign:       "center",
+	BorderTop:    6,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrBorderStrong,
+}
+
+var MATotalLCStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    MAClrGray,
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtLC,
+	BorderTop:    6,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrBorderStrong,
+}
+
+var MATotalEURStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    MAClrGray,
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtEUR,
+	BorderTop:    6,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrBorderStrong,
+}
+
+// Gesamtbedarf (rahmenlose Berechnungszeile)
+var MAGesamtLCStyle = StyleOptions{
+	Italic:    true,
+	HAlign:    "right",
+	VAlign:    "center",
+	NumFormat: MAFmtLC,
+}
+
+var MAGesamtEURStyle = StyleOptions{
+	HAlign:    "right",
+	VAlign:    "center",
+	NumFormat: MAFmtEUR,
+}
+
+// Abzugszeilen (Eigenmittel / Drittmittel / Saldo)
+var MAAbzugInputStyle = StyleOptions{
+	FillColor:    MAClrInput,
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrGridLight,
+}
+
+var MAAbzugFormulaStyle = StyleOptions{
+	Italic:       true,
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrGridLight,
+}
+
+var MAAbzugEURStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrGridLight,
+}
+
+// Ergebniszeile "Anforderung"
+var MAAnforderungLabelStyle = StyleOptions{
+	Bold:        true,
+	Size:        12.0,
+	HAlign:      "left",
+	VAlign:      "center",
+	BorderTop:   6,
+	BorderColor: MAClrBorderStrong,
+}
+
+var MAAnforderungLCStyle = StyleOptions{
+	Bold:         true,
+	Size:         12.0,
+	FillColor:    MAClrKMW,
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtLC,
+	BorderTop:    6,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrBorderStrong,
+}
+
+var MAAnforderungEURStyle = StyleOptions{
+	Bold:         true,
+	Size:         12.0,
+	FillColor:    MAClrKMW,
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtEUR,
+	BorderTop:    6,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrBorderStrong,
+}
+
+// Manueller Betrag (EUR)
+var MAManBetragLabelStyle = StyleOptions{
+	HAlign:       "left",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrGridLight,
+}
+
+var MAManBetragEURStyle = StyleOptions{
+	FillColor:    MAClrInput,
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    MAFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  MAClrGridLight,
+}
+
+// Block-Titel der Zusatz-Anforderungen und Trenner-Pfeil zwischen Perioden
+var MABlockTitleStyle = StyleOptions{
+	Bold: true,
+}
+
+var MAArrowStyle = StyleOptions{
+	Size:      24.0,
+	Bold:      true,
+	FontColor: MAClrBorderStrong,
+	HAlign:    "center",
+	VAlign:    "center",
+}
+
 // ─── Finanzbericht-Farben & Formate ───────────────────────────────────────────
 const (
 	FBClrHeader = "D3D3D3" // Titel/Kopf/Sektionen

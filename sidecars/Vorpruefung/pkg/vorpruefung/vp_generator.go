@@ -50,7 +50,7 @@ func GenerateVorpruefung(outputPath string, cfg GeneratorConfig) error {
 	if err := g.CreateFinanzberichteSheet(); err != nil {
 		return fmt.Errorf("fehler beim Erstellen des Finanzberichte-Blatts: %w", err)
 	}
-	if err := g.CreateMittelanforderungSheet(); err != nil {
+	if err := g.CreateMittelanforderungSheet(reg); err != nil {
 		return fmt.Errorf("fehler beim Erstellen des Mittelanforderung-Blatts: %w", err)
 	}
 	if err := g.CreateFBPruefungSheet(); err != nil {

@@ -421,7 +421,7 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 		c1, c2 := cellName(pLC, r), cellName(pEUR, r)
 		_ = g.file.MergeCell(ws, c1, c2)
 		_ = g.setStyle(ws, c1, c2, StyleOptions{
-			HAlign: "center", VAlign: "center", NumFormat: numFmt, FillColor: MA_CLR_GRAY,
+			HAlign: "center", VAlign: "center", NumFormat: numFmt, FillColor: MAClrGray,
 			BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 		})
 		_ = g.file.SetCellFormula(ws, c1, formula)
@@ -438,7 +438,7 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	r += 2 // Leerzeile
 
 	// Tabellenkopf
-	hdr := StyleOptions{Bold: true, FillColor: MA_CLR_GRAY, HAlign: "center", VAlign: "center",
+	hdr := StyleOptions{Bold: true, FillColor: MAClrGray, HAlign: "center", VAlign: "center",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: "808080"}
 	_ = g.setValue(ws, cellName(pLbl, r), "Kostenkategorie", hdr)
 	_ = g.setValue(ws, cellName(pLC, r), "Angefordert (LC)", hdr)
@@ -472,9 +472,9 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 		r++
 	}
 
-	labCell("SUMME", true, MA_CLR_GRAY)
-	bold(pLC, mirror(1, 18), "#,##0.00", MA_CLR_GRAY)
-	bold(pEUR, mirror(2, 18), `#,##0.00" €"`, MA_CLR_GRAY)
+	labCell("SUMME", true, MAClrGray)
+	bold(pLC, mirror(1, 18), "#,##0.00", MAClrGray)
+	bold(pEUR, mirror(2, 18), `#,##0.00" €"`, MAClrGray)
 	r += 2 // Leerzeile
 
 	labCell("Gesamtbedarf an Mitteln:", false, COLOR_WHITE)
@@ -498,9 +498,9 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	valCell(pEUR, mirror(2, 23), `#,##0.00" €"`, COLOR_WHITE)
 	r += 2 // Leerzeile
 
-	labCell("KMW-Mittel Anforderung:", true, MA_CLR_KMW)
-	bold(pLC, mirror(1, 25), "#,##0.00", MA_CLR_KMW)
-	bold(pEUR, mirror(2, 25), `#,##0.00" €"`, MA_CLR_KMW)
+	labCell("KMW-Mittel Anforderung:", true, MAClrKMW)
+	bold(pLC, mirror(1, 25), "#,##0.00", MAClrKMW)
+	bold(pEUR, mirror(2, 25), `#,##0.00" €"`, MAClrKMW)
 	bottom := r
 
 	g.styleOuterBorder(ws, top, pLbl, bottom, pEUR, 2, EV_CLR_BORDER)

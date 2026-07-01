@@ -11,14 +11,8 @@ import (
 // ==================================================================================
 // Blatt "V. Prüfung FB"
 //
-//	A) MITTELANFORDERUNGSPRÜFUNG (Basis: ausgewählte Mittelanforderung / Prognose)
-//	B) FINANZBERICHTSPRÜFUNG     (Basis: ausgewählter Finanzbericht / kumulativ)
+//	FINANZBERICHTSPRÜFUNG     (Basis: ausgewählter Finanzbericht / kumulativ)
 //
-// Über zwei Auswahllisten (rechts in den Sektionen) wird ein befüllter Finanzbericht
-// (Periode N) sowie eine Mittelanforderung der Folgeperiode (N+1) gewählt. Die
-// Listen werden in daten.go dynamisch (FILTER) aus den befüllten Perioden gebildet.
-// Gibt es mehrere Mittelanforderungen einer Periode, erscheinen "Periode X (#k)";
-// die Auswahl von "(#k)" addiert in der Prognoseprüfung alle Anforderungen #1..#k.
 // ==================================================================================
 //
 // Teil A (Grid-Konstanten): Die Spalten der Vergleichstabellen (EV_COL_*), das
