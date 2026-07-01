@@ -540,9 +540,11 @@ func (g *Generator) fbBindAusgaben(ws string, reg *TemplateRegistry, l fbLayout)
 	g.rangesAusgaben = append(g.rangesAusgaben, dataRange)
 
 	if err := f.AddTable(ws, &excelize.Table{
-		// Summenzeile (Gesamtausgaben) gehört zum Tabellenbereich, damit sie als
-		// Total-Zeile der Tabelle erscheint (SUBTOTAL summiert nur die Datenzeilen).
-		Range:          fmt.Sprintf("%s:%s", cellName(l.colLabel, l.rowAusgTblHdr), cellName(l.colKumEUR, l.rowAusgTotals)),
+		// Summenzeile (Gesamtausgaben, l.rowAusgTotals) liegt AUSSERHALB des
+		// Table-Range: excelize erzeugt keine echte Totals-Row, jede Zeile im Range
+		// gilt sonst als Datenzeile. Als Zeile direkt unter der Tabelle summiert
+		// SUBTOTAL(109, ausgName[…]) nur die Datenzeilen (kein Zirkelbezug).
+		Range:          fmt.Sprintf("%s:%s", cellName(l.colLabel, l.rowAusgTblHdr), cellName(l.colKumEUR, l.rowAusgTblHdr+l.ausgCount)),
 		Name:           ausgName,
 		StyleName:      "",
 		ShowRowStripes: falsePtr(),
@@ -808,9 +810,11 @@ func (g *Generator) fbCreateEinnahmenTabelle(
 	}
 
 	if err := f.AddTable(ws, &excelize.Table{
-		// Summenzeile gehört zum Tabellenbereich (Total-Zeile der Tabelle); die
-		// SUBTOTAL-Formeln der Summenzeile beziehen sich nur auf die Datenzeilen.
-		Range:          fmt.Sprintf("%s:%s", cellName(colStart, startRow), cellName(colStart+FBDetOffKurs, totalsRow)),
+		// Summenzeile (totalsRow) liegt AUSSERHALB des Table-Range: excelize erzeugt
+		// keine echte Totals-Row, jede Zeile im Range gilt sonst als Datenzeile. Als
+		// Zeile direkt unter der Tabelle beziehen sich die SUBTOTAL-Formeln nur auf
+		// die Datenzeilen (kein Zirkelbezug, keine Doppelzählung).
+		Range:          fmt.Sprintf("%s:%s", cellName(colStart, startRow), cellName(colStart+FBDetOffKurs, startRow+dataRows)),
 		Name:           tblName,
 		StyleName:      "",
 		ShowRowStripes: falsePtr(),

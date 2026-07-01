@@ -163,12 +163,13 @@ func (g *Generator) bindKMWTable(ws string, reg *TemplateRegistry) error {
 	f := g.file
 	tbl := reg.TableKMWMittel
 
-	// Excel-Tabelle (Kopf in Zeile 4 + Datenzeilen + GESAMT-Zeile). Die Summenzeile
-	// gehört – wie im Budget-Blatt – zum Tabellenbereich, damit sie als Total-Zeile
-	// der Tabelle erscheint. SUBTOTAL(109,…) schließt sich in der Summenzeile selbst
-	// aus, es entsteht kein Zirkelbezug.
+	// Excel-Tabelle (Kopf in Zeile 4 + Datenzeilen). Die GESAMT-Zeile liegt bewusst
+	// AUSSERHALB des Table-Range: excelize kann keine echte Totals-Row erzeugen
+	// (totalsRowCount wird nie gesetzt, jede Zeile im Range gilt als Datenzeile).
+	// Als Zeile direkt unter der Tabelle referenziert SUBTOTAL(109,…) nur die
+	// Datenzeilen und schließt sich selbst aus – kein Zirkelbezug, keine Doppelzählung.
 	if err := f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(KMWColPeriode, KMWRowHeader), cellName(KMWColDatum, KMWRowTotal)),
+		Range:          fmt.Sprintf("%s:%s", cellName(KMWColPeriode, KMWRowHeader), cellName(KMWColDatum, KMWRowDataEnd)),
 		Name:           tbl.Name,
 		StyleName:      "TableStyleLight1",
 		ShowRowStripes: falsePtr(),

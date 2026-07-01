@@ -595,9 +595,12 @@ func (g *Generator) bindBudgetFinancing(ws string, reg *TemplateRegistry, dyn bu
 func (g *Generator) bindBudgetAusgaben(ws string, reg *TemplateRegistry, dyn budgetDynRows) error {
 	f := g.file
 
-	// Excel-Tabelle anlegen
+	// Excel-Tabelle anlegen. Die Summenzeile (dyn.AusgTotal, "Geplante
+	// Gesamtausgaben") liegt AUSSERHALB des Table-Range – excelize kann keine echte
+	// Totals-Row erzeugen. Als Zeile direkt unter der Tabelle summiert
+	// SUBTOTAL(109, BudgetTableAusg[…]) nur die Datenzeilen (kein Zirkelbezug).
 	_ = f.AddTable(ws, &excelize.Table{
-		Range:          fmt.Sprintf("%s:%s", cellName(BudgetColLabel, BudgetRowAusgHdr), cellName(BudgetColEUR, dyn.AusgTotal)),
+		Range:          fmt.Sprintf("%s:%s", cellName(BudgetColLabel, BudgetRowAusgHdr), cellName(BudgetColEUR, dyn.AusgTotal-1)),
 		Name:           BudgetTableAusg,
 		StyleName:      "",
 		ShowRowStripes: falsePtr(),
