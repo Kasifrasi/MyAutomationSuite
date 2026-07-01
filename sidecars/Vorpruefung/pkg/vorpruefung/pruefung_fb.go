@@ -151,7 +151,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	// --- LINKER BLOCK (Basis) ---
 	rBew := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Bewilligte KMW-Mittel", false)
-	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", FieldBudgetKMWEUR.NamedRange), false)
+	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", Registry.InputBudgetKMWEUR.NamedRange), false)
 	r++
 	rRes := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Davon Reserve", false)
@@ -189,9 +189,9 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 
 	// Saldovortrag (berechnet)
 	if isMA {
-		g.evalToggle(ws, cellName(tog, rr), FieldMAPruefungAbzugSaldo)
+		g.evalToggle(ws, cellName(tog, rr), Registry.InputMAPruefungAbzugSaldo)
 	} else {
-		g.evalToggle(ws, cellName(tog, rr), FieldFBPruefungAbzugSaldo)
+		g.evalToggle(ws, cellName(tog, rr), Registry.InputFBPruefungAbzugSaldo)
 	}
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Saldovortrag", false)
 	g.evalDeduct(ws, cellName(valR, rr), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", DB_NAME_SALDOVORTRAG_EUR))
@@ -201,9 +201,9 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 
 	// Mehreinnahmen (Formel wird nachgelagert gesetzt)
 	if isMA {
-		g.evalToggle(ws, cellName(tog, rr), FieldMAPruefungAbzugMehr)
+		g.evalToggle(ws, cellName(tog, rr), Registry.InputMAPruefungAbzugMehr)
 	} else {
-		g.evalToggle(ws, cellName(tog, rr), FieldFBPruefungAbzugMehr)
+		g.evalToggle(ws, cellName(tog, rr), Registry.InputFBPruefungAbzugMehr)
 	}
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Mehreinnahmen", false)
 	g.evalDeductPlaceholder(ws, cellName(valR, rr))
@@ -213,7 +213,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 
 	prognCell := ""
 	if isMA {
-		g.evalToggle(ws, cellName(tog, rr), FieldMAPruefungAbzugPrognose)
+		g.evalToggle(ws, cellName(tog, rr), Registry.InputMAPruefungAbzugPrognose)
 		g.evalKmwLabel(ws, rr, lblR1, lblR2, "Prognostizierte Mehreinnahmen", false)
 		g.evalDeductPlaceholder(ws, cellName(valR, rr))
 		prognCell = cellName(valR, rr)
@@ -452,7 +452,7 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 	labelCell := cellName(EV_PB_V1, r)
 	g.mergeCells(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
 	col, row, _ := excelize.CellNameToCoordinates(labelCell)
-	_ = g.bindInputField(ws, row, col, FieldFBPruefungAuswahl)
+	_ = g.bindInputField(ws, row, col, Registry.InputFBPruefungAuswahl)
 
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
@@ -619,11 +619,11 @@ func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {
 	if isIncome {
 		switch idx {
 		case 0:
-			return FieldBudgetEigenmittelLC.NamedRange, FieldBudgetEigenmittelEUR.NamedRange
+			return Registry.InputBudgetEigenmittelLC.NamedRange, Registry.InputBudgetEigenmittelEUR.NamedRange
 		case 1:
-			return FieldBudgetDrittmittelLC.NamedRange, FieldBudgetDrittmittelEUR.NamedRange
+			return Registry.OutputBudgetDrittmittelLC.NamedRange, Registry.OutputBudgetDrittmittelEUR.NamedRange
 		case 2:
-			return FieldBudgetKMWLC.NamedRange, FieldBudgetKMWEUR.NamedRange
+			return Registry.InputBudgetKMWLC.NamedRange, Registry.InputBudgetKMWEUR.NamedRange
 		default:
 			return "0", "0"
 		}

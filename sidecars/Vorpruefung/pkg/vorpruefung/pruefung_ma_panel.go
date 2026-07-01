@@ -21,7 +21,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 	labelCell := cellName(EV_PB_V1, r)
 	g.mergeCells(ws, labelCell, cellName(EV_PB_C2, r), "", inputCtr)
 	col, row, _ := excelize.CellNameToCoordinates(labelCell)
-	_ = g.bindInputField(ws, row, col, FieldMAPruefungAuswahl)
+	_ = g.bindInputField(ws, row, col, Registry.InputMAPruefungAuswahl)
 
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = labelCell
@@ -179,7 +179,7 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	top := r
 
 	// Jahresbudget-EUR wird mit dem Budget-Kurs (Gesamtprojekt) umgerechnet.
-	rate := OutputBudgetWK.NamedRange
+	rate := Registry.OutputBudgetWK.NamedRange
 
 	gridBorder := func(fill string) StyleOptions {
 		return StyleOptions{FillColor: fill, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}
@@ -260,7 +260,7 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	yearBudLCAddrs := make([]string, len(BudgetYears))
 	yearBudEURAddrs := make([]string, len(BudgetYears))
 	defaultMonths := []int{8, 0, 0} // bisheriges 8-Monats-Verhalten als Ausgangswert
-	fields := []InputField{FieldMAPruefungMonateY1, FieldMAPruefungMonateY2, FieldMAPruefungMonateY3}
+	fields := []InputField{Registry.InputMAPruefungMonateY1, Registry.InputMAPruefungMonateY2, Registry.InputMAPruefungMonateY3}
 	for i, year := range BudgetYears {
 		label(r, "Jahresbudget "+year, false)
 		budF := fmt.Sprintf("=IFERROR(ROUND(SUBTOTAL(109,%s[%s]),2),0)", BudgetTableAusg, year)

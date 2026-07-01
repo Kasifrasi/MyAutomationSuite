@@ -491,7 +491,7 @@ func fillFB(f *excelize.File, periods []FBPeriod, budget *BudgetData) {
 		// 3. Einnahmen Tabelle 2 (Eigen/Dritt)
 		tNameT2 := fmt.Sprintf("Einnahmen_WK_%d", p+1)
 		for _, e := range fp.EinnahmenWK {
-			_ = addOrUpdateEinnahme(f, sheet, tNameT2, e.Typ, e.Geber, e.LC, e.EUR)
+			_ = addOrUpdateEinnahme(f, sheet, t[@registry.go (406:455)](file:///home/ardit/repos/MyAutomationSuite/sidecars/Vorpruefung/pkg/vorpruefung/registry.go#L406:455) Ich raffe es nicht was soll dieser Scheiß?NameT2, e.Typ, e.Geber, e.LC, e.EUR)
 		}
 	}
 }
