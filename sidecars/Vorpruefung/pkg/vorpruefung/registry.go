@@ -541,24 +541,27 @@ type TemplateRegistry struct {
 	OutputFBPruefungSollIstGesamtAbwEUR  OutputField
 
 	// MA
-	InputMAVon           InputFactory
-	InputMABis           InputFactory
-	InputMAKurs          InputFactory
-	InputMAEigenmittelLC InputFactory
-	InputMADrittmittelLC InputFactory
-	InputMASaldoLC       InputFactory
-	InputMAManBetrag     InputFactory
-	InputMAKat           InputFactory
-	InputMAKmwLC         InputFactory
-
-	OutputMAPeriode        OutputFactory
-	OutputMAZeitraum       OutputFactory
-	OutputMASumLC          OutputFactory
-	OutputMASumEUR         OutputFactory
-	OutputMAEigenmittelEUR OutputFactory
-	OutputMADrittmittelEUR OutputFactory
-	OutputMAKatEUR         OutputFactory
-	OutputMAKmwEUR         OutputFactory
+	OutputMAPeriode      MAOutputFactory
+	InputMAVon           MAInputFactory
+	InputMABis           MAInputFactory
+	OutputMAZeitraum     MAOutputFactory
+	InputMAKurs          MAInputFactory
+	
+	InputMAKat           MAInputKatFactory
+	OutputMAKatEUR         MAOutputKatFactory
+	OutputMASumLC          MAOutputFactory
+	OutputMASumEUR         MAOutputFactory
+	
+	InputMAEigenmittelLC MAInputFactory
+	OutputMAEigenmittelEUR MAOutputFactory
+	InputMADrittmittelLC MAInputFactory
+	OutputMADrittmittelEUR MAOutputFactory
+	OutputMASaldoLC       MAOutputFactory
+	OutputMASaldoEUR     MAOutputFactory
+	InputMAAnforderungLC         MAInputFactory
+	OutputMAAnforderungEUR         MAOutputFactory
+	
+	InputMAManBetragEUR     MAInputFactory
 
 	// Pruefung MA
 	InputMAPruefungAuswahl       InputField
