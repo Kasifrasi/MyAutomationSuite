@@ -181,20 +181,15 @@ func (g *Generator) bindKMWTable(ws string, reg *TemplateRegistry) error {
 	}
 	_ = f.SetColVisible(ws, colLetter(KMWColValList), false)
 
-	// Validierung 'Periode' aus der Hilfsliste
-	dvPeriode := excelize.NewDataValidation(true)
-	dvPeriode.Sqref = fmt.Sprintf("%s:%s", cellName(KMWColPeriode, KMWRowDataStart), cellName(KMWColPeriode, KMWRowDataEnd))
-	dvPeriode.SetSqrefDropList(fmt.Sprintf("'%s'!$%s$1:$%s$%d",
-		ws, colLetter(KMWColValList), colLetter(KMWColValList), KMWPeriodenAnzahl))
-	if err := f.AddDataValidation(ws, dvPeriode); err != nil {
+	// Validierung 'Periode' – dynamische Quelle (Hilfsliste) aus der Registry-Spalte
+	periodeSqref := fmt.Sprintf("%s:%s", cellName(KMWColPeriode, KMWRowDataStart), cellName(KMWColPeriode, KMWRowDataEnd))
+	if err := g.applyColumnDynamicValidation(ws, periodeSqref, tbl.Columns[KMWColPeriode-KMWColPeriode]); err != nil {
 		return fmt.Errorf("fehler beim Hinzufügen der Periode-Validierung: %w", err)
 	}
 
-	// Validierung 'Waehrung'
-	dvWaehrung := excelize.NewDataValidation(true)
-	dvWaehrung.Sqref = fmt.Sprintf("%s:%s", cellName(KMWColWaehrung, KMWRowDataStart), cellName(KMWColWaehrung, KMWRowDataEnd))
-	dvWaehrung.SetDropList(ListWaehrung)
-	if err := f.AddDataValidation(ws, dvWaehrung); err != nil {
+	// Validierung 'Waehrung' – statische Liste aus der Registry-Spalte
+	waehrungSqref := fmt.Sprintf("%s:%s", cellName(KMWColWaehrung, KMWRowDataStart), cellName(KMWColWaehrung, KMWRowDataEnd))
+	if err := g.applyColumnValidation(ws, waehrungSqref, tbl.Columns[KMWColWaehrung-KMWColPeriode]); err != nil {
 		return fmt.Errorf("fehler beim Hinzufügen der Waehrung-Validierung: %w", err)
 	}
 

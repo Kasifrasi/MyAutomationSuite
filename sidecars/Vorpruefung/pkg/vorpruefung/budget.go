@@ -598,13 +598,11 @@ func (g *Generator) bindBudgetAusgaben(ws string, reg *TemplateRegistry, dyn bud
 		ShowRowStripes: falsePtr(),
 	})
 
-	// Kategorie-Dropdown über alle Ausgaben-Zeilen
-	dv := excelize.NewDataValidation(true)
-	dv.Sqref = fmt.Sprintf("%s:%s",
+	// Kategorie-Dropdown über alle Ausgaben-Zeilen – statische Liste aus der Registry-Spalte
+	catSqref := fmt.Sprintf("%s:%s",
 		cellName(BudgetColLabel, BudgetRowAusgStart),
 		cellName(BudgetColLabel, BudgetRowAusgStart+dyn.AusgDataRows-1))
-	dv.SetDropList(ListKostenkategorien)
-	_ = f.AddDataValidation(ws, dv)
+	_ = g.applyColumnValidation(ws, catSqref, reg.TableBudgetAusgaben.Columns[0])
 
 	// ID-Liste für Lookup-Formeln
 	g.setDynArrayFormula(ws, cellName(BudgetColListID, 1),

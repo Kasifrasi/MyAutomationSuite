@@ -534,3 +534,32 @@ func (g *Generator) bindInputField(sheet string, row, col int, field InputField)
 	}
 	return nil
 }
+
+// applyColumnValidation wendet die statische Dropdown-Validierung einer
+// Tabellenspalte (TableColumn.Validation) auf den übergebenen Zellbereich an.
+// Spalten ohne statische Liste (dynamische Dropdowns, Typ-Constraints) haben
+// keine Validation und werden übersprungen – diese werden separat im Sheet-Code
+// gesetzt (siehe zentrale Übersicht in registry.go).
+func (g *Generator) applyColumnValidation(sheet, sqref string, col TableColumn) error {
+	if len(col.Validation) == 0 {
+		return nil
+	}
+	dv := excelize.NewDataValidation(true)
+	dv.Sqref = sqref
+	dv.SetDropList(col.Validation)
+	return g.file.AddDataValidation(sheet, dv)
+}
+
+// applyColumnDynamicValidation wendet die dynamische Dropdown-Validierung einer
+// Tabellenspalte (TableColumn.DynamicValidation) auf den übergebenen Zellbereich
+// an. Die Quelle (Zell- oder Named-Range) stammt zentral aus der Registry;
+// Spalten ohne DynamicValidation werden übersprungen.
+func (g *Generator) applyColumnDynamicValidation(sheet, sqref string, col TableColumn) error {
+	if col.DynamicValidation == nil || col.DynamicValidation.Formula == "" {
+		return nil
+	}
+	dv := excelize.NewDataValidation(true)
+	dv.Sqref = sqref
+	dv.SetSqrefDropList(col.DynamicValidation.Formula)
+	return g.file.AddDataValidation(sheet, dv)
+}

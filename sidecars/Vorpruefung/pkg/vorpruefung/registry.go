@@ -55,6 +55,29 @@ type TableColumn struct {
 	Header string
 	Width  float64
 	Format string
+	// Validation ist die statische Dropdown-Liste dieser Spalte (analog zu
+	// InputField.Validation) und wird über applyColumnValidation angewendet.
+	// Nur für Spalten mit fester Werteauswahl gesetzt.
+	Validation ValidationList
+	// DynamicValidation ist die dynamische Dropdown-Quelle (Zell- oder Named-Range)
+	// für Spalten, deren zulässige Werte erst zur Laufzeit feststehen und sich
+	// daher nicht als statische Liste ausdrücken lassen. Wird über
+	// applyColumnDynamicValidation angewendet.
+	DynamicValidation *DynamicValidation
+}
+
+// DynamicValidation beschreibt eine dynamische Dropdown-Validierung, deren
+// zulässige Werte aus einer Formel bzw. einem Zell- oder Named-Range stammen.
+// Dadurch sind auch dynamische Validierungen zentral in der Registry registriert
+// und auffindbar – Sheet-Code setzt Dropdowns ausschließlich über die
+// Registry-Spalte (applyColumnValidation / applyColumnDynamicValidation), nie
+// mit hartkodierten Formeln.
+type DynamicValidation struct {
+	// Formula ist die Excel-Dropdown-Quelle (Zellbereich oder Named Range),
+	// z. B. "'KMW-Mittel'!$Z$1:$Z$36" oder "Geber_Liste".
+	Formula string
+	// Note beschreibt den Wertebereich kurz für die zentrale Übersicht.
+	Note string
 }
 
 type TableField struct {
@@ -92,6 +115,37 @@ func (f TableFactory) Get(args ...int) TableField {
 	tableName := fmt.Sprintf(f.Format, anyArgs...)
 	return NewTableField(f.Sheet, tableName, f.HasTotalsRow, f.Columns)
 }
+
+// ─────────────────────────────────────────────────────────────
+// Tabellen-Spalten-Validierungen – zentrale Übersicht
+// ─────────────────────────────────────────────────────────────
+//
+// Damit zentral nachvollziehbar bleibt, welche Werte je Tabellenspalte zulässig
+// sind, werden ALLE Dropdown-Validierungen an der Spalte selbst registriert und
+// ausschließlich über die sanktionierten Applier angewendet:
+//   - statische Liste       → TableColumn.Validation        (applyColumnValidation)
+//   - dynamische Quelle      → TableColumn.DynamicValidation (applyColumnDynamicValidation)
+// So lassen sich alle Validierungen per grep an einer Stelle finden. Reine
+// Typ-Constraints (Zahl/Datum) sind keine Dropdowns und werden über
+// TableColumn.Format bzw. NumFmtID abgebildet – hier nur dokumentiert.
+//
+//   Tabelle               | Spalte           | Art       | Registrierung / Quelle
+//   ----------------------|------------------|-----------|----------------------------------------
+//   TblBudgetAusgaben     | Kostenkategorie  | Liste     | TableColumn.Validation  = ListKostenkategorien
+//   TblKMWMittel          | Waehrung         | Liste     | TableColumn.Validation  = ListWaehrung
+//   ----------------------|------------------|-----------|----------------------------------------
+//   TblKMWMittel          | Periode          | Dynamisch | TableColumn.DynamicValidation (Hilfsliste Spalte Z)
+//   Einnahmen_%d / _WK_%d | Typ              | Dynamisch | TODO migrieren – noch Sheet-Code (Saldo-Label* + feste Typen)
+//   Einnahmen_%d / _WK_%d | Geber            | Dynamisch | TODO migrieren – noch Sheet-Code (Named Range "Geber_Liste")
+//   Ausgaben_%d           | ID               | Dynamisch | TODO migrieren – noch Sheet-Code (Named Range "Budget_ID_Liste")
+//   TblDrittmittel        | Name des Gebers  | Freitext  | keine Validierung; speist Named Range "Geber_Liste"
+//   ----------------------|------------------|-----------|----------------------------------------
+//   TblKMWMittel          | Betrag / Datum   | Typ       | Zahl (#,##0.00) / Datum (NumFmtID 14)
+//   Tbl* (diverse)        | Betrag/EUR/Kurs  | Typ       | Zahl – via TableColumn.Format
+//
+// Regel: Neue Spalte mit Dropdown → an TableColumn registrieren (Validation ODER
+// DynamicValidation) und über den passenden Applier setzen; NIE eine Formel/Liste
+// direkt im Sheet-Code hartkodieren. Diese Übersicht entsprechend ergänzen.
 
 // ─────────────────────────────────────────────────────────────
 // 1. Structs
@@ -746,7 +800,7 @@ func NewTemplateRegistry() *TemplateRegistry {
 			Sheet:        constants.VPSheetBUDGET,
 			HasTotalsRow: true,
 			Columns: []TableColumn{
-				{Header: "Kostenkategorie"},
+				{Header: "Kostenkategorie", Validation: ListKostenkategorien},
 				{Header: "ID"},
 				{Header: "Kostenposition"},
 				{Header: "Betrag (LC)", Format: "#,##0.00"},
@@ -773,8 +827,13 @@ func NewTemplateRegistry() *TemplateRegistry {
 			Sheet:        constants.VPSheetKMW_MITTEL,
 			HasTotalsRow: true,
 			Columns: []TableColumn{
-				{Header: "Periode"},
-				{Header: "Waehrung"},
+				{Header: "Periode", DynamicValidation: &DynamicValidation{
+					Formula: fmt.Sprintf("'%s'!$%s$1:$%s$%d",
+						constants.VPSheetKMW_MITTEL,
+						colLetter(KMWColValList), colLetter(KMWColValList), KMWPeriodenAnzahl),
+					Note: "Hilfsliste Periode 1..36 (Spalte Z, ausgeblendet)",
+				}},
+				{Header: "Waehrung", Validation: ListWaehrung},
 				{Header: "Betrag", Format: "#,##0.00"},
 				{Header: "Datum"},
 			},
