@@ -179,7 +179,7 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	top := r
 
 	// Jahresbudget-EUR wird mit dem Budget-Kurs (Gesamtprojekt) umgerechnet.
-	rate := BudgetNameKurs
+	rate := OutputBudgetWK.NamedRange
 
 	gridBorder := func(fill string) StyleOptions {
 		return StyleOptions{FillColor: fill, BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_CLR_GRID}

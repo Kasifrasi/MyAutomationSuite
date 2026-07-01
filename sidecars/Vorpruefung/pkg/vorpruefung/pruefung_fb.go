@@ -151,7 +151,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	// --- LINKER BLOCK (Basis) ---
 	rBew := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Bewilligte KMW-Mittel", false)
-	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", BudgetNameKMWEUR), false)
+	g.evalKmwCalc(ws, cellName(valL, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", FieldBudgetKMWEUR.NamedRange), false)
 	r++
 	rRes := r
 	g.evalKmwLabel(ws, r, lblL1, lblL2, "Davon Reserve", false)
@@ -619,11 +619,11 @@ func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {
 	if isIncome {
 		switch idx {
 		case 0:
-			return BudgetNameEigenLW, BudgetNameEigenEUR
+			return FieldBudgetEigenmittelLC.NamedRange, FieldBudgetEigenmittelEUR.NamedRange
 		case 1:
-			return BudgetNameDrittLW, BudgetNameDrittEUR
+			return FieldBudgetDrittmittelLC.NamedRange, FieldBudgetDrittmittelEUR.NamedRange
 		case 2:
-			return BudgetNameKMWLW, BudgetNameKMWEUR
+			return FieldBudgetKMWLC.NamedRange, FieldBudgetKMWEUR.NamedRange
 		default:
 			return "0", "0"
 		}

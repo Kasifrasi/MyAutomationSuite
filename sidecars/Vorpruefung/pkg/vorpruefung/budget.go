@@ -81,21 +81,10 @@ const (
 	BudgetSheetName = constants.VPSheetBUDGET
 	BudgetTabColor  = "5B9BD5"
 
-	// Benannte Bereiche (Strings unveränderlich – andere Sheets referenzieren sie)
+	// Benannte Bereiche für Listenbereiche (kein Zellbezug, kein Inp_/Out_-Präfix)
 	BudgetNameGeberList = "Geber_Liste"
 	BudgetNameIDList    = "Budget_ID_Liste"
 	BudgetNameReserve   = "Inp_Budget_ReserveFreigabe"
-	BudgetNameKurs      = "Budget_Kurs"
-	BudgetNameEigenLW   = "Eigenmittel_LW"
-	BudgetNameEigenEUR  = "Eigenmittel_EUR"
-	BudgetNameDrittLW   = "Drittmittel_LW"
-	BudgetNameDrittEUR  = "Drittmittel_EUR"
-	BudgetNameKMWLW     = "KMW_Mittel_LW"
-	BudgetNameKMWEUR    = "KMW_Mittel_EUR"
-	BudgetNameGesamtLW  = "Gesamtprojektmittel_LW"
-	BudgetNameGesamtEUR = "Gesamtprojektmittel_EUR"
-	BudgetNameAusgLW    = "Gesamtausgaben_LW"
-	BudgetNameAusgEUR   = "Gesamtausgaben_EUR"
 
 	// Tabellennamen (intern und von anderen Sheets verwendet)
 	BudgetTableAusg = "TblBudgetAusgaben"
