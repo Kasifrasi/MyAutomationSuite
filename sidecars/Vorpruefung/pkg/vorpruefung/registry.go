@@ -10,9 +10,9 @@ type ValidationList []string
 
 // Zentral definierte Dropdown-Werte, damit die API sie nutzen kann
 var (
-	ListJaNein           ValidationList = []string{"Ja", "Nein"}
-	ListAbzug            ValidationList = []string{"Abzug", "Kein Abzug"}
-	ListWaehrung         ValidationList = []string{
+	ListJaNein   ValidationList = []string{"Ja", "Nein"}
+	ListAbzug    ValidationList = []string{"Abzug", "Kein Abzug"}
+	ListWaehrung ValidationList = []string{
 		"AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN", "BAM", "BBD",
 		"BDT", "BHD", "BIF", "BMD", "BND", "BOB", "BRL", "BSD", "BTN", "BWP", "BYN",
 		"BZD", "CAD", "CDF", "CHF", "CLP", "CNY", "COP", "CRC", "CUP", "CVE", "CZK",
@@ -28,7 +28,7 @@ var (
 		"TRY", "TTD", "TWD", "TZS", "UAH", "UGX", "USD", "UYU", "UZS", "VED", "VES",
 		"VND", "VUV", "WST", "XAF", "XCD", "XCG", "XOF", "XPF", "YER", "ZAR", "ZMW",
 		"ZWG",
-	}   
+	}
 	ListMonate           ValidationList = []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
 	ListKostenkategorien ValidationList = []string{"Bauausgaben", "Investitionen", "Personalkosten", "Projektaktivitaeten", "Projektverwaltung", "Evaluierung", "Audit", "Reserve"}
 )
@@ -330,12 +330,11 @@ type TemplateRegistry struct {
 	InputDashBankBelegeCheck     InputField
 	InputDashFBCheck             InputField
 	InputDashMACheck             InputField
-	
 
-	OutputDashProjektlaufzeit    OutputField
-	OutputDashMonate             OutputField
-	OutputDashSaldoEUR           OutputField
-	OutputDashSaldovortragEUR    OutputField
+	OutputDashProjektlaufzeit OutputField
+	OutputDashMonate          OutputField
+	OutputDashSaldoEUR        OutputField
+	OutputDashSaldovortragEUR OutputField
 
 	// Budget
 	OutputBudgetWK             OutputField
@@ -364,27 +363,27 @@ type TemplateRegistry struct {
 	OutputBudgetGesamtEUR      OutputField
 
 	// Finanzberichte
-	OutputFBPeriode         OutputFactory
-	InputFBVon              InputFactory
-	InputFBBis              InputFactory
-	OutputFBZeitraum        OutputFactory
-	OutputFBKurs            OutputFactory
-	OutputFBVSaldoLC        OutputFactory
-	OutputFBVSaldoEUR       OutputFactory
-	OutputFBVSaldoKumLC     OutputFactory
-	OutputFBVSaldoKumEUR    OutputFactory
-	OutputFBEMlLC           OutputFactory
-	OutputFBEMEUR          	OutputFactory
-	OutputFBKumEMLC         OutputFactory
-	OutputFBKumEMEUR        OutputFactory
-	OutputFBDMLC            OutputFactory
-	OutputFBDMEUR           OutputFactory
-	OutputFBKumDMLC         OutputFactory
-	OutputFBKumDMEUR        OutputFactory
-	OutputFBKMWLC           OutputFactory
-	OutputFBKMWEUR          OutputFactory
-	OutputFBKumKMWLC        OutputFactory
-	OutputFBKumKMWEUR       OutputFactory
+	OutputFBPeriode          OutputFactory
+	InputFBVon               InputFactory
+	InputFBBis               InputFactory
+	OutputFBZeitraum         OutputFactory
+	OutputFBKurs             OutputFactory
+	OutputFBVSaldoLC         OutputFactory
+	OutputFBVSaldoEUR        OutputFactory
+	OutputFBVSaldoKumLC      OutputFactory
+	OutputFBVSaldoKumEUR     OutputFactory
+	OutputFBEMlLC            OutputFactory
+	OutputFBEMEUR            OutputFactory
+	OutputFBKumEMLC          OutputFactory
+	OutputFBKumEMEUR         OutputFactory
+	OutputFBDMLC             OutputFactory
+	OutputFBDMEUR            OutputFactory
+	OutputFBKumDMLC          OutputFactory
+	OutputFBKumDMEUR         OutputFactory
+	OutputFBKMWLC            OutputFactory
+	OutputFBKMWEUR           OutputFactory
+	OutputFBKumKMWLC         OutputFactory
+	OutputFBKumKMWEUR        OutputFactory
 	OutputFBZinsLC           OutputFactory
 	OutputFBZinsEUR          OutputFactory
 	OutputFBKumZinsLC        OutputFactory
@@ -395,12 +394,12 @@ type TemplateRegistry struct {
 	OutputFBKumGEinnahmenEUR OutputFactory
 	OutputFBSaldoLC          OutputFactory
 	OutputFBSaldoEUR         OutputFactory
-	
-	InputFBAufschlBankLC      InputFactory
-	OutputFBAufschlBankEUR    OutputFactory
-	InputFBAufschlKasseLC     InputFactory
-	OutputFBAufschlKasseEUR   OutputFactory
-	InputFBAufschlSonstigesLC InputFactory
+
+	InputFBAufschlBankLC        InputFactory
+	OutputFBAufschlBankEUR      OutputFactory
+	InputFBAufschlKasseLC       InputFactory
+	OutputFBAufschlKasseEUR     OutputFactory
+	InputFBAufschlSonstigesLC   InputFactory
 	OutputFBAufschlSonstigesEUR OutputFactory
 
 	OutputFBDifferenzLC  OutputFactory
@@ -410,6 +409,136 @@ type TemplateRegistry struct {
 	InputFBPruefungAuswahl    InputField
 	InputFBPruefungAbzugSaldo InputField
 	InputFBPruefungAbzugMehr  InputField
+
+	// Pruefung FB – Auswahl (berechnete Periodennummer aus der Auswahl)
+	OutputFBPruefungAusgewaehltePeriode OutputField
+
+	// Pruefung FB – KMW-Mittelpruefung (berechnete Ergebnisfelder)
+	OutputFBPruefungKMWBewilligt           OutputField
+	OutputFBPruefungKMWReserve             OutputField
+	OutputFBPruefungKMWOperativ            OutputField
+	OutputFBPruefungKMWBereitgestellt      OutputField
+	OutputFBPruefungKMWVerfuegbar          OutputField
+	OutputFBPruefungSaldovortrag           OutputField
+	OutputFBPruefungMehreinnahmen          OutputField
+	OutputFBPruefungAbzugGesamt            OutputField
+	OutputFBPruefungKMWVerfuegbarBereinigt OutputField
+
+	// Pruefung FB – Finanzierungsanteile (Einnahmen-Vergleich: 4 Kategorien + Gesamt, je 8 Spalten = 40)
+	OutputFBPruefungFinEMActLC      OutputField
+	OutputFBPruefungFinEMBudLC      OutputField
+	OutputFBPruefungFinEMDifLC      OutputField
+	OutputFBPruefungFinEMAbwLC      OutputField
+	OutputFBPruefungFinEMActEUR     OutputField
+	OutputFBPruefungFinEMBudEUR     OutputField
+	OutputFBPruefungFinEMDifEUR     OutputField
+	OutputFBPruefungFinEMAbwEUR     OutputField
+	OutputFBPruefungFinDMActLC      OutputField
+	OutputFBPruefungFinDMBudLC      OutputField
+	OutputFBPruefungFinDMDifLC      OutputField
+	OutputFBPruefungFinDMAbwLC      OutputField
+	OutputFBPruefungFinDMActEUR     OutputField
+	OutputFBPruefungFinDMBudEUR     OutputField
+	OutputFBPruefungFinDMDifEUR     OutputField
+	OutputFBPruefungFinDMAbwEUR     OutputField
+	OutputFBPruefungFinKMWActLC     OutputField
+	OutputFBPruefungFinKMWBudLC     OutputField
+	OutputFBPruefungFinKMWDifLC     OutputField
+	OutputFBPruefungFinKMWAbwLC     OutputField
+	OutputFBPruefungFinKMWActEUR    OutputField
+	OutputFBPruefungFinKMWBudEUR    OutputField
+	OutputFBPruefungFinKMWDifEUR    OutputField
+	OutputFBPruefungFinKMWAbwEUR    OutputField
+	OutputFBPruefungFinZinsActLC    OutputField
+	OutputFBPruefungFinZinsBudLC    OutputField
+	OutputFBPruefungFinZinsDifLC    OutputField
+	OutputFBPruefungFinZinsAbwLC    OutputField
+	OutputFBPruefungFinZinsActEUR   OutputField
+	OutputFBPruefungFinZinsBudEUR   OutputField
+	OutputFBPruefungFinZinsDifEUR   OutputField
+	OutputFBPruefungFinZinsAbwEUR   OutputField
+	OutputFBPruefungFinGesamtActLC  OutputField
+	OutputFBPruefungFinGesamtBudLC  OutputField
+	OutputFBPruefungFinGesamtDifLC  OutputField
+	OutputFBPruefungFinGesamtAbwLC  OutputField
+	OutputFBPruefungFinGesamtActEUR OutputField
+	OutputFBPruefungFinGesamtBudEUR OutputField
+	OutputFBPruefungFinGesamtDifEUR OutputField
+	OutputFBPruefungFinGesamtAbwEUR OutputField
+
+	// Pruefung FB – Soll-Ist-Abweichungspruefung (8 Kostenkategorien + Gesamt, je 8 Spalten = 72)
+	OutputFBPruefungSollIstBauActLC      OutputField
+	OutputFBPruefungSollIstBauBudLC      OutputField
+	OutputFBPruefungSollIstBauDifLC      OutputField
+	OutputFBPruefungSollIstBauAbwLC      OutputField
+	OutputFBPruefungSollIstBauActEUR     OutputField
+	OutputFBPruefungSollIstBauBudEUR     OutputField
+	OutputFBPruefungSollIstBauDifEUR     OutputField
+	OutputFBPruefungSollIstBauAbwEUR     OutputField
+	OutputFBPruefungSollIstInvActLC      OutputField
+	OutputFBPruefungSollIstInvBudLC      OutputField
+	OutputFBPruefungSollIstInvDifLC      OutputField
+	OutputFBPruefungSollIstInvAbwLC      OutputField
+	OutputFBPruefungSollIstInvActEUR     OutputField
+	OutputFBPruefungSollIstInvBudEUR     OutputField
+	OutputFBPruefungSollIstInvDifEUR     OutputField
+	OutputFBPruefungSollIstInvAbwEUR     OutputField
+	OutputFBPruefungSollIstPersActLC     OutputField
+	OutputFBPruefungSollIstPersBudLC     OutputField
+	OutputFBPruefungSollIstPersDifLC     OutputField
+	OutputFBPruefungSollIstPersAbwLC     OutputField
+	OutputFBPruefungSollIstPersActEUR    OutputField
+	OutputFBPruefungSollIstPersBudEUR    OutputField
+	OutputFBPruefungSollIstPersDifEUR    OutputField
+	OutputFBPruefungSollIstPersAbwEUR    OutputField
+	OutputFBPruefungSollIstAktivActLC    OutputField
+	OutputFBPruefungSollIstAktivBudLC    OutputField
+	OutputFBPruefungSollIstAktivDifLC    OutputField
+	OutputFBPruefungSollIstAktivAbwLC    OutputField
+	OutputFBPruefungSollIstAktivActEUR   OutputField
+	OutputFBPruefungSollIstAktivBudEUR   OutputField
+	OutputFBPruefungSollIstAktivDifEUR   OutputField
+	OutputFBPruefungSollIstAktivAbwEUR   OutputField
+	OutputFBPruefungSollIstVerwActLC     OutputField
+	OutputFBPruefungSollIstVerwBudLC     OutputField
+	OutputFBPruefungSollIstVerwDifLC     OutputField
+	OutputFBPruefungSollIstVerwAbwLC     OutputField
+	OutputFBPruefungSollIstVerwActEUR    OutputField
+	OutputFBPruefungSollIstVerwBudEUR    OutputField
+	OutputFBPruefungSollIstVerwDifEUR    OutputField
+	OutputFBPruefungSollIstVerwAbwEUR    OutputField
+	OutputFBPruefungSollIstEvalActLC     OutputField
+	OutputFBPruefungSollIstEvalBudLC     OutputField
+	OutputFBPruefungSollIstEvalDifLC     OutputField
+	OutputFBPruefungSollIstEvalAbwLC     OutputField
+	OutputFBPruefungSollIstEvalActEUR    OutputField
+	OutputFBPruefungSollIstEvalBudEUR    OutputField
+	OutputFBPruefungSollIstEvalDifEUR    OutputField
+	OutputFBPruefungSollIstEvalAbwEUR    OutputField
+	OutputFBPruefungSollIstAuditActLC    OutputField
+	OutputFBPruefungSollIstAuditBudLC    OutputField
+	OutputFBPruefungSollIstAuditDifLC    OutputField
+	OutputFBPruefungSollIstAuditAbwLC    OutputField
+	OutputFBPruefungSollIstAuditActEUR   OutputField
+	OutputFBPruefungSollIstAuditBudEUR   OutputField
+	OutputFBPruefungSollIstAuditDifEUR   OutputField
+	OutputFBPruefungSollIstAuditAbwEUR   OutputField
+	OutputFBPruefungSollIstReserveActLC  OutputField
+	OutputFBPruefungSollIstReserveBudLC  OutputField
+	OutputFBPruefungSollIstReserveDifLC  OutputField
+	OutputFBPruefungSollIstReserveAbwLC  OutputField
+	OutputFBPruefungSollIstReserveActEUR OutputField
+	OutputFBPruefungSollIstReserveBudEUR OutputField
+	OutputFBPruefungSollIstReserveDifEUR OutputField
+	OutputFBPruefungSollIstReserveAbwEUR OutputField
+	OutputFBPruefungSollIstGesamtActLC   OutputField
+	OutputFBPruefungSollIstGesamtBudLC   OutputField
+	OutputFBPruefungSollIstGesamtDifLC   OutputField
+	OutputFBPruefungSollIstGesamtAbwLC   OutputField
+	OutputFBPruefungSollIstGesamtActEUR  OutputField
+	OutputFBPruefungSollIstGesamtBudEUR  OutputField
+	OutputFBPruefungSollIstGesamtDifEUR  OutputField
+	OutputFBPruefungSollIstGesamtAbwEUR  OutputField
 
 	// MA
 	InputMAVon           InputFactory
@@ -555,10 +684,10 @@ func NewTemplateRegistry() *TemplateRegistry {
 		InputDashFBCheck:             dash.Inp("FBCheck", ListJaNein),
 		InputDashMACheck:             dash.Inp("MACheck", ListJaNein),
 
-		OutputDashProjektlaufzeit:     dash.Out("Projektlaufzeit"),
-		OutputDashMonate:              dash.Out("Monate"),
-		OutputDashSaldoEUR:            dash.Out("SaldoEUR"),
-		OutputDashSaldovortragEUR:     dash.Out("SaldovortragEUR"),
+		OutputDashProjektlaufzeit: dash.Out("Projektlaufzeit"),
+		OutputDashMonate:          dash.Out("Monate"),
+		OutputDashSaldoEUR:        dash.Out("SaldoEUR"),
+		OutputDashSaldovortragEUR: dash.Out("SaldovortragEUR"),
 
 		// Budget
 		OutputBudgetWK:             budget.Out("WK"),
@@ -587,17 +716,147 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputBudgetGesamtEUR:      budget.Out("GesamtEUR"),
 
 		// Finanzberichte
-		OutputFBPeriode:         fb.Out("Periode"),
-		InputFBVon:              fb.InpFact("Von_%d", nil),
-		InputFBBis:              fb.InpFact("Bis_%d", nil),
-		InputFBAufschlBank:      fb.InpFact("aufschl_Bank_%d", nil),
-		InputFBAufschlKasse:     fb.InpFact("aufschl_Kasse_%d", nil),
-		InputFBAufschlSonstiges: fb.InpFact("aufschl_Sonstiges_%d", nil),
+		OutputFBPeriode:           fb.OutFact("Periode"),
+		InputFBVon:                fb.InpFact("Von_%d", nil),
+		InputFBBis:                fb.InpFact("Bis_%d", nil),
+		InputFBAufschlBankLC:      fb.InpFact("aufschl_Bank_%d", nil),
+		InputFBAufschlKasseLC:     fb.InpFact("aufschl_Kasse_%d", nil),
+		InputFBAufschlSonstigesLC: fb.InpFact("aufschl_Sonstiges_%d", nil),
 
 		// Pruefung FB
 		InputFBPruefungAuswahl:    fbPrue.Inp("Auswahl", nil),
 		InputFBPruefungAbzugSaldo: fbPrue.Inp("AbzugSaldo", ListAbzug),
 		InputFBPruefungAbzugMehr:  fbPrue.Inp("AbzugMehr", ListAbzug),
+
+		// Pruefung FB – Auswahl (berechnete Periodennummer aus der Auswahl)
+		OutputFBPruefungAusgewaehltePeriode: fbPrue.Out("AusgewaehltePeriode"),
+
+		// Pruefung FB – KMW-Mittelpruefung (berechnete Ergebnisfelder)
+		OutputFBPruefungKMWBewilligt:           fbPrue.Out("KMWBewilligt"),
+		OutputFBPruefungKMWReserve:             fbPrue.Out("KMWReserve"),
+		OutputFBPruefungKMWOperativ:            fbPrue.Out("KMWOperativ"),
+		OutputFBPruefungKMWBereitgestellt:      fbPrue.Out("KMWBereitgestellt"),
+		OutputFBPruefungKMWVerfuegbar:          fbPrue.Out("KMWVerfuegbar"),
+		OutputFBPruefungSaldovortrag:           fbPrue.Out("Saldovortrag"),
+		OutputFBPruefungMehreinnahmen:          fbPrue.Out("Mehreinnahmen"),
+		OutputFBPruefungAbzugGesamt:            fbPrue.Out("AbzugGesamt"),
+		OutputFBPruefungKMWVerfuegbarBereinigt: fbPrue.Out("KMWVerfuegbarBereinigt"),
+
+		// Pruefung FB – Finanzierungsanteile (Einnahmen-Vergleich: 4 Kategorien + Gesamt, je 8 Spalten = 40)
+		OutputFBPruefungFinEMActLC:      fbPrue.Out("FinEMActLC"),
+		OutputFBPruefungFinEMBudLC:      fbPrue.Out("FinEMBudLC"),
+		OutputFBPruefungFinEMDifLC:      fbPrue.Out("FinEMDifLC"),
+		OutputFBPruefungFinEMAbwLC:      fbPrue.Out("FinEMAbwLC"),
+		OutputFBPruefungFinEMActEUR:     fbPrue.Out("FinEMActEUR"),
+		OutputFBPruefungFinEMBudEUR:     fbPrue.Out("FinEMBudEUR"),
+		OutputFBPruefungFinEMDifEUR:     fbPrue.Out("FinEMDifEUR"),
+		OutputFBPruefungFinEMAbwEUR:     fbPrue.Out("FinEMAbwEUR"),
+		OutputFBPruefungFinDMActLC:      fbPrue.Out("FinDMActLC"),
+		OutputFBPruefungFinDMBudLC:      fbPrue.Out("FinDMBudLC"),
+		OutputFBPruefungFinDMDifLC:      fbPrue.Out("FinDMDifLC"),
+		OutputFBPruefungFinDMAbwLC:      fbPrue.Out("FinDMAbwLC"),
+		OutputFBPruefungFinDMActEUR:     fbPrue.Out("FinDMActEUR"),
+		OutputFBPruefungFinDMBudEUR:     fbPrue.Out("FinDMBudEUR"),
+		OutputFBPruefungFinDMDifEUR:     fbPrue.Out("FinDMDifEUR"),
+		OutputFBPruefungFinDMAbwEUR:     fbPrue.Out("FinDMAbwEUR"),
+		OutputFBPruefungFinKMWActLC:     fbPrue.Out("FinKMWActLC"),
+		OutputFBPruefungFinKMWBudLC:     fbPrue.Out("FinKMWBudLC"),
+		OutputFBPruefungFinKMWDifLC:     fbPrue.Out("FinKMWDifLC"),
+		OutputFBPruefungFinKMWAbwLC:     fbPrue.Out("FinKMWAbwLC"),
+		OutputFBPruefungFinKMWActEUR:    fbPrue.Out("FinKMWActEUR"),
+		OutputFBPruefungFinKMWBudEUR:    fbPrue.Out("FinKMWBudEUR"),
+		OutputFBPruefungFinKMWDifEUR:    fbPrue.Out("FinKMWDifEUR"),
+		OutputFBPruefungFinKMWAbwEUR:    fbPrue.Out("FinKMWAbwEUR"),
+		OutputFBPruefungFinZinsActLC:    fbPrue.Out("FinZinsActLC"),
+		OutputFBPruefungFinZinsBudLC:    fbPrue.Out("FinZinsBudLC"),
+		OutputFBPruefungFinZinsDifLC:    fbPrue.Out("FinZinsDifLC"),
+		OutputFBPruefungFinZinsAbwLC:    fbPrue.Out("FinZinsAbwLC"),
+		OutputFBPruefungFinZinsActEUR:   fbPrue.Out("FinZinsActEUR"),
+		OutputFBPruefungFinZinsBudEUR:   fbPrue.Out("FinZinsBudEUR"),
+		OutputFBPruefungFinZinsDifEUR:   fbPrue.Out("FinZinsDifEUR"),
+		OutputFBPruefungFinZinsAbwEUR:   fbPrue.Out("FinZinsAbwEUR"),
+		OutputFBPruefungFinGesamtActLC:  fbPrue.Out("FinGesamtActLC"),
+		OutputFBPruefungFinGesamtBudLC:  fbPrue.Out("FinGesamtBudLC"),
+		OutputFBPruefungFinGesamtDifLC:  fbPrue.Out("FinGesamtDifLC"),
+		OutputFBPruefungFinGesamtAbwLC:  fbPrue.Out("FinGesamtAbwLC"),
+		OutputFBPruefungFinGesamtActEUR: fbPrue.Out("FinGesamtActEUR"),
+		OutputFBPruefungFinGesamtBudEUR: fbPrue.Out("FinGesamtBudEUR"),
+		OutputFBPruefungFinGesamtDifEUR: fbPrue.Out("FinGesamtDifEUR"),
+		OutputFBPruefungFinGesamtAbwEUR: fbPrue.Out("FinGesamtAbwEUR"),
+
+		// Pruefung FB – Soll-Ist-Abweichungspruefung (8 Kostenkategorien + Gesamt, je 8 Spalten = 72)
+		OutputFBPruefungSollIstBauActLC:      fbPrue.Out("SollIstBauActLC"),
+		OutputFBPruefungSollIstBauBudLC:      fbPrue.Out("SollIstBauBudLC"),
+		OutputFBPruefungSollIstBauDifLC:      fbPrue.Out("SollIstBauDifLC"),
+		OutputFBPruefungSollIstBauAbwLC:      fbPrue.Out("SollIstBauAbwLC"),
+		OutputFBPruefungSollIstBauActEUR:     fbPrue.Out("SollIstBauActEUR"),
+		OutputFBPruefungSollIstBauBudEUR:     fbPrue.Out("SollIstBauBudEUR"),
+		OutputFBPruefungSollIstBauDifEUR:     fbPrue.Out("SollIstBauDifEUR"),
+		OutputFBPruefungSollIstBauAbwEUR:     fbPrue.Out("SollIstBauAbwEUR"),
+		OutputFBPruefungSollIstInvActLC:      fbPrue.Out("SollIstInvActLC"),
+		OutputFBPruefungSollIstInvBudLC:      fbPrue.Out("SollIstInvBudLC"),
+		OutputFBPruefungSollIstInvDifLC:      fbPrue.Out("SollIstInvDifLC"),
+		OutputFBPruefungSollIstInvAbwLC:      fbPrue.Out("SollIstInvAbwLC"),
+		OutputFBPruefungSollIstInvActEUR:     fbPrue.Out("SollIstInvActEUR"),
+		OutputFBPruefungSollIstInvBudEUR:     fbPrue.Out("SollIstInvBudEUR"),
+		OutputFBPruefungSollIstInvDifEUR:     fbPrue.Out("SollIstInvDifEUR"),
+		OutputFBPruefungSollIstInvAbwEUR:     fbPrue.Out("SollIstInvAbwEUR"),
+		OutputFBPruefungSollIstPersActLC:     fbPrue.Out("SollIstPersActLC"),
+		OutputFBPruefungSollIstPersBudLC:     fbPrue.Out("SollIstPersBudLC"),
+		OutputFBPruefungSollIstPersDifLC:     fbPrue.Out("SollIstPersDifLC"),
+		OutputFBPruefungSollIstPersAbwLC:     fbPrue.Out("SollIstPersAbwLC"),
+		OutputFBPruefungSollIstPersActEUR:    fbPrue.Out("SollIstPersActEUR"),
+		OutputFBPruefungSollIstPersBudEUR:    fbPrue.Out("SollIstPersBudEUR"),
+		OutputFBPruefungSollIstPersDifEUR:    fbPrue.Out("SollIstPersDifEUR"),
+		OutputFBPruefungSollIstPersAbwEUR:    fbPrue.Out("SollIstPersAbwEUR"),
+		OutputFBPruefungSollIstAktivActLC:    fbPrue.Out("SollIstAktivActLC"),
+		OutputFBPruefungSollIstAktivBudLC:    fbPrue.Out("SollIstAktivBudLC"),
+		OutputFBPruefungSollIstAktivDifLC:    fbPrue.Out("SollIstAktivDifLC"),
+		OutputFBPruefungSollIstAktivAbwLC:    fbPrue.Out("SollIstAktivAbwLC"),
+		OutputFBPruefungSollIstAktivActEUR:   fbPrue.Out("SollIstAktivActEUR"),
+		OutputFBPruefungSollIstAktivBudEUR:   fbPrue.Out("SollIstAktivBudEUR"),
+		OutputFBPruefungSollIstAktivDifEUR:   fbPrue.Out("SollIstAktivDifEUR"),
+		OutputFBPruefungSollIstAktivAbwEUR:   fbPrue.Out("SollIstAktivAbwEUR"),
+		OutputFBPruefungSollIstVerwActLC:     fbPrue.Out("SollIstVerwActLC"),
+		OutputFBPruefungSollIstVerwBudLC:     fbPrue.Out("SollIstVerwBudLC"),
+		OutputFBPruefungSollIstVerwDifLC:     fbPrue.Out("SollIstVerwDifLC"),
+		OutputFBPruefungSollIstVerwAbwLC:     fbPrue.Out("SollIstVerwAbwLC"),
+		OutputFBPruefungSollIstVerwActEUR:    fbPrue.Out("SollIstVerwActEUR"),
+		OutputFBPruefungSollIstVerwBudEUR:    fbPrue.Out("SollIstVerwBudEUR"),
+		OutputFBPruefungSollIstVerwDifEUR:    fbPrue.Out("SollIstVerwDifEUR"),
+		OutputFBPruefungSollIstVerwAbwEUR:    fbPrue.Out("SollIstVerwAbwEUR"),
+		OutputFBPruefungSollIstEvalActLC:     fbPrue.Out("SollIstEvalActLC"),
+		OutputFBPruefungSollIstEvalBudLC:     fbPrue.Out("SollIstEvalBudLC"),
+		OutputFBPruefungSollIstEvalDifLC:     fbPrue.Out("SollIstEvalDifLC"),
+		OutputFBPruefungSollIstEvalAbwLC:     fbPrue.Out("SollIstEvalAbwLC"),
+		OutputFBPruefungSollIstEvalActEUR:    fbPrue.Out("SollIstEvalActEUR"),
+		OutputFBPruefungSollIstEvalBudEUR:    fbPrue.Out("SollIstEvalBudEUR"),
+		OutputFBPruefungSollIstEvalDifEUR:    fbPrue.Out("SollIstEvalDifEUR"),
+		OutputFBPruefungSollIstEvalAbwEUR:    fbPrue.Out("SollIstEvalAbwEUR"),
+		OutputFBPruefungSollIstAuditActLC:    fbPrue.Out("SollIstAuditActLC"),
+		OutputFBPruefungSollIstAuditBudLC:    fbPrue.Out("SollIstAuditBudLC"),
+		OutputFBPruefungSollIstAuditDifLC:    fbPrue.Out("SollIstAuditDifLC"),
+		OutputFBPruefungSollIstAuditAbwLC:    fbPrue.Out("SollIstAuditAbwLC"),
+		OutputFBPruefungSollIstAuditActEUR:   fbPrue.Out("SollIstAuditActEUR"),
+		OutputFBPruefungSollIstAuditBudEUR:   fbPrue.Out("SollIstAuditBudEUR"),
+		OutputFBPruefungSollIstAuditDifEUR:   fbPrue.Out("SollIstAuditDifEUR"),
+		OutputFBPruefungSollIstAuditAbwEUR:   fbPrue.Out("SollIstAuditAbwEUR"),
+		OutputFBPruefungSollIstReserveActLC:  fbPrue.Out("SollIstReserveActLC"),
+		OutputFBPruefungSollIstReserveBudLC:  fbPrue.Out("SollIstReserveBudLC"),
+		OutputFBPruefungSollIstReserveDifLC:  fbPrue.Out("SollIstReserveDifLC"),
+		OutputFBPruefungSollIstReserveAbwLC:  fbPrue.Out("SollIstReserveAbwLC"),
+		OutputFBPruefungSollIstReserveActEUR: fbPrue.Out("SollIstReserveActEUR"),
+		OutputFBPruefungSollIstReserveBudEUR: fbPrue.Out("SollIstReserveBudEUR"),
+		OutputFBPruefungSollIstReserveDifEUR: fbPrue.Out("SollIstReserveDifEUR"),
+		OutputFBPruefungSollIstReserveAbwEUR: fbPrue.Out("SollIstReserveAbwEUR"),
+		OutputFBPruefungSollIstGesamtActLC:   fbPrue.Out("SollIstGesamtActLC"),
+		OutputFBPruefungSollIstGesamtBudLC:   fbPrue.Out("SollIstGesamtBudLC"),
+		OutputFBPruefungSollIstGesamtDifLC:   fbPrue.Out("SollIstGesamtDifLC"),
+		OutputFBPruefungSollIstGesamtAbwLC:   fbPrue.Out("SollIstGesamtAbwLC"),
+		OutputFBPruefungSollIstGesamtActEUR:  fbPrue.Out("SollIstGesamtActEUR"),
+		OutputFBPruefungSollIstGesamtBudEUR:  fbPrue.Out("SollIstGesamtBudEUR"),
+		OutputFBPruefungSollIstGesamtDifEUR:  fbPrue.Out("SollIstGesamtDifEUR"),
+		OutputFBPruefungSollIstGesamtAbwEUR:  fbPrue.Out("SollIstGesamtAbwEUR"),
 
 		// MA
 		InputMAVon:           ma.InpFact("Von_%d", nil),
