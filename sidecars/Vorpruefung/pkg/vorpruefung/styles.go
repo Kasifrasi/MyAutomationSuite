@@ -176,30 +176,30 @@ var DashChecklistLabelStyle = StyleOptions{
 }
 
 var DashChecklistTextStyle = StyleOptions{
-	VAlign:      "center",
-	HAlign:      "left",
-	BorderTop:   1,
+	VAlign:       "center",
+	HAlign:       "left",
+	BorderTop:    1,
 	BorderBottom: 1,
-	BorderLeft:  1,
-	BorderRight: 1,
-	BorderColor: DashClrBorder,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  DashClrBorder,
 }
 
 // ─── Budget-Farben & Formate ──────────────────────────────────────────────────
 const (
-	BudgetClrHeader    = "D3D3D3"
-	BudgetClrSubhead   = "F0F0F0"
-	BudgetClrInput     = "FFFAE5"
-	BudgetClrBorder    = "808080"
-	BudgetClrGrid      = "D3D3D3"
-	BudgetClrFont      = "3C3C3C"
-	BudgetClrBlack     = "000000"
-	BudgetClrResOff    = "F2F2F2"
-	BudgetClrResTxt    = "595959"
-	BudgetClrResOn     = "C6EFCE"
-	BudgetClrResOnTxt  = "006100"
-	BudgetClrBad       = "FFC7CE"
-	BudgetClrBadTxt    = "9C0006"
+	BudgetClrHeader   = "D3D3D3"
+	BudgetClrSubhead  = "F0F0F0"
+	BudgetClrInput    = "FFFAE5"
+	BudgetClrBorder   = "808080"
+	BudgetClrGrid     = "D3D3D3"
+	BudgetClrFont     = "3C3C3C"
+	BudgetClrBlack    = "000000"
+	BudgetClrResOff   = "F2F2F2"
+	BudgetClrResTxt   = "595959"
+	BudgetClrResOn    = "C6EFCE"
+	BudgetClrResOnTxt = "006100"
+	BudgetClrBad      = "FFC7CE"
+	BudgetClrBadTxt   = "9C0006"
 
 	BudgetFmtLC   = "#,##0.00"
 	BudgetFmtEUR  = `#,##0.00" €"`
@@ -459,4 +459,564 @@ var KMWTotalBetragStyle = StyleOptions{
 	BorderLeft:   1,
 	BorderRight:  1,
 	BorderColor:  KMWClrGrid,
+}
+
+// ─── Finanzbericht-Farben & Formate ───────────────────────────────────────────
+const (
+	FBClrHeader = "D3D3D3" // Titel/Kopf/Sektionen
+	FBClrTotal  = "F0F0F0" // Summenzeilen
+	FBClrWhite  = "FFFFFF" // Standard-/Ausgabezellen
+	FBClrInput  = "FFFAE5" // Eingabezellen
+	FBClrGrid   = "D3D3D3" // dünne Innenrahmen
+	FBClrBorder = "808080" // kräftige Rahmen
+	FBClrMuted  = "808080" // Pfeil / Prüf-Hinweise
+
+	FBFmtLC     = "#,##0.00"
+	FBFmtEUR    = `#,##0.00" €"`
+	FBFmtKurs   = "0.000000"
+	FBFmtMonate = `0" Monate"`
+)
+
+// ─── Finanzbericht Styles ─────────────────────────────────────────────────────
+
+// Kopfzeilen-Labels der Periode ("Periode:", "Von:", "Saldo des Finanzberichts" …)
+var FBLabelBoldStyle = StyleOptions{
+	Bold:   true,
+	HAlign: "left",
+	VAlign: "center",
+}
+
+// Nicht-fettes Label ("Aufschluesselung:")
+var FBLabelPlainStyle = StyleOptions{
+	HAlign: "left",
+	VAlign: "center",
+}
+
+var FBPeriodValueStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	FillColor:    FBClrTotal,
+	BorderBottom: 1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBPeriodDatumStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	FillColor:    FBClrInput,
+	NumFmtID:     14, // Excel built-in kurzes Datum
+	BorderBottom: 1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBZeitraumStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	FillColor:    FBClrTotal,
+	NumFormat:    FBFmtMonate,
+	BorderBottom: 1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBKursStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	NumFormat:    FBFmtKurs,
+	BorderBottom: 1,
+	BorderColor:  FBClrGrid,
+}
+
+// Sektionsköpfe ("Einnahmen", "Ausgaben")
+var FBSectionHdrStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrHeader,
+	HAlign:       "left",
+	VAlign:       "center",
+	BorderTop:    2,
+	BorderBottom: 1,
+	BorderColor:  FBClrBorder,
+}
+
+// Einnahmen-Spaltenköpfe
+var FBColHdrLabelStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrHeader,
+	HAlign:       "left",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrBorder,
+}
+
+var FBColHdrValStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrHeader,
+	HAlign:       "center",
+	VAlign:       "center",
+	WrapText:     true,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrBorder,
+}
+
+// Einnahmen-Übersichtszeilen (Vorperiodensaldo, Typ-Zeilen)
+var FBIncomeLabelStyle = StyleOptions{
+	HAlign:       "left",
+	VAlign:       "center",
+	FillColor:    FBClrWhite,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBIncomeLCStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	FillColor:    FBClrWhite,
+	NumFormat:    FBFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBIncomeEURStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	FillColor:    FBClrWhite,
+	NumFormat:    FBFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+// Gesamteinnahmen-Summenzeile
+var FBIncomeTotalLabelStyle = StyleOptions{
+	Bold:         true,
+	HAlign:       "left",
+	VAlign:       "center",
+	FillColor:    FBClrTotal,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrBorder,
+}
+
+var FBIncomeTotalLCStyle = StyleOptions{
+	Bold:         true,
+	HAlign:       "right",
+	VAlign:       "center",
+	FillColor:    FBClrTotal,
+	NumFormat:    FBFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrBorder,
+}
+
+var FBIncomeTotalEURStyle = StyleOptions{
+	Bold:         true,
+	HAlign:       "right",
+	VAlign:       "center",
+	FillColor:    FBClrTotal,
+	NumFormat:    FBFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrBorder,
+}
+
+// Ausgaben-Tabelle
+var FBAusgHdrStyle = StyleOptions{
+	Bold:         true,
+	FontColor:    "000000",
+	FillColor:    FBClrHeader,
+	HAlign:       "center",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrBorder,
+}
+
+var FBAusgIDStyle = StyleOptions{
+	HAlign:       "center",
+	VAlign:       "center",
+	NumFormat:    "@",
+	FillColor:    FBClrWhite,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBAusgLCStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    FBFmtLC,
+	FillColor:    FBClrInput,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBAusgEURStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    FBFmtEUR,
+	FillColor:    FBClrWhite,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBAusgKumLCStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    FBFmtLC,
+	FillColor:    FBClrWhite,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBAusgKumEURStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	NumFormat:    FBFmtEUR,
+	FillColor:    FBClrWhite,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+// Gesamtausgaben-Summenzeile
+var FBAusgTotalLabelStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrTotal,
+	HAlign:       "left",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBAusgTotalLCStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrTotal,
+	HAlign:       "right",
+	NumFormat:    FBFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBAusgTotalEURStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrTotal,
+	HAlign:       "right",
+	NumFormat:    FBFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+// Saldo des Finanzberichts (Doppel-Unterstreichung)
+var FBSaldoLCStyle = StyleOptions{
+	Bold:         true,
+	NumFormat:    FBFmtLC,
+	BorderTop:    6,
+	BorderBottom: 6,
+}
+
+var FBSaldoEURStyle = StyleOptions{
+	Bold:         true,
+	NumFormat:    FBFmtEUR,
+	BorderTop:    6,
+	BorderBottom: 6,
+}
+
+// Aufschlüsselung (Bank / Kasse / Sonstiges)
+var FBInfoLabelStyle = StyleOptions{
+	HAlign:       "left",
+	VAlign:       "center",
+	BorderBottom: 1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBInfoLCStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	FillColor:    FBClrInput,
+	NumFormat:    FBFmtLC,
+	BorderBottom: 1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBInfoEURStyle = StyleOptions{
+	HAlign:       "right",
+	VAlign:       "center",
+	FillColor:    FBClrWhite,
+	NumFormat:    FBFmtEUR,
+	BorderBottom: 1,
+	BorderColor:  FBClrGrid,
+}
+
+// Differenz (Prüfzeile)
+var FBDiffLabelStyle = StyleOptions{
+	Size:      8.0,
+	FontColor: FBClrMuted,
+	HAlign:    "left",
+	VAlign:    "center",
+}
+
+var FBDiffLCStyle = StyleOptions{
+	Size:      8.0,
+	FontColor: FBClrMuted,
+	HAlign:    "right",
+	VAlign:    "center",
+	NumFormat: FBFmtLC,
+}
+
+var FBDiffEURStyle = StyleOptions{
+	Size:      8.0,
+	FontColor: FBClrMuted,
+	HAlign:    "right",
+	VAlign:    "center",
+	NumFormat: FBFmtEUR,
+}
+
+// Separator-Pfeil zwischen den Perioden
+var FBArrowStyle = StyleOptions{
+	Size:      24.0,
+	Bold:      true,
+	FontColor: FBClrMuted,
+	HAlign:    "center",
+	VAlign:    "center",
+}
+
+// ─── Detail-Einnahmentabellen (explizit / Durchschnittskurs) ──────────────────
+
+var FBDetailHdrStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrHeader,
+	HAlign:       "center",
+	VAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrBorder,
+}
+
+// Saldo-Zeile (kursiv, keine Eingabe)
+var FBDetailSaldoTypStyle = StyleOptions{
+	Italic:       true,
+	FillColor:    FBClrWhite,
+	HAlign:       "left",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailSaldoGeberStyle = StyleOptions{
+	Italic:       true,
+	FillColor:    FBClrWhite,
+	HAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailSaldoLCStyle = StyleOptions{
+	Italic:       true,
+	FillColor:    FBClrWhite,
+	HAlign:       "right",
+	NumFormat:    FBFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailSaldoEURStyle = StyleOptions{
+	Italic:       true,
+	FillColor:    FBClrWhite,
+	HAlign:       "right",
+	NumFormat:    FBFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailSaldoKursStyle = StyleOptions{
+	Italic:       true,
+	FillColor:    FBClrWhite,
+	HAlign:       "right",
+	NumFormat:    FBFmtKurs,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+// Eingabezeilen
+var FBDetailTypStyle = StyleOptions{
+	FillColor:    FBClrInput,
+	HAlign:       "left",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailGeberStyle = StyleOptions{
+	FillColor:    FBClrInput,
+	HAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailLCStyle = StyleOptions{
+	FillColor:    FBClrInput,
+	HAlign:       "right",
+	NumFormat:    FBFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+// EUR-Eingabe (explizite Kurstabelle)
+var FBDetailEURInputStyle = StyleOptions{
+	FillColor:    FBClrInput,
+	HAlign:       "right",
+	NumFormat:    FBFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+// EUR-Berechnung (Durchschnittskurstabelle)
+var FBDetailEURCalcStyle = StyleOptions{
+	FillColor:    FBClrWhite,
+	HAlign:       "right",
+	NumFormat:    FBFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailKursStyle = StyleOptions{
+	FillColor:    FBClrWhite,
+	HAlign:       "right",
+	NumFormat:    FBFmtKurs,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+// Summenzeile der Detailtabellen
+var FBDetailTotalLabelStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrWhite,
+	HAlign:       "left",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailTotalGeberStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrWhite,
+	HAlign:       "center",
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailTotalLCStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrWhite,
+	HAlign:       "right",
+	NumFormat:    FBFmtLC,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailTotalEURStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrWhite,
+	HAlign:       "right",
+	NumFormat:    FBFmtEUR,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
+}
+
+var FBDetailTotalKursStyle = StyleOptions{
+	Bold:         true,
+	FillColor:    FBClrWhite,
+	HAlign:       "right",
+	NumFormat:    FBFmtKurs,
+	BorderTop:    1,
+	BorderBottom: 1,
+	BorderLeft:   1,
+	BorderRight:  1,
+	BorderColor:  FBClrGrid,
 }
