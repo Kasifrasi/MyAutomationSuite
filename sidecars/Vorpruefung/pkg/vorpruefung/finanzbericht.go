@@ -588,6 +588,12 @@ func (g *Generator) fbBindAusgaben(ws string, reg *TemplateRegistry, l fbLayout)
 	_ = f.SetCellFormula(ws, cellName(l.colKumLC, l.rowAusgTotals), subtotal("Kum. Ausgaben (LC)"))
 	_ = f.SetCellFormula(ws, cellName(l.colKumEUR, l.rowAusgTotals), subtotal("Kum. Ausgaben (EUR)"))
 
+	// Ergebniszeile "Gesamtausgaben" als Named Ranges exponieren.
+	g.dbUpsertNamedRange(ws, reg.OutputFBAusgGesamtLC.Get(l.periode).NamedRange, l.colLC, l.rowAusgTotals)
+	g.dbUpsertNamedRange(ws, reg.OutputFBAusgGesamtEUR.Get(l.periode).NamedRange, l.colEUR, l.rowAusgTotals)
+	g.dbUpsertNamedRange(ws, reg.OutputFBAusgGesamtKumLC.Get(l.periode).NamedRange, l.colKumLC, l.rowAusgTotals)
+	g.dbUpsertNamedRange(ws, reg.OutputFBAusgGesamtKumEUR.Get(l.periode).NamedRange, l.colKumEUR, l.rowAusgTotals)
+
 	return nil
 }
 
@@ -905,6 +911,17 @@ func (g *Generator) fbCreateEinnahmenTabelle(
 	_ = g.setStyle(ws, cellName(colStart+FBDetOffLC, totalsRow), cellName(colStart+FBDetOffLC, totalsRow), FBDetailTotalLCStyle)
 	_ = g.setStyle(ws, cellName(colStart+FBDetOffEUR, totalsRow), cellName(colStart+FBDetOffEUR, totalsRow), FBDetailTotalEURStyle)
 	_ = g.setStyle(ws, cellName(colStart+FBDetOffKurs, totalsRow), cellName(colStart+FBDetOffKurs, totalsRow), FBDetailTotalKursStyle)
+
+	// Ergebniszeile (Gesamteinnahmen) als Named Ranges exponieren.
+	if isWK {
+		g.dbUpsertNamedRange(ws, reg.OutputFBEinnWKGesamtLC.Get(l.periode).NamedRange, colStart+FBDetOffLC, totalsRow)
+		g.dbUpsertNamedRange(ws, reg.OutputFBEinnWKGesamtEUR.Get(l.periode).NamedRange, colStart+FBDetOffEUR, totalsRow)
+		g.dbUpsertNamedRange(ws, reg.OutputFBEinnWKGesamtKurs.Get(l.periode).NamedRange, colStart+FBDetOffKurs, totalsRow)
+	} else {
+		g.dbUpsertNamedRange(ws, reg.OutputFBEinnGesamtLC.Get(l.periode).NamedRange, colStart+FBDetOffLC, totalsRow)
+		g.dbUpsertNamedRange(ws, reg.OutputFBEinnGesamtEUR.Get(l.periode).NamedRange, colStart+FBDetOffEUR, totalsRow)
+		g.dbUpsertNamedRange(ws, reg.OutputFBEinnGesamtKurs.Get(l.periode).NamedRange, colStart+FBDetOffKurs, totalsRow)
+	}
 
 	return nil
 }

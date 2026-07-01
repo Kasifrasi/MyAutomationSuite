@@ -177,6 +177,9 @@ func (g *Generator) bindKMWTable(ws string, reg *TemplateRegistry) error {
 		return fmt.Errorf("fehler beim Erstellen der Tabelle %s: %w", tbl.Name, err)
 	}
 
+	// Ergebniszeile "GESAMT" (Betrag) als Named Range exponieren.
+	g.dbUpsertNamedRange(ws, reg.OutputKMWGesamtBetrag.NamedRange, KMWColBetrag, KMWRowTotal)
+
 	// Ausgeblendete Hilfsliste "Periode 1..36" in Spalte Z für das Periode-Dropdown
 	for i := 1; i <= KMWPeriodenAnzahl; i++ {
 		if err := f.SetCellValue(ws, cellName(KMWColValList, i), fmt.Sprintf("Periode %d", i)); err != nil {

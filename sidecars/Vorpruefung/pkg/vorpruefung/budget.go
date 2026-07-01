@@ -621,6 +621,13 @@ func (g *Generator) bindBudgetAusgaben(ws string, reg *TemplateRegistry, dyn bud
 			ws, absName(BudgetColListID, 1),
 			ws, colLetter(BudgetColListID), colLetter(BudgetColListID)))
 
+	// Ergebniszeile "Geplante Gesamtausgaben" als Named Ranges exponieren.
+	g.upsertNamedRange(reg.OutputBudgetAusgabenGesamtLC.NamedRange, BudgetColLC, dyn.AusgTotal)
+	g.upsertNamedRange(reg.OutputBudgetAusgabenGesamtY1.NamedRange, BudgetColY1, dyn.AusgTotal)
+	g.upsertNamedRange(reg.OutputBudgetAusgabenGesamtY2.NamedRange, BudgetColY2, dyn.AusgTotal)
+	g.upsertNamedRange(reg.OutputBudgetAusgabenGesamtY3.NamedRange, BudgetColY3, dyn.AusgTotal)
+	g.upsertNamedRange(reg.OutputBudgetAusgabenGesamtEUR.NamedRange, BudgetColEUR, dyn.AusgTotal)
+
 	return nil
 }
 

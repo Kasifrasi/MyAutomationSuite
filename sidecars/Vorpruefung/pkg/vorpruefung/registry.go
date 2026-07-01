@@ -416,6 +416,16 @@ type TemplateRegistry struct {
 	OutputBudgetGesamtY3       OutputField
 	OutputBudgetGesamtEUR      OutputField
 
+	// Ergebniszeile der Tabelle TblBudgetAusgaben ("Geplante Gesamtausgaben")
+	OutputBudgetAusgabenGesamtLC  OutputField
+	OutputBudgetAusgabenGesamtY1  OutputField
+	OutputBudgetAusgabenGesamtY2  OutputField
+	OutputBudgetAusgabenGesamtY3  OutputField
+	OutputBudgetAusgabenGesamtEUR OutputField
+
+	// Ergebniszeile der Tabelle TblKMWMittel ("GESAMT")
+	OutputKMWGesamtBetrag OutputField
+
 	// Finanzberichte
 	OutputFBPeriode          OutputFactory
 	InputFBVon               InputFactory
@@ -448,6 +458,18 @@ type TemplateRegistry struct {
 	OutputFBKumGEinnahmenEUR OutputFactory
 	OutputFBSaldoLC          OutputFactory
 	OutputFBSaldoEUR         OutputFactory
+
+	// Ergebniszeilen der intelligenten FB-Tabellen (je Periode)
+	OutputFBAusgGesamtLC     OutputFactory // Ausgaben_%d "Gesamtausgaben"
+	OutputFBAusgGesamtEUR    OutputFactory
+	OutputFBAusgGesamtKumLC  OutputFactory
+	OutputFBAusgGesamtKumEUR OutputFactory
+	OutputFBEinnGesamtLC     OutputFactory // Einnahmen_%d "Gesamteinnahmen in Periode"
+	OutputFBEinnGesamtEUR    OutputFactory
+	OutputFBEinnGesamtKurs   OutputFactory
+	OutputFBEinnWKGesamtLC   OutputFactory // Einnahmen_WK_%d "Gesamt (Durchschnittskurs)"
+	OutputFBEinnWKGesamtEUR  OutputFactory
+	OutputFBEinnWKGesamtKurs OutputFactory
 
 	InputFBAufschlBankLC        InputFactory
 	OutputFBAufschlBankEUR      OutputFactory
@@ -788,6 +810,7 @@ var Registry = NewTemplateRegistry()
 func NewTemplateRegistry() *TemplateRegistry {
 	dash := SheetBuilder{Sheet: constants.VPSheetDASHBOARD, Prefix: "Dash_"}
 	budget := SheetBuilder{Sheet: constants.VPSheetBUDGET, Prefix: "Budget_"}
+	kmw := SheetBuilder{Sheet: constants.VPSheetKMW_MITTEL, Prefix: "KMW_"}
 	fb := SheetBuilder{Sheet: constants.VPSheetFINANZBERICHTE, Prefix: "FB_"}
 	fbPrue := SheetBuilder{Sheet: constants.VPSheetFB_PRUEFUNG, Prefix: "FBPruef_"}
 	ma := SheetBuilder{Sheet: constants.VPSheetMA, Prefix: "MA_"}
@@ -933,6 +956,15 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputBudgetGesamtY3:       budget.Out("GesamtY3"),
 		OutputBudgetGesamtEUR:      budget.Out("GesamtEUR"),
 
+		OutputBudgetAusgabenGesamtLC:  budget.Out("AusgabenGesamtLC"),
+		OutputBudgetAusgabenGesamtY1:  budget.Out("AusgabenGesamtY1"),
+		OutputBudgetAusgabenGesamtY2:  budget.Out("AusgabenGesamtY2"),
+		OutputBudgetAusgabenGesamtY3:  budget.Out("AusgabenGesamtY3"),
+		OutputBudgetAusgabenGesamtEUR: budget.Out("AusgabenGesamtEUR"),
+
+		// KMW-Mittel
+		OutputKMWGesamtBetrag: kmw.Out("GesamtBetrag"),
+
 		// Finanzberichte
 		OutputFBPeriode:  fb.OutFact("Periode_%d"),
 		InputFBVon:       fb.InpFact("Von_%d", nil),
@@ -969,6 +1001,17 @@ func NewTemplateRegistry() *TemplateRegistry {
 
 		OutputFBSaldoLC:  fb.OutFact("SaldoLC_%d"),
 		OutputFBSaldoEUR: fb.OutFact("SaldoEUR_%d"),
+
+		OutputFBAusgGesamtLC:     fb.OutFact("AusgGesamtLC_%d"),
+		OutputFBAusgGesamtEUR:    fb.OutFact("AusgGesamtEUR_%d"),
+		OutputFBAusgGesamtKumLC:  fb.OutFact("AusgGesamtKumLC_%d"),
+		OutputFBAusgGesamtKumEUR: fb.OutFact("AusgGesamtKumEUR_%d"),
+		OutputFBEinnGesamtLC:     fb.OutFact("EinnGesamtLC_%d"),
+		OutputFBEinnGesamtEUR:    fb.OutFact("EinnGesamtEUR_%d"),
+		OutputFBEinnGesamtKurs:   fb.OutFact("EinnGesamtKurs_%d"),
+		OutputFBEinnWKGesamtLC:   fb.OutFact("EinnWKGesamtLC_%d"),
+		OutputFBEinnWKGesamtEUR:  fb.OutFact("EinnWKGesamtEUR_%d"),
+		OutputFBEinnWKGesamtKurs: fb.OutFact("EinnWKGesamtKurs_%d"),
 
 		InputFBAufschlBankLC:        fb.InpFact("aufschl_Bank_%d", nil),
 		OutputFBAufschlBankEUR:      fb.OutFact("AufschlBankEUR_%d"),
