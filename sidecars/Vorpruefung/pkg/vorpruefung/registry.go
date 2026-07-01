@@ -2,8 +2,8 @@ package vorpruefung
 
 import (
 	"fmt"
-	"strings"
 	"shared/constants"
+	"strings"
 )
 
 type ValidationList []string
@@ -17,7 +17,19 @@ var (
 	ListKostenkategorien ValidationList = []string{"Bauausgaben", "Investitionen", "Personalkosten", "Projektaktivitaeten", "Projektverwaltung", "Evaluierung", "Audit", "Reserve"}
 )
 
-// --- Table Definitionen ---
+// ─────────────────────────────────────────────────────────────
+// Gemeinsames Interface
+// ─────────────────────────────────────────────────────────────
+
+type ExcelElement interface {
+	GetName() string
+	GetSheet() string
+}
+
+// ─────────────────────────────────────────────────────────────
+// Table Definitionen
+// ─────────────────────────────────────────────────────────────
+
 type TableColumn struct {
 	Header string
 	Width  float64
@@ -25,20 +37,19 @@ type TableColumn struct {
 }
 
 type TableField struct {
-	tableName    string
-	sheet        string
+	Name         string
+	Sheet        string
 	Columns      []TableColumn
 	HasTotalsRow bool
 }
 
-func (t TableField) TableName() string   { return t.tableName }
-func (t TableField) Sheet() string       { return t.sheet }
-func (t TableField) Cols() []TableColumn { return t.Columns }
+func (t TableField) GetName() string  { return t.Name }
+func (t TableField) GetSheet() string { return t.Sheet }
 
 func NewTableField(sheet string, baseName string, hasTotals bool, cols []TableColumn) TableField {
 	return TableField{
-		tableName:    "Tbl_" + baseName,
-		sheet:        sheet,
+		Name:         "Tbl_" + baseName,
+		Sheet:        sheet,
 		HasTotalsRow: hasTotals,
 		Columns:      cols,
 	}
@@ -52,36 +63,47 @@ type TableFactory struct {
 	HasTotalsRow bool
 }
 
-func (f TableFactory) Get(args ...any) TableField {
-	tableName := fmt.Sprintf(f.Format, args...)
+func (f TableFactory) Get(args ...int) TableField {
+	anyArgs := make([]any, len(args))
+	for i, v := range args {
+		anyArgs[i] = v
+	}
+	tableName := fmt.Sprintf(f.Format, anyArgs...)
 	return NewTableField(f.Sheet, tableName, f.HasTotalsRow, f.Columns)
 }
 
+// ─────────────────────────────────────────────────────────────
 // 1. Structs
+// ─────────────────────────────────────────────────────────────
+
 type InputField struct {
-	namedRange string
-	sheet      string 
+	Name       string
+	Sheet      string
 	Validation ValidationList
 }
 
-func (i InputField) NamedRange() string { return i.namedRange }
-func (i InputField) Sheet() string      { return i.sheet }
+func (i InputField) GetName() string  { return i.Name }
+func (i InputField) GetSheet() string { return i.Sheet }
 
 type OutputField struct {
-	namedRange string 
-	sheet      string
+	Name  string
+	Sheet string
 }
 
-func (o OutputField) NamedRange() string { return o.namedRange }
-func (o OutputField) Sheet() string      { return o.sheet }
+func (o OutputField) GetName() string  { return o.Name }
+func (o OutputField) GetSheet() string { return o.Sheet }
 
+// ─────────────────────────────────────────────────────────────
 // 2. Constructors
+// ─────────────────────────────────────────────────────────────
+
 func NewInputField(sheet string, baseName string, val ValidationList) InputField {
 	namedRange := "Inp_" + baseName
 	if strings.HasPrefix(baseName, "Inp_") {
+		// Panic beim Start ist ok, da es ein statischer Entwicklerfehler bei der Konfiguration ist
 		panic(fmt.Sprintf("[Developer Error] Bitte kein 'Inp_' mehr angeben. Das wird automatisch hinzugefügt für: %s", namedRange))
 	}
-	return InputField{namedRange: namedRange, sheet: sheet, Validation: val}
+	return InputField{Name: namedRange, Sheet: sheet, Validation: val}
 }
 
 func NewOutputField(sheet string, baseName string) OutputField {
@@ -89,18 +111,25 @@ func NewOutputField(sheet string, baseName string) OutputField {
 	if strings.HasPrefix(baseName, "Out_") {
 		panic(fmt.Sprintf("[Developer Error] Bitte kein 'Out_' mehr angeben. Das wird automatisch hinzugefügt für: %s", namedRange))
 	}
-	return OutputField{namedRange: namedRange, sheet: sheet}
+	return OutputField{Name: namedRange, Sheet: sheet}
 }
 
+// ─────────────────────────────────────────────────────────────
 // 3. Factories
+// ─────────────────────────────────────────────────────────────
+
 type InputFactory struct {
 	Sheet  string
 	Format string
 	Val    ValidationList
 }
 
-func (f InputFactory) Get(args ...any) InputField {
-	namedRange := fmt.Sprintf(f.Format, args...)
+func (f InputFactory) Get(args ...int) InputField {
+	anyArgs := make([]any, len(args))
+	for i, v := range args {
+		anyArgs[i] = v
+	}
+	namedRange := fmt.Sprintf(f.Format, anyArgs...)
 	return NewInputField(f.Sheet, namedRange, f.Val)
 }
 
@@ -109,12 +138,19 @@ type OutputFactory struct {
 	Format string
 }
 
-func (f OutputFactory) Get(args ...any) OutputField {
-	namedRange := fmt.Sprintf(f.Format, args...)
+func (f OutputFactory) Get(args ...int) OutputField {
+	anyArgs := make([]any, len(args))
+	for i, v := range args {
+		anyArgs[i] = v
+	}
+	namedRange := fmt.Sprintf(f.Format, anyArgs...)
 	return NewOutputField(f.Sheet, namedRange)
 }
 
-// 4. SheetBuilder (Die geniale Erweiterung zur Gruppierung)
+// ─────────────────────────────────────────────────────────────
+// 4. SheetBuilder
+// ─────────────────────────────────────────────────────────────
+
 type SheetBuilder struct {
 	Sheet  string
 	Prefix string
@@ -136,25 +172,39 @@ func (b SheetBuilder) OutFact(format string) OutputFactory {
 	return OutputFactory{Sheet: b.Sheet, Format: b.Prefix + format}
 }
 
-// 4.1 Erweiterte Factory für Mittelanforderungen (Composition)
+// ─────────────────────────────────────────────────────────────
+// 4.1 Erweiterte Factory für Mittelanforderungen
+// ─────────────────────────────────────────────────────────────
+
+func validatePeriodeAnforderung(periode, anforderung, maxPerioden, maxSlots int) error {
+	if periode < 1 || periode > maxPerioden {
+		return fmt.Errorf("ungültige Periode %d. Maximum ist %d", periode, maxPerioden)
+	}
+	if anforderung < 1 || anforderung > maxSlots {
+		return fmt.Errorf("ungültige Anforderung %d. Maximum ist %d", anforderung, maxSlots)
+	}
+	return nil
+}
+
+func calculateTableID(periode, anforderung, maxPerioden, maxSlots int) (int, error) {
+	if err := validatePeriodeAnforderung(periode, anforderung, maxPerioden, maxSlots); err != nil {
+		return 0, err
+	}
+	return (periode - 1) + ((anforderung - 1) * maxPerioden) + 1, nil
+}
+
 type MAInputFactory struct {
 	InputFactory
 	MaxPerioden int
-	MaxSlots    int // Anzahl Mittelanforderungen pro Periode
+	MaxSlots    int
 }
 
-// GetMA wandelt (Periode, Anforderung) in die fortlaufende TableID um (1 bis 54)
-func (ma MAInputFactory) GetMA(periode int, anforderung int) InputField {
-	if periode < 1 || periode > ma.MaxPerioden {
-		panic(fmt.Sprintf("[Developer Error] Ungültige Periode %d. Maximum ist %d", periode, ma.MaxPerioden))
+func (ma MAInputFactory) GetMA(periode int, anforderung int) (InputField, error) {
+	tableId, err := calculateTableID(periode, anforderung, ma.MaxPerioden, ma.MaxSlots)
+	if err != nil {
+		return InputField{}, err
 	}
-	if anforderung < 1 || anforderung > ma.MaxSlots {
-		panic(fmt.Sprintf("[Developer Error] Ungültige Anforderung %d. Maximum ist %d", anforderung, ma.MaxSlots))
-	}
-	
-	// Excel-Tabellen-ID berechnen: (Periode - 1) + ((Anforderung - 1) * MaxPerioden) + 1
-	tableId := (periode - 1) + ((anforderung - 1) * ma.MaxPerioden) + 1
-	return ma.Get(tableId)
+	return ma.Get(tableId), nil
 }
 
 type MAOutputFactory struct {
@@ -163,32 +213,25 @@ type MAOutputFactory struct {
 	MaxSlots    int
 }
 
-func (ma MAOutputFactory) GetMA(periode int, anforderung int) OutputField {
-	if periode < 1 || periode > ma.MaxPerioden {
-		panic(fmt.Sprintf("[Developer Error] Ungültige Periode %d. Maximum ist %d", periode, ma.MaxPerioden))
+func (ma MAOutputFactory) GetMA(periode int, anforderung int) (OutputField, error) {
+	tableId, err := calculateTableID(periode, anforderung, ma.MaxPerioden, ma.MaxSlots)
+	if err != nil {
+		return OutputField{}, err
 	}
-	if anforderung < 1 || anforderung > ma.MaxSlots {
-		panic(fmt.Sprintf("[Developer Error] Ungültige Anforderung %d. Maximum ist %d", anforderung, ma.MaxSlots))
-	}
-	tableId := (periode - 1) + ((anforderung - 1) * ma.MaxPerioden) + 1
-	return ma.Get(tableId)
+	return ma.Get(tableId), nil
 }
 
-// Spezielle Funktion für Felder in der MA, die NOCH eine Dimension haben (z.B. Kostenkategorie-Zeile)
 type MAInputKatFactory struct {
 	InputFactory
 	MaxPerioden int
 	MaxSlots    int
 }
 
-func (ma MAInputKatFactory) GetMA(periode int, anforderung int, rowIdx int) InputField {
-    if periode < 1 || periode > ma.MaxPerioden {
-		panic(fmt.Sprintf("[Developer Error] Ungültige Periode %d. Maximum ist %d", periode, ma.MaxPerioden))
+func (ma MAInputKatFactory) GetMA(periode int, anforderung int, rowIdx int) (InputField, error) {
+	if err := validatePeriodeAnforderung(periode, anforderung, ma.MaxPerioden, ma.MaxSlots); err != nil {
+		return InputField{}, err
 	}
-	if anforderung < 1 || anforderung > ma.MaxSlots {
-		panic(fmt.Sprintf("[Developer Error] Ungültige Anforderung %d. Maximum ist %d", anforderung, ma.MaxSlots))
-	}
-	return ma.Get(periode, anforderung, rowIdx)
+	return ma.Get(periode, anforderung, rowIdx), nil
 }
 
 type MAOutputKatFactory struct {
@@ -197,16 +240,12 @@ type MAOutputKatFactory struct {
 	MaxSlots    int
 }
 
-func (ma MAOutputKatFactory) GetMA(periode int, anforderung int, rowIdx int) OutputField {
-    if periode < 1 || periode > ma.MaxPerioden {
-		panic(fmt.Sprintf("[Developer Error] Ungültige Periode %d. Maximum ist %d", periode, ma.MaxPerioden))
+func (ma MAOutputKatFactory) GetMA(periode int, anforderung int, rowIdx int) (OutputField, error) {
+	if err := validatePeriodeAnforderung(periode, anforderung, ma.MaxPerioden, ma.MaxSlots); err != nil {
+		return OutputField{}, err
 	}
-	if anforderung < 1 || anforderung > ma.MaxSlots {
-		panic(fmt.Sprintf("[Developer Error] Ungültige Anforderung %d. Maximum ist %d", anforderung, ma.MaxSlots))
-	}
-	return ma.Get(periode, anforderung, rowIdx)
+	return ma.Get(periode, anforderung, rowIdx), nil
 }
-
 
 // 4.2 Hilfsmethoden im SheetBuilder für die MA Factories
 func (b SheetBuilder) MAInpFact(format string, val ValidationList, maxPerioden, maxSlots int) MAInputFactory {
@@ -229,119 +268,207 @@ func (b SheetBuilder) MAOutKatFact(format string, maxPerioden, maxSlots int) MAO
 	return MAOutputKatFactory{OutputFactory: baseFact, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
 }
 
-// 5. Instanziierung der SheetBuilder für jedes Sheet
-var (
-	dash   = SheetBuilder{Sheet: constants.VPSheetDASHBOARD, Prefix: "Dash_"}
-	budget = SheetBuilder{Sheet: constants.VPSheetBUDGET, Prefix: "Budget_"}
-	kmw    = SheetBuilder{Sheet: constants.VPSheetKMW_MITTEL, Prefix: "KMW_"}
-	fb     = SheetBuilder{Sheet: constants.VPSheetFINANZBERICHTE, Prefix: "FB_"}
-	fbPrue = SheetBuilder{Sheet: constants.VPSheetFB_PRUEFUNG, Prefix: "FBPruef_"}
-	ma     = SheetBuilder{Sheet: constants.VPSheetMA, Prefix: "MA_"}
-	maPrue = SheetBuilder{Sheet: constants.VPSheetMA_PRUEFUNG, Prefix: "MAPruef_"}
-)
+// ─────────────────────────────────────────────────────────────
+// 5. Instanz-Registry aller Felder
+// ─────────────────────────────────────────────────────────────
 
-// Registry aller Felder (statisch und dynamisch)
-var (
-	// ─────────────────────────────────────────────────────────────
+type TemplateRegistry struct {
 	// Dashboard
-	// ─────────────────────────────────────────────────────────────
-	InputDashProjektnummer       = dash.Inp("Projektnummer", nil)
-	InputDashVorprojekt          = dash.Inp("Vorprojekt", ListJaNein)
-	InputDashProjekttitel        = dash.Inp("Projekttitel", nil)
-	InputDashProjekttraeger      = dash.Inp("Projekttraeger", nil)
-	InputDashBerichtswaehrung    = dash.Inp("Berichtswaehrung", nil)
-	InputDashProjektstart        = dash.Inp("Projektstart", nil)
-	InputDashProjektende         = dash.Inp("Projektende", nil)
-	InputDashVPNummer            = dash.Inp("VPNummer", nil)
-	InputDashVPBerichtswaehrung  = dash.Inp("VPBerichtswaehrung", nil)
-	InputDashVPEnde              = dash.Inp("VPEnde", nil)
-	InputDashVPWechselkurs       = dash.Inp("VPWechselkurs", nil)
-	InputDashVPSaldoLC           = dash.Inp("VPSaldoLC", nil)
-	InputDashVPSaldoEUR          = dash.Inp("VPSaldoEUR", nil)
-	InputDashVPFolgeprojektstart = dash.Inp("VPFolgeprojektstart", nil)
-	InputDashVPFolgeWechselkurs  = dash.Inp("VPFolgeWechselkurs", nil)
-	InputDashVPFolgeSaldoLC      = dash.Inp("VPFolgeSaldoLC", nil)
-	InputDashVPFolgeSaldoEUR     = dash.Inp("VPFolgeSaldoEUR", nil)
+	InputDashProjektnummer       InputField
+	InputDashVorprojekt          InputField
+	InputDashProjekttitel        InputField
+	InputDashProjekttraeger      InputField
+	InputDashBerichtswaehrung    InputField
+	InputDashProjektstart        InputField
+	InputDashProjektende         InputField
+	InputDashVPNummer            InputField
+	InputDashVPBerichtswaehrung  InputField
+	InputDashVPEnde              InputField
+	InputDashVPWechselkurs       InputField
+	InputDashVPSaldoLC           InputField
+	InputDashVPSaldoEUR          InputField
+	InputDashVPFolgeprojektstart InputField
+	InputDashVPFolgeWechselkurs  InputField
+	InputDashVPFolgeSaldoLC      InputField
+	InputDashVPFolgeSaldoEUR     InputField
+	InputDashVPSaldoCheck        InputField
+	InputDashVertragCheck        InputField
+	InputDashBudgetCheck         InputField
+	InputDashBankBelegeCheck     InputField
+	InputDashFBCheck             InputField
+	InputDashMACheck             InputField
 	
-	// Dynamische Dashboard-Felder (Checkliste)
-	InputDashChecklist           = dash.InpFact("Checklist_%d", ListJaNein)
 
-	// ─────────────────────────────────────────────────────────────
-	// I. Budget
-	// ─────────────────────────────────────────────────────────────
-	InputBudgetReserveFreigabe = budget.Inp("ReserveFreigabe", ListJaNein)
-	InputBudgetDrittmittelY1   = budget.Inp("DrittmittelY1", nil)
-	InputBudgetDrittmittelY2   = budget.Inp("DrittmittelY2", nil)
-	InputBudgetDrittmittelY3   = budget.Inp("DrittmittelY3", nil)
+	OutputDashProjektlaufzeit    OutputField
+	OutputDashMonate             OutputField
+	OutputDashSaldoEUR           OutputField
+	OutputDashSaldovortragEUR    OutputField
 
-	InputBudgetEigenmittelLC  = budget.Inp("EigenmittelLC", nil)
-	InputBudgetEigenmittelY1  = budget.Inp("EigenmittelY1", nil)
-	InputBudgetEigenmittelY2  = budget.Inp("EigenmittelY2", nil)
-	InputBudgetEigenmittelY3  = budget.Inp("EigenmittelY3", nil)
-	InputBudgetEigenmittelEUR = budget.Inp("EigenmittelEUR", nil)
+	// Budget
+	InputBudgetReserveFreigabe InputField
+	InputBudgetDrittmittelY1   InputField
+	InputBudgetDrittmittelY2   InputField
+	InputBudgetDrittmittelY3   InputField
+	InputBudgetEigenmittelLC   InputField
+	InputBudgetEigenmittelY1   InputField
+	InputBudgetEigenmittelY2   InputField
+	InputBudgetEigenmittelY3   InputField
+	InputBudgetEigenmittelEUR  InputField
+	InputBudgetKMWLC           InputField
+	InputBudgetKMWY1           InputField
+	InputBudgetKMWY2           InputField
+	InputBudgetKMWY3           InputField
+	InputBudgetKMWEUR          InputField
 
-	InputBudgetKMWLC  = budget.Inp("KMWLC", nil)
-	InputBudgetKMWY1  = budget.Inp("KMWY1", nil)
-	InputBudgetKMWY2  = budget.Inp("KMWY2", nil)
-	InputBudgetKMWY3  = budget.Inp("KMWY3", nil)
-	InputBudgetKMWEUR = budget.Inp("KMWEUR", nil)
+	// KMW-Mittel
+	InputKMWPeriode  InputFactory
+	InputKMWWaehrung InputFactory
+	InputKMWBetrag   InputFactory
+	InputKMWDatum    InputFactory
 
-	// ─────────────────────────────────────────────────────────────
-	// II. KMW-Mittel
-	// ─────────────────────────────────────────────────────────────
-	InputKMWPeriode  = kmw.InpFact("Periode_%d", nil)
-	InputKMWWaehrung = kmw.InpFact("Waehrung_%d", nil)
-	InputKMWBetrag   = kmw.InpFact("Betrag_%d", nil)
-	InputKMWDatum    = kmw.InpFact("Datum_%d", nil)
+	// Finanzberichte
+	InputFBVon              InputFactory
+	InputFBBis              InputFactory
+	InputFBAufschlBank      InputFactory
+	InputFBAufschlKasse     InputFactory
+	InputFBAufschlSonstiges InputFactory
 
-	// ─────────────────────────────────────────────────────────────
-	// III. Finanzberichte
-	// ─────────────────────────────────────────────────────────────
-	InputFBVon              = fb.InpFact("Von_%d", nil)
-	InputFBBis              = fb.InpFact("Bis_%d", nil)
-	InputFBAufschlBank      = fb.InpFact("aufschl_Bank_%d", nil)
-	InputFBAufschlKasse     = fb.InpFact("aufschl_Kasse_%d", nil)
-	InputFBAufschlSonstiges = fb.InpFact("aufschl_Sonstiges_%d", nil)
-
-	// ─────────────────────────────────────────────────────────────
 	// Pruefung FB
-	// ─────────────────────────────────────────────────────────────
-	InputFBPruefungAuswahl    = fbPrue.Inp("Auswahl", nil)
-	InputFBPruefungAbzugSaldo = fbPrue.Inp("AbzugSaldo", ListAbzug)
-	InputFBPruefungAbzugMehr  = fbPrue.Inp("AbzugMehr", ListAbzug)
+	InputFBPruefungAuswahl    InputField
+	InputFBPruefungAbzugSaldo InputField
+	InputFBPruefungAbzugMehr  InputField
 
-	// ─────────────────────────────────────────────────────────────
-	// IV. MA
-	// ─────────────────────────────────────────────────────────────
-	// Input Inputs
-	InputMAVon              = ma.InpFact("Von_%d", nil)
-	InputMABis              = ma.InpFact("Bis_%d", nil)
-	InputMAKurs             = ma.InpFact("Kurs_%d", nil)
-	InputMAEigenmittelLC    = ma.InpFact("EigenmittelLC_%d", nil)
-	InputMADrittmittelLC    = ma.InpFact("DrittmittelLC_%d", nil)
-	InputMASaldoLC          = ma.InpFact("SaldoLC_%d", nil)
-	InputMAManBetrag        = ma.InpFact("ManBetrag_%d", nil)
-	InputMAKat              = ma.InpFact("Kat_%d_%d_%d", nil)
-	InputMAKmwLC            = ma.InpFact("KmwLC_%d_%d", nil)
+	// MA
+	InputMAVon           InputFactory
+	InputMABis           InputFactory
+	InputMAKurs          InputFactory
+	InputMAEigenmittelLC InputFactory
+	InputMADrittmittelLC InputFactory
+	InputMASaldoLC       InputFactory
+	InputMAManBetrag     InputFactory
+	InputMAKat           InputFactory
+	InputMAKmwLC         InputFactory
 
-	// Output Inputs
-	OutputMAPeriode          = ma.OutFact("Periode_%d")
-	OutputMAZeitraum         = ma.OutFact("Zeitraum_%d")
-	OutputMASumLC            = ma.OutFact("SumLC_%d")
-	OutputMASumEUR           = ma.OutFact("SumEUR_%d")
-	OutputMAEigenmittelEUR   = ma.OutFact("EigenmittelEUR_%d")
-	OutputMADrittmittelEUR   = ma.OutFact("DrittmittelEUR_%d")
-	OutputMAKatEUR           = ma.OutFact("KatEUR_%d_%d_%d")
-	OutputMAKmwEUR           = ma.OutFact("KmwEUR_%d_%d")
+	OutputMAPeriode        OutputFactory
+	OutputMAZeitraum       OutputFactory
+	OutputMASumLC          OutputFactory
+	OutputMASumEUR         OutputFactory
+	OutputMAEigenmittelEUR OutputFactory
+	OutputMADrittmittelEUR OutputFactory
+	OutputMAKatEUR         OutputFactory
+	OutputMAKmwEUR         OutputFactory
 
-	// ─────────────────────────────────────────────────────────────
 	// Pruefung MA
-	// ─────────────────────────────────────────────────────────────
-	InputMAPruefungAuswahl       = maPrue.Inp("Auswahl", nil)
-	InputMAPruefungAbzugSaldo    = maPrue.Inp("AbzugSaldo", ListAbzug)
-	InputMAPruefungAbzugMehr     = maPrue.Inp("AbzugMehr", ListAbzug)
-	InputMAPruefungAbzugPrognose = maPrue.Inp("AbzugPrognose", ListAbzug)
-	InputMAPruefungMonateY1      = maPrue.Inp("MonateY1", ListMonate)
-	InputMAPruefungMonateY2      = maPrue.Inp("MonateY2", ListMonate)
-	InputMAPruefungMonateY3      = maPrue.Inp("MonateY3", ListMonate)
-)
+	InputMAPruefungAuswahl       InputField
+	InputMAPruefungAbzugSaldo    InputField
+	InputMAPruefungAbzugMehr     InputField
+	InputMAPruefungAbzugPrognose InputField
+	InputMAPruefungMonateY1      InputField
+	InputMAPruefungMonateY2      InputField
+	InputMAPruefungMonateY3      InputField
+}
+
+func NewTemplateRegistry() *TemplateRegistry {
+	dash := SheetBuilder{Sheet: constants.VPSheetDASHBOARD, Prefix: "Dash_"}
+	budget := SheetBuilder{Sheet: constants.VPSheetBUDGET, Prefix: "Budget_"}
+	kmw := SheetBuilder{Sheet: constants.VPSheetKMW_MITTEL, Prefix: "KMW_"}
+	fb := SheetBuilder{Sheet: constants.VPSheetFINANZBERICHTE, Prefix: "FB_"}
+	fbPrue := SheetBuilder{Sheet: constants.VPSheetFB_PRUEFUNG, Prefix: "FBPruef_"}
+	ma := SheetBuilder{Sheet: constants.VPSheetMA, Prefix: "MA_"}
+	maPrue := SheetBuilder{Sheet: constants.VPSheetMA_PRUEFUNG, Prefix: "MAPruef_"}
+
+	return &TemplateRegistry{
+		// Dashboard
+		InputDashProjektnummer:       dash.Inp("Projektnummer", nil),
+		InputDashVorprojekt:          dash.Inp("Vorprojekt", ListJaNein),
+		InputDashProjekttitel:        dash.Inp("Projekttitel", nil),
+		InputDashProjekttraeger:      dash.Inp("Projekttraeger", nil),
+		InputDashBerichtswaehrung:    dash.Inp("Berichtswaehrung", nil),
+		InputDashProjektstart:        dash.Inp("Projektstart", nil),
+		InputDashProjektende:         dash.Inp("Projektende", nil),
+		InputDashVPNummer:            dash.Inp("VPNummer", nil),
+		InputDashVPBerichtswaehrung:  dash.Inp("VPBerichtswaehrung", nil),
+		InputDashVPEnde:              dash.Inp("VPEnde", nil),
+		InputDashVPWechselkurs:       dash.Inp("VPWechselkurs", nil),
+		InputDashVPSaldoLC:           dash.Inp("VPSaldoLC", nil),
+		InputDashVPSaldoEUR:          dash.Inp("VPSaldoEUR", nil),
+		InputDashVPFolgeprojektstart: dash.Inp("VPFolgeprojektstart", nil),
+		InputDashVPFolgeWechselkurs:  dash.Inp("VPFolgeWechselkurs", nil),
+		InputDashVPFolgeSaldoLC:      dash.Inp("VPFolgeSaldoLC", nil),
+		InputDashVPFolgeSaldoEUR:     dash.Inp("VPFolgeSaldoEUR", nil),
+		InputDashVPSaldoCheck:        dash.Inp("VPSaldoCheck", nil),
+		InputDashVertragCheck:        dash.Inp("VertragCheck", nil),
+		InputDashBudgetCheck:         dash.Inp("BudgetCheck", nil),
+		InputDashBankBelegeCheck:     dash.Inp("BankBelegeCheck", nil),
+		InputDashFBCheck:             dash.Inp("FBCheck", nil),
+		InputDashMACheck:             dash.Inp("MACheck", nil),
+
+		OutputDashProjektlaufzeit:     dash.Out("Projektlaufzeit"),
+		OutputDashMonate:              dash.Out("Monate"),
+		OutputDashSaldoEUR:            dash.Out("SaldoEUR"),
+		OutputDashSaldovortragEUR:     dash.Out("SaldovortragEUR"),
+
+		// Budget
+		InputBudgetReserveFreigabe: budget.Inp("ReserveFreigabe", ListJaNein),
+		InputBudgetDrittmittelY1:   budget.Inp("DrittmittelY1", nil),
+		InputBudgetDrittmittelY2:   budget.Inp("DrittmittelY2", nil),
+		InputBudgetDrittmittelY3:   budget.Inp("DrittmittelY3", nil),
+		InputBudgetEigenmittelLC:   budget.Inp("EigenmittelLC", nil),
+		InputBudgetEigenmittelY1:   budget.Inp("EigenmittelY1", nil),
+		InputBudgetEigenmittelY2:   budget.Inp("EigenmittelY2", nil),
+		InputBudgetEigenmittelY3:   budget.Inp("EigenmittelY3", nil),
+		InputBudgetEigenmittelEUR:  budget.Inp("EigenmittelEUR", nil),
+		InputBudgetKMWLC:           budget.Inp("KMWLC", nil),
+		InputBudgetKMWY1:           budget.Inp("KMWY1", nil),
+		InputBudgetKMWY2:           budget.Inp("KMWY2", nil),
+		InputBudgetKMWY3:           budget.Inp("KMWY3", nil),
+		InputBudgetKMWEUR:          budget.Inp("KMWEUR", nil),
+
+		// KMW-Mittel
+		InputKMWPeriode:  kmw.InpFact("Periode_%d", nil),
+		InputKMWWaehrung: kmw.InpFact("Waehrung_%d", nil),
+		InputKMWBetrag:   kmw.InpFact("Betrag_%d", nil),
+		InputKMWDatum:    kmw.InpFact("Datum_%d", nil),
+
+		// Finanzberichte
+		InputFBVon:              fb.InpFact("Von_%d", nil),
+		InputFBBis:              fb.InpFact("Bis_%d", nil),
+		InputFBAufschlBank:      fb.InpFact("aufschl_Bank_%d", nil),
+		InputFBAufschlKasse:     fb.InpFact("aufschl_Kasse_%d", nil),
+		InputFBAufschlSonstiges: fb.InpFact("aufschl_Sonstiges_%d", nil),
+
+		// Pruefung FB
+		InputFBPruefungAuswahl:    fbPrue.Inp("Auswahl", nil),
+		InputFBPruefungAbzugSaldo: fbPrue.Inp("AbzugSaldo", ListAbzug),
+		InputFBPruefungAbzugMehr:  fbPrue.Inp("AbzugMehr", ListAbzug),
+
+		// MA
+		InputMAVon:           ma.InpFact("Von_%d", nil),
+		InputMABis:           ma.InpFact("Bis_%d", nil),
+		InputMAKurs:          ma.InpFact("Kurs_%d", nil),
+		InputMAEigenmittelLC: ma.InpFact("EigenmittelLC_%d", nil),
+		InputMADrittmittelLC: ma.InpFact("DrittmittelLC_%d", nil),
+		InputMASaldoLC:       ma.InpFact("SaldoLC_%d", nil),
+		InputMAManBetrag:     ma.InpFact("ManBetrag_%d", nil),
+		InputMAKat:           ma.InpFact("Kat_%d_%d_%d", nil),
+		InputMAKmwLC:         ma.InpFact("KmwLC_%d_%d", nil),
+
+		OutputMAPeriode:        ma.OutFact("Periode_%d"),
+		OutputMAZeitraum:       ma.OutFact("Zeitraum_%d"),
+		OutputMASumLC:          ma.OutFact("SumLC_%d"),
+		OutputMASumEUR:         ma.OutFact("SumEUR_%d"),
+		OutputMAEigenmittelEUR: ma.OutFact("EigenmittelEUR_%d"),
+		OutputMADrittmittelEUR: ma.OutFact("DrittmittelEUR_%d"),
+		OutputMAKatEUR:         ma.OutFact("KatEUR_%d_%d_%d"),
+		OutputMAKmwEUR:         ma.OutFact("KmwEUR_%d_%d"),
+
+		// Pruefung MA
+		InputMAPruefungAuswahl:       maPrue.Inp("Auswahl", nil),
+		InputMAPruefungAbzugSaldo:    maPrue.Inp("AbzugSaldo", ListAbzug),
+		InputMAPruefungAbzugMehr:     maPrue.Inp("AbzugMehr", ListAbzug),
+		InputMAPruefungAbzugPrognose: maPrue.Inp("AbzugPrognose", ListAbzug),
+		InputMAPruefungMonateY1:      maPrue.Inp("MonateY1", ListMonate),
+		InputMAPruefungMonateY2:      maPrue.Inp("MonateY2", ListMonate),
+		InputMAPruefungMonateY3:      maPrue.Inp("MonateY3", ListMonate),
+	}
+}
