@@ -541,27 +541,27 @@ type TemplateRegistry struct {
 	OutputFBPruefungSollIstGesamtAbwEUR  OutputField
 
 	// MA
-	OutputMAPeriode      MAOutputFactory
-	InputMAVon           MAInputFactory
-	InputMABis           MAInputFactory
-	OutputMAZeitraum     MAOutputFactory
-	InputMAKurs          MAInputFactory
-	
-	InputMAKat           MAInputKatFactory
-	OutputMAKatEUR         MAOutputKatFactory
-	OutputMASumLC          MAOutputFactory
-	OutputMASumEUR         MAOutputFactory
-	
-	InputMAEigenmittelLC MAInputFactory
+	OutputMAPeriode  MAOutputFactory
+	InputMAVon       MAInputFactory
+	InputMABis       MAInputFactory
+	OutputMAZeitraum MAOutputFactory
+	InputMAKurs      MAInputFactory
+
+	InputMAKat     MAInputKatFactory
+	OutputMAKatEUR MAOutputKatFactory
+	OutputMASumLC  MAOutputFactory
+	OutputMASumEUR MAOutputFactory
+
+	InputMAEigenmittelLC   MAInputFactory
 	OutputMAEigenmittelEUR MAOutputFactory
-	InputMADrittmittelLC MAInputFactory
+	InputMADrittmittelLC   MAInputFactory
 	OutputMADrittmittelEUR MAOutputFactory
-	OutputMASaldoLC       MAOutputFactory
-	OutputMASaldoEUR     MAOutputFactory
-	InputMAAnforderungLC         MAInputFactory
-	OutputMAAnforderungEUR         MAOutputFactory
-	
-	InputMAManBetragEUR     MAInputFactory
+	OutputMASaldoLC        MAOutputFactory
+	OutputMASaldoEUR       MAOutputFactory
+	InputMAAnforderungLC   MAInputFactory
+	OutputMAAnforderungEUR MAOutputFactory
+
+	InputMAManBetragEUR MAInputFactory
 
 	// Pruefung MA
 	InputMAPruefungAuswahl       InputField
@@ -571,6 +571,162 @@ type TemplateRegistry struct {
 	InputMAPruefungMonateY1      InputField
 	InputMAPruefungMonateY2      InputField
 	InputMAPruefungMonateY3      InputField
+
+	// Pruefung MA – Auswahl (berechnete Perioden-/Anforderungsnummer)
+	OutputMAPruefungAusgewaehltePeriode     OutputField
+	OutputMAPruefungAusgewaehlteAnforderung OutputField
+
+	// Pruefung MA – KMW-Mittelpruefung (berechnete Ergebnisfelder, isMA)
+	OutputMAPruefungKMWBewilligt                   OutputField
+	OutputMAPruefungKMWReserve                     OutputField
+	OutputMAPruefungKMWOperativ                    OutputField
+	OutputMAPruefungKMWBereitgestellt              OutputField
+	OutputMAPruefungKMWVerfuegbar                  OutputField
+	OutputMAPruefungSaldovortrag                   OutputField
+	OutputMAPruefungMehreinnahmen                  OutputField
+	OutputMAPruefungPrognostizierteMehreinnahmen   OutputField
+	OutputMAPruefungAbzugGesamt                    OutputField
+	OutputMAPruefungKMWVerfuegbarBereinigt         OutputField
+	OutputMAPruefungVerbleibendKMW                 OutputField
+	OutputMAPruefungVerbleibendKMWBereinigt        OutputField
+	OutputMAPruefungVerbleibendKMWManuell          OutputField
+	OutputMAPruefungVerbleibendKMWManuellBereinigt OutputField
+
+	// Pruefung MA – Monatslimit-Pruefung
+	OutputMAPruefungLimitAnforderungLC      OutputField
+	OutputMAPruefungLimitAnforderungEUR     OutputField
+	OutputMAPruefungLimitJahresbudgetY1LC   OutputField
+	OutputMAPruefungLimitJahresbudgetY1EUR  OutputField
+	OutputMAPruefungLimitJahresbudgetY2LC   OutputField
+	OutputMAPruefungLimitJahresbudgetY2EUR  OutputField
+	OutputMAPruefungLimitJahresbudgetY3LC   OutputField
+	OutputMAPruefungLimitJahresbudgetY3EUR  OutputField
+	OutputMAPruefungLimitMonate             OutputField
+	OutputMAPruefungLimitZeitraum           OutputField
+	OutputMAPruefungLimitMonatslimitLC      OutputField
+	OutputMAPruefungLimitMonatslimitEUR     OutputField
+	OutputMAPruefungLimitStatusLC           OutputField
+	OutputMAPruefungLimitStatusEUR          OutputField
+	OutputMAPruefungLimitUeberschreitungLC  OutputField
+	OutputMAPruefungLimitUeberschreitungEUR OutputField
+	OutputMAPruefungLimitAuslastungLC       OutputField
+	OutputMAPruefungLimitAuslastungEUR      OutputField
+
+	// Pruefung MA – Prognostizierte Finanzierungsanteile (4 Kategorien + Gesamt, je 8 Spalten = 40)
+	OutputMAPruefungProgFinEMActLC      OutputField
+	OutputMAPruefungProgFinEMBudLC      OutputField
+	OutputMAPruefungProgFinEMDifLC      OutputField
+	OutputMAPruefungProgFinEMAbwLC      OutputField
+	OutputMAPruefungProgFinEMActEUR     OutputField
+	OutputMAPruefungProgFinEMBudEUR     OutputField
+	OutputMAPruefungProgFinEMDifEUR     OutputField
+	OutputMAPruefungProgFinEMAbwEUR     OutputField
+	OutputMAPruefungProgFinDMActLC      OutputField
+	OutputMAPruefungProgFinDMBudLC      OutputField
+	OutputMAPruefungProgFinDMDifLC      OutputField
+	OutputMAPruefungProgFinDMAbwLC      OutputField
+	OutputMAPruefungProgFinDMActEUR     OutputField
+	OutputMAPruefungProgFinDMBudEUR     OutputField
+	OutputMAPruefungProgFinDMDifEUR     OutputField
+	OutputMAPruefungProgFinDMAbwEUR     OutputField
+	OutputMAPruefungProgFinKMWActLC     OutputField
+	OutputMAPruefungProgFinKMWBudLC     OutputField
+	OutputMAPruefungProgFinKMWDifLC     OutputField
+	OutputMAPruefungProgFinKMWAbwLC     OutputField
+	OutputMAPruefungProgFinKMWActEUR    OutputField
+	OutputMAPruefungProgFinKMWBudEUR    OutputField
+	OutputMAPruefungProgFinKMWDifEUR    OutputField
+	OutputMAPruefungProgFinKMWAbwEUR    OutputField
+	OutputMAPruefungProgFinZinsActLC    OutputField
+	OutputMAPruefungProgFinZinsBudLC    OutputField
+	OutputMAPruefungProgFinZinsDifLC    OutputField
+	OutputMAPruefungProgFinZinsAbwLC    OutputField
+	OutputMAPruefungProgFinZinsActEUR   OutputField
+	OutputMAPruefungProgFinZinsBudEUR   OutputField
+	OutputMAPruefungProgFinZinsDifEUR   OutputField
+	OutputMAPruefungProgFinZinsAbwEUR   OutputField
+	OutputMAPruefungProgFinGesamtActLC  OutputField
+	OutputMAPruefungProgFinGesamtBudLC  OutputField
+	OutputMAPruefungProgFinGesamtDifLC  OutputField
+	OutputMAPruefungProgFinGesamtAbwLC  OutputField
+	OutputMAPruefungProgFinGesamtActEUR OutputField
+	OutputMAPruefungProgFinGesamtBudEUR OutputField
+	OutputMAPruefungProgFinGesamtDifEUR OutputField
+	OutputMAPruefungProgFinGesamtAbwEUR OutputField
+
+	// Pruefung MA – Prognosepruefung Ausgaben (8 Kostenkategorien + Gesamt, je 8 Spalten = 72)
+	OutputMAPruefungProgAusgBauActLC      OutputField
+	OutputMAPruefungProgAusgBauBudLC      OutputField
+	OutputMAPruefungProgAusgBauDifLC      OutputField
+	OutputMAPruefungProgAusgBauAbwLC      OutputField
+	OutputMAPruefungProgAusgBauActEUR     OutputField
+	OutputMAPruefungProgAusgBauBudEUR     OutputField
+	OutputMAPruefungProgAusgBauDifEUR     OutputField
+	OutputMAPruefungProgAusgBauAbwEUR     OutputField
+	OutputMAPruefungProgAusgInvActLC      OutputField
+	OutputMAPruefungProgAusgInvBudLC      OutputField
+	OutputMAPruefungProgAusgInvDifLC      OutputField
+	OutputMAPruefungProgAusgInvAbwLC      OutputField
+	OutputMAPruefungProgAusgInvActEUR     OutputField
+	OutputMAPruefungProgAusgInvBudEUR     OutputField
+	OutputMAPruefungProgAusgInvDifEUR     OutputField
+	OutputMAPruefungProgAusgInvAbwEUR     OutputField
+	OutputMAPruefungProgAusgPersActLC     OutputField
+	OutputMAPruefungProgAusgPersBudLC     OutputField
+	OutputMAPruefungProgAusgPersDifLC     OutputField
+	OutputMAPruefungProgAusgPersAbwLC     OutputField
+	OutputMAPruefungProgAusgPersActEUR    OutputField
+	OutputMAPruefungProgAusgPersBudEUR    OutputField
+	OutputMAPruefungProgAusgPersDifEUR    OutputField
+	OutputMAPruefungProgAusgPersAbwEUR    OutputField
+	OutputMAPruefungProgAusgAktivActLC    OutputField
+	OutputMAPruefungProgAusgAktivBudLC    OutputField
+	OutputMAPruefungProgAusgAktivDifLC    OutputField
+	OutputMAPruefungProgAusgAktivAbwLC    OutputField
+	OutputMAPruefungProgAusgAktivActEUR   OutputField
+	OutputMAPruefungProgAusgAktivBudEUR   OutputField
+	OutputMAPruefungProgAusgAktivDifEUR   OutputField
+	OutputMAPruefungProgAusgAktivAbwEUR   OutputField
+	OutputMAPruefungProgAusgVerwActLC     OutputField
+	OutputMAPruefungProgAusgVerwBudLC     OutputField
+	OutputMAPruefungProgAusgVerwDifLC     OutputField
+	OutputMAPruefungProgAusgVerwAbwLC     OutputField
+	OutputMAPruefungProgAusgVerwActEUR    OutputField
+	OutputMAPruefungProgAusgVerwBudEUR    OutputField
+	OutputMAPruefungProgAusgVerwDifEUR    OutputField
+	OutputMAPruefungProgAusgVerwAbwEUR    OutputField
+	OutputMAPruefungProgAusgEvalActLC     OutputField
+	OutputMAPruefungProgAusgEvalBudLC     OutputField
+	OutputMAPruefungProgAusgEvalDifLC     OutputField
+	OutputMAPruefungProgAusgEvalAbwLC     OutputField
+	OutputMAPruefungProgAusgEvalActEUR    OutputField
+	OutputMAPruefungProgAusgEvalBudEUR    OutputField
+	OutputMAPruefungProgAusgEvalDifEUR    OutputField
+	OutputMAPruefungProgAusgEvalAbwEUR    OutputField
+	OutputMAPruefungProgAusgAuditActLC    OutputField
+	OutputMAPruefungProgAusgAuditBudLC    OutputField
+	OutputMAPruefungProgAusgAuditDifLC    OutputField
+	OutputMAPruefungProgAusgAuditAbwLC    OutputField
+	OutputMAPruefungProgAusgAuditActEUR   OutputField
+	OutputMAPruefungProgAusgAuditBudEUR   OutputField
+	OutputMAPruefungProgAusgAuditDifEUR   OutputField
+	OutputMAPruefungProgAusgAuditAbwEUR   OutputField
+	OutputMAPruefungProgAusgReserveActLC  OutputField
+	OutputMAPruefungProgAusgReserveBudLC  OutputField
+	OutputMAPruefungProgAusgReserveDifLC  OutputField
+	OutputMAPruefungProgAusgReserveAbwLC  OutputField
+	OutputMAPruefungProgAusgReserveActEUR OutputField
+	OutputMAPruefungProgAusgReserveBudEUR OutputField
+	OutputMAPruefungProgAusgReserveDifEUR OutputField
+	OutputMAPruefungProgAusgReserveAbwEUR OutputField
+	OutputMAPruefungProgAusgGesamtActLC   OutputField
+	OutputMAPruefungProgAusgGesamtBudLC   OutputField
+	OutputMAPruefungProgAusgGesamtDifLC   OutputField
+	OutputMAPruefungProgAusgGesamtAbwLC   OutputField
+	OutputMAPruefungProgAusgGesamtActEUR  OutputField
+	OutputMAPruefungProgAusgGesamtBudEUR  OutputField
+	OutputMAPruefungProgAusgGesamtDifEUR  OutputField
+	OutputMAPruefungProgAusgGesamtAbwEUR  OutputField
 }
 
 var Registry = NewTemplateRegistry()
@@ -892,5 +1048,161 @@ func NewTemplateRegistry() *TemplateRegistry {
 		InputMAPruefungMonateY1:      maPrue.Inp("MonateY1", ListMonate),
 		InputMAPruefungMonateY2:      maPrue.Inp("MonateY2", ListMonate),
 		InputMAPruefungMonateY3:      maPrue.Inp("MonateY3", ListMonate),
+
+		// Pruefung MA – Auswahl (berechnete Perioden-/Anforderungsnummer)
+		OutputMAPruefungAusgewaehltePeriode:     maPrue.Out("AusgewaehltePeriode"),
+		OutputMAPruefungAusgewaehlteAnforderung: maPrue.Out("AusgewaehlteAnforderung"),
+
+		// Pruefung MA – KMW-Mittelpruefung (berechnete Ergebnisfelder, isMA)
+		OutputMAPruefungKMWBewilligt:                   maPrue.Out("KMWBewilligt"),
+		OutputMAPruefungKMWReserve:                     maPrue.Out("KMWReserve"),
+		OutputMAPruefungKMWOperativ:                    maPrue.Out("KMWOperativ"),
+		OutputMAPruefungKMWBereitgestellt:              maPrue.Out("KMWBereitgestellt"),
+		OutputMAPruefungKMWVerfuegbar:                  maPrue.Out("KMWVerfuegbar"),
+		OutputMAPruefungSaldovortrag:                   maPrue.Out("Saldovortrag"),
+		OutputMAPruefungMehreinnahmen:                  maPrue.Out("Mehreinnahmen"),
+		OutputMAPruefungPrognostizierteMehreinnahmen:   maPrue.Out("PrognostizierteMehreinnahmen"),
+		OutputMAPruefungAbzugGesamt:                    maPrue.Out("AbzugGesamt"),
+		OutputMAPruefungKMWVerfuegbarBereinigt:         maPrue.Out("KMWVerfuegbarBereinigt"),
+		OutputMAPruefungVerbleibendKMW:                 maPrue.Out("VerbleibendKMW"),
+		OutputMAPruefungVerbleibendKMWBereinigt:        maPrue.Out("VerbleibendKMWBereinigt"),
+		OutputMAPruefungVerbleibendKMWManuell:          maPrue.Out("VerbleibendKMWManuell"),
+		OutputMAPruefungVerbleibendKMWManuellBereinigt: maPrue.Out("VerbleibendKMWManuellBereinigt"),
+
+		// Pruefung MA – Monatslimit-Pruefung
+		OutputMAPruefungLimitAnforderungLC:      maPrue.Out("LimitAnforderungLC"),
+		OutputMAPruefungLimitAnforderungEUR:     maPrue.Out("LimitAnforderungEUR"),
+		OutputMAPruefungLimitJahresbudgetY1LC:   maPrue.Out("LimitJahresbudgetY1LC"),
+		OutputMAPruefungLimitJahresbudgetY1EUR:  maPrue.Out("LimitJahresbudgetY1EUR"),
+		OutputMAPruefungLimitJahresbudgetY2LC:   maPrue.Out("LimitJahresbudgetY2LC"),
+		OutputMAPruefungLimitJahresbudgetY2EUR:  maPrue.Out("LimitJahresbudgetY2EUR"),
+		OutputMAPruefungLimitJahresbudgetY3LC:   maPrue.Out("LimitJahresbudgetY3LC"),
+		OutputMAPruefungLimitJahresbudgetY3EUR:  maPrue.Out("LimitJahresbudgetY3EUR"),
+		OutputMAPruefungLimitMonate:             maPrue.Out("LimitMonate"),
+		OutputMAPruefungLimitZeitraum:           maPrue.Out("LimitZeitraum"),
+		OutputMAPruefungLimitMonatslimitLC:      maPrue.Out("LimitMonatslimitLC"),
+		OutputMAPruefungLimitMonatslimitEUR:     maPrue.Out("LimitMonatslimitEUR"),
+		OutputMAPruefungLimitStatusLC:           maPrue.Out("LimitStatusLC"),
+		OutputMAPruefungLimitStatusEUR:          maPrue.Out("LimitStatusEUR"),
+		OutputMAPruefungLimitUeberschreitungLC:  maPrue.Out("LimitUeberschreitungLC"),
+		OutputMAPruefungLimitUeberschreitungEUR: maPrue.Out("LimitUeberschreitungEUR"),
+		OutputMAPruefungLimitAuslastungLC:       maPrue.Out("LimitAuslastungLC"),
+		OutputMAPruefungLimitAuslastungEUR:      maPrue.Out("LimitAuslastungEUR"),
+
+		// Pruefung MA – Prognostizierte Finanzierungsanteile (4 Kategorien + Gesamt, je 8 Spalten = 40)
+		OutputMAPruefungProgFinEMActLC:      maPrue.Out("ProgFinEMActLC"),
+		OutputMAPruefungProgFinEMBudLC:      maPrue.Out("ProgFinEMBudLC"),
+		OutputMAPruefungProgFinEMDifLC:      maPrue.Out("ProgFinEMDifLC"),
+		OutputMAPruefungProgFinEMAbwLC:      maPrue.Out("ProgFinEMAbwLC"),
+		OutputMAPruefungProgFinEMActEUR:     maPrue.Out("ProgFinEMActEUR"),
+		OutputMAPruefungProgFinEMBudEUR:     maPrue.Out("ProgFinEMBudEUR"),
+		OutputMAPruefungProgFinEMDifEUR:     maPrue.Out("ProgFinEMDifEUR"),
+		OutputMAPruefungProgFinEMAbwEUR:     maPrue.Out("ProgFinEMAbwEUR"),
+		OutputMAPruefungProgFinDMActLC:      maPrue.Out("ProgFinDMActLC"),
+		OutputMAPruefungProgFinDMBudLC:      maPrue.Out("ProgFinDMBudLC"),
+		OutputMAPruefungProgFinDMDifLC:      maPrue.Out("ProgFinDMDifLC"),
+		OutputMAPruefungProgFinDMAbwLC:      maPrue.Out("ProgFinDMAbwLC"),
+		OutputMAPruefungProgFinDMActEUR:     maPrue.Out("ProgFinDMActEUR"),
+		OutputMAPruefungProgFinDMBudEUR:     maPrue.Out("ProgFinDMBudEUR"),
+		OutputMAPruefungProgFinDMDifEUR:     maPrue.Out("ProgFinDMDifEUR"),
+		OutputMAPruefungProgFinDMAbwEUR:     maPrue.Out("ProgFinDMAbwEUR"),
+		OutputMAPruefungProgFinKMWActLC:     maPrue.Out("ProgFinKMWActLC"),
+		OutputMAPruefungProgFinKMWBudLC:     maPrue.Out("ProgFinKMWBudLC"),
+		OutputMAPruefungProgFinKMWDifLC:     maPrue.Out("ProgFinKMWDifLC"),
+		OutputMAPruefungProgFinKMWAbwLC:     maPrue.Out("ProgFinKMWAbwLC"),
+		OutputMAPruefungProgFinKMWActEUR:    maPrue.Out("ProgFinKMWActEUR"),
+		OutputMAPruefungProgFinKMWBudEUR:    maPrue.Out("ProgFinKMWBudEUR"),
+		OutputMAPruefungProgFinKMWDifEUR:    maPrue.Out("ProgFinKMWDifEUR"),
+		OutputMAPruefungProgFinKMWAbwEUR:    maPrue.Out("ProgFinKMWAbwEUR"),
+		OutputMAPruefungProgFinZinsActLC:    maPrue.Out("ProgFinZinsActLC"),
+		OutputMAPruefungProgFinZinsBudLC:    maPrue.Out("ProgFinZinsBudLC"),
+		OutputMAPruefungProgFinZinsDifLC:    maPrue.Out("ProgFinZinsDifLC"),
+		OutputMAPruefungProgFinZinsAbwLC:    maPrue.Out("ProgFinZinsAbwLC"),
+		OutputMAPruefungProgFinZinsActEUR:   maPrue.Out("ProgFinZinsActEUR"),
+		OutputMAPruefungProgFinZinsBudEUR:   maPrue.Out("ProgFinZinsBudEUR"),
+		OutputMAPruefungProgFinZinsDifEUR:   maPrue.Out("ProgFinZinsDifEUR"),
+		OutputMAPruefungProgFinZinsAbwEUR:   maPrue.Out("ProgFinZinsAbwEUR"),
+		OutputMAPruefungProgFinGesamtActLC:  maPrue.Out("ProgFinGesamtActLC"),
+		OutputMAPruefungProgFinGesamtBudLC:  maPrue.Out("ProgFinGesamtBudLC"),
+		OutputMAPruefungProgFinGesamtDifLC:  maPrue.Out("ProgFinGesamtDifLC"),
+		OutputMAPruefungProgFinGesamtAbwLC:  maPrue.Out("ProgFinGesamtAbwLC"),
+		OutputMAPruefungProgFinGesamtActEUR: maPrue.Out("ProgFinGesamtActEUR"),
+		OutputMAPruefungProgFinGesamtBudEUR: maPrue.Out("ProgFinGesamtBudEUR"),
+		OutputMAPruefungProgFinGesamtDifEUR: maPrue.Out("ProgFinGesamtDifEUR"),
+		OutputMAPruefungProgFinGesamtAbwEUR: maPrue.Out("ProgFinGesamtAbwEUR"),
+
+		// Pruefung MA – Prognosepruefung Ausgaben (8 Kostenkategorien + Gesamt, je 8 Spalten = 72)
+		OutputMAPruefungProgAusgBauActLC:      maPrue.Out("ProgAusgBauActLC"),
+		OutputMAPruefungProgAusgBauBudLC:      maPrue.Out("ProgAusgBauBudLC"),
+		OutputMAPruefungProgAusgBauDifLC:      maPrue.Out("ProgAusgBauDifLC"),
+		OutputMAPruefungProgAusgBauAbwLC:      maPrue.Out("ProgAusgBauAbwLC"),
+		OutputMAPruefungProgAusgBauActEUR:     maPrue.Out("ProgAusgBauActEUR"),
+		OutputMAPruefungProgAusgBauBudEUR:     maPrue.Out("ProgAusgBauBudEUR"),
+		OutputMAPruefungProgAusgBauDifEUR:     maPrue.Out("ProgAusgBauDifEUR"),
+		OutputMAPruefungProgAusgBauAbwEUR:     maPrue.Out("ProgAusgBauAbwEUR"),
+		OutputMAPruefungProgAusgInvActLC:      maPrue.Out("ProgAusgInvActLC"),
+		OutputMAPruefungProgAusgInvBudLC:      maPrue.Out("ProgAusgInvBudLC"),
+		OutputMAPruefungProgAusgInvDifLC:      maPrue.Out("ProgAusgInvDifLC"),
+		OutputMAPruefungProgAusgInvAbwLC:      maPrue.Out("ProgAusgInvAbwLC"),
+		OutputMAPruefungProgAusgInvActEUR:     maPrue.Out("ProgAusgInvActEUR"),
+		OutputMAPruefungProgAusgInvBudEUR:     maPrue.Out("ProgAusgInvBudEUR"),
+		OutputMAPruefungProgAusgInvDifEUR:     maPrue.Out("ProgAusgInvDifEUR"),
+		OutputMAPruefungProgAusgInvAbwEUR:     maPrue.Out("ProgAusgInvAbwEUR"),
+		OutputMAPruefungProgAusgPersActLC:     maPrue.Out("ProgAusgPersActLC"),
+		OutputMAPruefungProgAusgPersBudLC:     maPrue.Out("ProgAusgPersBudLC"),
+		OutputMAPruefungProgAusgPersDifLC:     maPrue.Out("ProgAusgPersDifLC"),
+		OutputMAPruefungProgAusgPersAbwLC:     maPrue.Out("ProgAusgPersAbwLC"),
+		OutputMAPruefungProgAusgPersActEUR:    maPrue.Out("ProgAusgPersActEUR"),
+		OutputMAPruefungProgAusgPersBudEUR:    maPrue.Out("ProgAusgPersBudEUR"),
+		OutputMAPruefungProgAusgPersDifEUR:    maPrue.Out("ProgAusgPersDifEUR"),
+		OutputMAPruefungProgAusgPersAbwEUR:    maPrue.Out("ProgAusgPersAbwEUR"),
+		OutputMAPruefungProgAusgAktivActLC:    maPrue.Out("ProgAusgAktivActLC"),
+		OutputMAPruefungProgAusgAktivBudLC:    maPrue.Out("ProgAusgAktivBudLC"),
+		OutputMAPruefungProgAusgAktivDifLC:    maPrue.Out("ProgAusgAktivDifLC"),
+		OutputMAPruefungProgAusgAktivAbwLC:    maPrue.Out("ProgAusgAktivAbwLC"),
+		OutputMAPruefungProgAusgAktivActEUR:   maPrue.Out("ProgAusgAktivActEUR"),
+		OutputMAPruefungProgAusgAktivBudEUR:   maPrue.Out("ProgAusgAktivBudEUR"),
+		OutputMAPruefungProgAusgAktivDifEUR:   maPrue.Out("ProgAusgAktivDifEUR"),
+		OutputMAPruefungProgAusgAktivAbwEUR:   maPrue.Out("ProgAusgAktivAbwEUR"),
+		OutputMAPruefungProgAusgVerwActLC:     maPrue.Out("ProgAusgVerwActLC"),
+		OutputMAPruefungProgAusgVerwBudLC:     maPrue.Out("ProgAusgVerwBudLC"),
+		OutputMAPruefungProgAusgVerwDifLC:     maPrue.Out("ProgAusgVerwDifLC"),
+		OutputMAPruefungProgAusgVerwAbwLC:     maPrue.Out("ProgAusgVerwAbwLC"),
+		OutputMAPruefungProgAusgVerwActEUR:    maPrue.Out("ProgAusgVerwActEUR"),
+		OutputMAPruefungProgAusgVerwBudEUR:    maPrue.Out("ProgAusgVerwBudEUR"),
+		OutputMAPruefungProgAusgVerwDifEUR:    maPrue.Out("ProgAusgVerwDifEUR"),
+		OutputMAPruefungProgAusgVerwAbwEUR:    maPrue.Out("ProgAusgVerwAbwEUR"),
+		OutputMAPruefungProgAusgEvalActLC:     maPrue.Out("ProgAusgEvalActLC"),
+		OutputMAPruefungProgAusgEvalBudLC:     maPrue.Out("ProgAusgEvalBudLC"),
+		OutputMAPruefungProgAusgEvalDifLC:     maPrue.Out("ProgAusgEvalDifLC"),
+		OutputMAPruefungProgAusgEvalAbwLC:     maPrue.Out("ProgAusgEvalAbwLC"),
+		OutputMAPruefungProgAusgEvalActEUR:    maPrue.Out("ProgAusgEvalActEUR"),
+		OutputMAPruefungProgAusgEvalBudEUR:    maPrue.Out("ProgAusgEvalBudEUR"),
+		OutputMAPruefungProgAusgEvalDifEUR:    maPrue.Out("ProgAusgEvalDifEUR"),
+		OutputMAPruefungProgAusgEvalAbwEUR:    maPrue.Out("ProgAusgEvalAbwEUR"),
+		OutputMAPruefungProgAusgAuditActLC:    maPrue.Out("ProgAusgAuditActLC"),
+		OutputMAPruefungProgAusgAuditBudLC:    maPrue.Out("ProgAusgAuditBudLC"),
+		OutputMAPruefungProgAusgAuditDifLC:    maPrue.Out("ProgAusgAuditDifLC"),
+		OutputMAPruefungProgAusgAuditAbwLC:    maPrue.Out("ProgAusgAuditAbwLC"),
+		OutputMAPruefungProgAusgAuditActEUR:   maPrue.Out("ProgAusgAuditActEUR"),
+		OutputMAPruefungProgAusgAuditBudEUR:   maPrue.Out("ProgAusgAuditBudEUR"),
+		OutputMAPruefungProgAusgAuditDifEUR:   maPrue.Out("ProgAusgAuditDifEUR"),
+		OutputMAPruefungProgAusgAuditAbwEUR:   maPrue.Out("ProgAusgAuditAbwEUR"),
+		OutputMAPruefungProgAusgReserveActLC:  maPrue.Out("ProgAusgReserveActLC"),
+		OutputMAPruefungProgAusgReserveBudLC:  maPrue.Out("ProgAusgReserveBudLC"),
+		OutputMAPruefungProgAusgReserveDifLC:  maPrue.Out("ProgAusgReserveDifLC"),
+		OutputMAPruefungProgAusgReserveAbwLC:  maPrue.Out("ProgAusgReserveAbwLC"),
+		OutputMAPruefungProgAusgReserveActEUR: maPrue.Out("ProgAusgReserveActEUR"),
+		OutputMAPruefungProgAusgReserveBudEUR: maPrue.Out("ProgAusgReserveBudEUR"),
+		OutputMAPruefungProgAusgReserveDifEUR: maPrue.Out("ProgAusgReserveDifEUR"),
+		OutputMAPruefungProgAusgReserveAbwEUR: maPrue.Out("ProgAusgReserveAbwEUR"),
+		OutputMAPruefungProgAusgGesamtActLC:   maPrue.Out("ProgAusgGesamtActLC"),
+		OutputMAPruefungProgAusgGesamtBudLC:   maPrue.Out("ProgAusgGesamtBudLC"),
+		OutputMAPruefungProgAusgGesamtDifLC:   maPrue.Out("ProgAusgGesamtDifLC"),
+		OutputMAPruefungProgAusgGesamtAbwLC:   maPrue.Out("ProgAusgGesamtAbwLC"),
+		OutputMAPruefungProgAusgGesamtActEUR:  maPrue.Out("ProgAusgGesamtActEUR"),
+		OutputMAPruefungProgAusgGesamtBudEUR:  maPrue.Out("ProgAusgGesamtBudEUR"),
+		OutputMAPruefungProgAusgGesamtDifEUR:  maPrue.Out("ProgAusgGesamtDifEUR"),
+		OutputMAPruefungProgAusgGesamtAbwEUR:  maPrue.Out("ProgAusgGesamtAbwEUR"),
 	}
 }
