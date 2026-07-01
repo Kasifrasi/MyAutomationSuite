@@ -2,6 +2,7 @@ package vorpruefung
 
 import (
 	"fmt"
+	"reflect"
 	"shared/constants"
 	"strings"
 
@@ -83,7 +84,8 @@ func (g *Generator) CreateFBPruefungSheet() error {
 	fbKMW := g.evalDrawKMWSektion(ws, r, false, sel)
 	r = fbKMW.nextRow + EV_TABLE_GAP
 
-	resFBInc := g.evalDrawComparisonTable(ws, r, "Finanzierungsanteile", true, false, sel)
+	finBind := evalCompBindingFor(Registry, "OutputFBPruefungFin", []string{"EM", "DM", "KMW", "Zins"})
+	resFBInc := g.evalDrawComparisonTable(ws, r, "Finanzierungsanteile", true, false, sel, finBind)
 	r = resFBInc.nextRow + EV_TABLE_GAP
 
 	mehrFormula := fmt.Sprintf(
@@ -91,7 +93,8 @@ func (g *Generator) CreateFBPruefungSheet() error {
 		resFBInc.actEURRange, resFBInc.kmwActEUR, resFBInc.budEURRange, resFBInc.kmwBudEUR)
 	g.evalDeduct(ws, fbKMW.mehrCell, mehrFormula)
 
-	resFBExp := g.evalDrawComparisonTable(ws, r, "Soll-Ist Abweichungsprüfung", false, false, sel)
+	sollIstBind := evalCompBindingFor(Registry, "OutputFBPruefungSollIst", []string{"Bau", "Inv", "Pers", "Aktiv", "Verw", "Eval", "Audit", "Reserve"})
+	resFBExp := g.evalDrawComparisonTable(ws, r, "Soll-Ist Abweichungsprüfung", false, false, sel, sollIstBind)
 	r = resFBExp.nextRow + EV_TABLE_GAP
 
 	for _, cell := range []string{
@@ -173,6 +176,21 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	addrVerf := absName(valL, rVerf)
 	leftBottom := r
 
+	// Registry-Bindung linker Block (Basis-KMW-Mittel).
+	if isMA {
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWBewilligt.NamedRange, valL, rBew)
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWReserve.NamedRange, valL, rRes)
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWOperativ.NamedRange, valL, rOp)
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWBereitgestellt.NamedRange, valL, rBer)
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWVerfuegbar.NamedRange, valL, rVerf)
+	} else {
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWBewilligt.NamedRange, valL, rBew)
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWReserve.NamedRange, valL, rRes)
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWOperativ.NamedRange, valL, rOp)
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWBereitgestellt.NamedRange, valL, rBer)
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWVerfuegbar.NamedRange, valL, rVerf)
+	}
+
 	// --- RECHTER BLOCK (Abzugsoptionen, mit Abzug/Kein-Abzug-Schaltern) ---
 	rr := startRow
 	_ = g.mergeCells(ws, cellName(tog, rr), cellName(valR, rr), "Abzugsoptionen KMW-Mittel", EVAbzugHeaderStyle)
@@ -188,8 +206,13 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		g.evalToggle(ws, cellName(tog, rr), Registry.InputFBPruefungAbzugSaldo)
 	}
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Saldovortrag", false)
-	g.evalDeduct(ws, cellName(valR, rr), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", DB_NAME_SALDOVORTRAG_EUR))
+	g.evalDeduct(ws, cellName(valR, rr), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", Registry.OutputDashSaldovortragEUR.NamedRange))
 	saldoCell := cellName(valR, rr)
+	if isMA {
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungSaldovortrag.NamedRange, valR, rr)
+	} else {
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungSaldovortrag.NamedRange, valR, rr)
+	}
 	deds = append(deds, dedRow{absName(tog, rr), absName(valR, rr)})
 	rr++
 
@@ -202,6 +225,11 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Mehreinnahmen", false)
 	g.evalDeductPlaceholder(ws, cellName(valR, rr))
 	mehrCell := cellName(valR, rr)
+	if isMA {
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungMehreinnahmen.NamedRange, valR, rr)
+	} else {
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungMehreinnahmen.NamedRange, valR, rr)
+	}
 	deds = append(deds, dedRow{absName(tog, rr), absName(valR, rr)})
 	rr++
 
@@ -211,6 +239,7 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		g.evalKmwLabel(ws, rr, lblR1, lblR2, "Prognostizierte Mehreinnahmen", false)
 		g.evalDeductPlaceholder(ws, cellName(valR, rr))
 		prognCell = cellName(valR, rr)
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungPrognostizierteMehreinnahmen.NamedRange, valR, rr)
 		deds = append(deds, dedRow{absName(tog, rr), absName(valR, rr)})
 		rr++
 	}
@@ -234,12 +263,22 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 	}
 	g.evalKmwCalc(ws, cellName(valR, rr), fmt.Sprintf("=ROUND(%s,2)", strings.Join(terms, "+")), true)
 	addrInsgesamt := absName(valR, rIns)
+	if isMA {
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungAbzugGesamt.NamedRange, valR, rIns)
+	} else {
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungAbzugGesamt.NamedRange, valR, rIns)
+	}
 	rr++
 
 	// Verfügbare KMW-Mittel (bereinigt)
 	g.evalKmwLabel(ws, rr, lblR1, lblR2, "Verfügbare KMW-Mittel (bereinigt)", true)
 	g.evalKmwCalc(ws, cellName(valR, rr), fmt.Sprintf("=ROUND(%s-%s,2)", addrVerf, addrInsgesamt), true)
 	addrBereinigt := absName(valR, rr)
+	if isMA {
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungKMWVerfuegbarBereinigt.NamedRange, valR, rr)
+	} else {
+		g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungKMWVerfuegbarBereinigt.NamedRange, valR, rr)
+	}
 	rightBottom := rr
 
 	g.styleOuterBorder(ws, startRow, lblL1, leftBottom, valL, 2, EV_CLR_BORDER)
@@ -275,6 +314,8 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrBereinigt, addrReqR), true)
 		addrVerblR1 := absName(valR, r)
 		p1Bottom := r
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungVerbleibendKMW.NamedRange, valL, p1Bottom)
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungVerbleibendKMWBereinigt.NamedRange, valR, p1Bottom)
 		g.styleOuterBorder(ws, p1Top, lblL1, p1Bottom, valL, 2, EV_CLR_BORDER)
 		g.styleOuterBorder(ws, p1Top, tog, p1Bottom, valR, 2, EV_CLR_BORDER)
 		r += 2
@@ -296,6 +337,8 @@ func (g *Generator) evalDrawKMWSektion(ws string, r int, isMA bool, sel evalSelR
 		g.evalKmwCalc(ws, cellName(valR, r), fmt.Sprintf("=ROUND(%s-MAX(0,%s),2)", addrBereinigt, addrManR), true)
 		addrVerblR2 := absName(valR, r)
 		p2Bottom := r
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungVerbleibendKMWManuell.NamedRange, valL, p2Bottom)
+		g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungVerbleibendKMWManuellBereinigt.NamedRange, valR, p2Bottom)
 		g.styleOuterBorder(ws, p2Top, lblL1, p2Bottom, valL, 2, EV_CLR_BORDER)
 		g.styleOuterBorder(ws, p2Top, tog, p2Bottom, valR, 2, EV_CLR_BORDER)
 		r++
@@ -426,6 +469,7 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 	numF := fmt.Sprintf(`=IF(%s="Neuester FB",%s,IF(LEFT(%s,8)="Periode ",IFERROR(VALUE(TRIM(MID(%s,9,5))),0),0))`,
 		labelCell, maxFBPer, labelCell, labelCell)
 	g.evalMergedFormula(ws, numCell, cellName(EV_PB_C2, r), numF, num0)
+	g.dbUpsertNamedRange(ws, Registry.OutputFBPruefungAusgewaehltePeriode.NamedRange, EV_PB_V1, r)
 	r++
 
 	bottom := r - 1
@@ -438,7 +482,59 @@ func (g *Generator) evalDrawFBPanel(ws string, top int) (string, int) {
 // MONATSLIMIT-PRÜFUNG
 // ==================================================================================
 
-func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIncome, isMA bool, sel evalSelRefs) evalCompResult {
+// evalCompFields hält die acht Registry-Ausgabefelder einer Vergleichstabellen-Zeile
+// (Kategorie × Metrik × Währung) in Spaltenreihenfolge (Act/Bud/Dif/Abw je LC/EUR).
+type evalCompFields struct {
+	actLC, budLC, difLC, abwLC     OutputField
+	actEUR, budEUR, difEUR, abwEUR OutputField
+}
+
+// evalCompBinding bündelt die Ausgabefelder je Datenzeile (in Label-Reihenfolge)
+// sowie der GESAMT-Zeile einer Vergleichstabelle.
+type evalCompBinding struct {
+	rows  []evalCompFields
+	total evalCompFields
+}
+
+// evalCompBindingFor baut die Registry-Bindung einer Vergleichstabelle aus dem
+// Feld-Präfix (z. B. "OutputFBPruefungFin") und den Kategorie-Kürzeln (in
+// Label-Reihenfolge). Die Namen stammen ausschließlich aus der Registry; das
+// Kürzelschema entspricht den Feldnamen in registry.go (…<Cat><Metrik><Währung>).
+func evalCompBindingFor(reg *TemplateRegistry, prefix string, cats []string) evalCompBinding {
+	rv := reflect.ValueOf(*reg)
+	out := func(cat, metric, cur string) OutputField {
+		fv := rv.FieldByName(prefix + cat + metric + cur)
+		if !fv.IsValid() {
+			panic(fmt.Sprintf("[Developer Error] Registry-Feld fehlt: %s%s%s%s", prefix, cat, metric, cur))
+		}
+		return fv.Interface().(OutputField)
+	}
+	mk := func(cat string) evalCompFields {
+		return evalCompFields{
+			actLC: out(cat, "Act", "LC"), budLC: out(cat, "Bud", "LC"), difLC: out(cat, "Dif", "LC"), abwLC: out(cat, "Abw", "LC"),
+			actEUR: out(cat, "Act", "EUR"), budEUR: out(cat, "Bud", "EUR"), difEUR: out(cat, "Dif", "EUR"), abwEUR: out(cat, "Abw", "EUR"),
+		}
+	}
+	rows := make([]evalCompFields, len(cats))
+	for i, c := range cats {
+		rows[i] = mk(c)
+	}
+	return evalCompBinding{rows: rows, total: mk("Gesamt")}
+}
+
+// evalBindCompRow benennt die acht Wertzellen einer Vergleichstabellen-Zeile.
+func (g *Generator) evalBindCompRow(ws string, row int, cf evalCompFields) {
+	g.dbUpsertNamedRange(ws, cf.actLC.NamedRange, EV_COL_ACT_LC, row)
+	g.dbUpsertNamedRange(ws, cf.budLC.NamedRange, EV_COL_BUD_LC, row)
+	g.dbUpsertNamedRange(ws, cf.difLC.NamedRange, EV_COL_DIF_LC, row)
+	g.dbUpsertNamedRange(ws, cf.abwLC.NamedRange, EV_COL_ABW_LC, row)
+	g.dbUpsertNamedRange(ws, cf.actEUR.NamedRange, EV_COL_ACT_EUR, row)
+	g.dbUpsertNamedRange(ws, cf.budEUR.NamedRange, EV_COL_BUD_EUR, row)
+	g.dbUpsertNamedRange(ws, cf.difEUR.NamedRange, EV_COL_DIF_EUR, row)
+	g.dbUpsertNamedRange(ws, cf.abwEUR.NamedRange, EV_COL_ABW_EUR, row)
+}
+
+func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIncome, isMA bool, sel evalSelRefs, bind evalCompBinding) evalCompResult {
 	g.evalSectionTitle(ws, r, title)
 	r += 2
 
@@ -492,11 +588,9 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 		g.evalCellFormula(ws, cellName(EV_COL_ABW_EUR, row),
 			fmt.Sprintf("=ROUND(IFERROR((%s/%s)-1,0),4)", absName(EV_COL_ACT_EUR, row), absName(EV_COL_BUD_EUR, row)), EV_FMT_PCT, "")
 
-		// Ist-Werte je Kategorie benennen (nur FB, nicht MA-Prognose).
-		if !isMA {
-			clean := evalCleanName(name)
-			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActLC_%s", clean), EV_COL_ACT_LC, row)
-			g.dbUpsertNamedRange(ws, fmt.Sprintf("AW_FB_ActEUR_%s", clean), EV_COL_ACT_EUR, row)
+		// Alle Wertzellen der Zeile an die Registry-Ausgabefelder binden.
+		if i < len(bind.rows) {
+			g.evalBindCompRow(ws, row, bind.rows[i])
 		}
 
 		if isIncome && name == "KMW-Mittel" {
@@ -508,6 +602,7 @@ func (g *Generator) evalDrawComparisonTable(ws string, r int, title string, isIn
 	dataEnd := dataStart + nRows - 1
 	totalRow := dataEnd + 1
 	g.evalTotalRow(ws, totalRow, dataStart, dataEnd)
+	g.evalBindCompRow(ws, totalRow, bind.total)
 
 	// Abweichungs-Ampel auf beiden Währungsspalten (Einnahmen wie Ausgaben):
 	// ≥ 20 % rot, 10–20 % gelb.
@@ -597,12 +692,6 @@ func (g *Generator) evalComparisonBudgetNames(isIncome, isMA bool, name string, 
 		eur = Registry.OutputBudgetReserveEUR.NamedRange
 	}
 	return lc, eur
-}
-
-// evalCleanName macht einen Kategorienamen für Named Ranges nutzbar.
-func evalCleanName(name string) string {
-	s := strings.ReplaceAll(name, " ", "_")
-	return strings.ReplaceAll(s, "-", "_")
 }
 
 func (g *Generator) evalBudgetNames(isIncome bool, idx int) (string, string) {

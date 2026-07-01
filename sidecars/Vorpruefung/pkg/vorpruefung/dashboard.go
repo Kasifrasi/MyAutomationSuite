@@ -28,7 +28,7 @@ const (
 	DashRowVPEnde          = 11
 	DashRowVPSaldo         = 12
 	DashRowVPFolgestart    = 13
-	DashRowVPSaldovortrag  = 14 // VP-Block Ende; Named Ranges Saldovortrag_LW/_EUR
+	DashRowVPSaldovortrag  = 14 // VP-Block Ende; Inp_Dash_VPFolgeSaldoLC / Out_Dash_SaldovortragEUR
 	DashRowChecklistStart  = 16
 
 	DashCCYCol = 27 // Hilfsspalte für Währungsliste (ausgeblendet)
@@ -36,14 +36,6 @@ const (
 	// Sheet
 	DashSheetName = constants.VPSheetDASHBOARD
 	DashTabColor  = "D3D3D3"
-
-	// Benannte Bereiche
-	DashNameSaldovortragLW  = "Saldovortrag_LW"
-	DashNameSaldovortragEUR = "Saldovortrag_EUR"
-
-	// Alias für andere Sheets
-	DB_NAME_SALDOVORTRAG_LW  = DashNameSaldovortragLW
-	DB_NAME_SALDOVORTRAG_EUR = DashNameSaldovortragEUR
 )
 
 // ─── Teil B: Layout-Dokumentation ────────────────────────────────────────────
@@ -119,9 +111,6 @@ func (g *Generator) CreateDashboardSheet(reg *TemplateRegistry) error {
 	if err = g.applyDashConditionalFormatting(ws); err != nil {
 		return err
 	}
-
-	g.dbUpsertNamedRange(ws, DashNameSaldovortragLW, DashColInputLeft, DashRowVPSaldovortrag)
-	g.dbUpsertNamedRange(ws, DashNameSaldovortragEUR, DashColInputRight, DashRowVPSaldovortrag)
 
 	return nil
 }
@@ -374,6 +363,7 @@ func (g *Generator) bindDashFields(ws string, reg *TemplateRegistry) error {
 	if err := g.setFormula(ws, cellName(DashColInputLeft, DashRowProjektlaufzeit), laufzeitFormula, DashOutputStyle); err != nil {
 		return err
 	}
+	g.dbUpsertNamedRange(ws, reg.OutputDashProjektlaufzeit.NamedRange, DashColInputLeft, DashRowProjektlaufzeit)
 	monateFormula := fmt.Sprintf(
 		`=IF(AND(ISNUMBER(%s),ISNUMBER(%s)),DATEDIF(%s,%s+1,"M"),"")`,
 		startAddr, endeAddr, startAddr, endeAddr,
@@ -381,6 +371,7 @@ func (g *Generator) bindDashFields(ws string, reg *TemplateRegistry) error {
 	if err := g.setFormula(ws, cellName(DashColInputRight, DashRowProjektlaufzeit), monateFormula, DashOutputStyle); err != nil {
 		return err
 	}
+	g.dbUpsertNamedRange(ws, reg.OutputDashMonate.NamedRange, DashColInputRight, DashRowProjektlaufzeit)
 
 	// VP-Block
 	_ = g.bindInputField(ws, DashRowVPNummer, DashColInputLeft, reg.InputDashVPNummer)
@@ -403,6 +394,7 @@ func (g *Generator) bindDashFields(ws string, reg *TemplateRegistry) error {
 		return err
 	}
 	_ = g.bindInputField(ws, DashRowVPSaldo, DashColInputRight, reg.InputDashVPSaldoEUR)
+	g.dbUpsertNamedRange(ws, reg.OutputDashSaldoEUR.NamedRange, DashColInputRight, DashRowVPSaldo)
 
 	// Folgeprojektstart + FolgeWechselkurs
 	_ = g.bindInputField(ws, DashRowVPFolgestart, DashColInputLeft, reg.InputDashVPFolgeprojektstart)
@@ -419,6 +411,7 @@ func (g *Generator) bindDashFields(ws string, reg *TemplateRegistry) error {
 		return err
 	}
 	_ = g.bindInputField(ws, DashRowVPSaldovortrag, DashColInputRight, reg.InputDashVPFolgeSaldoEUR)
+	g.dbUpsertNamedRange(ws, reg.OutputDashSaldovortragEUR.NamedRange, DashColInputRight, DashRowVPSaldovortrag)
 
 	return nil
 }

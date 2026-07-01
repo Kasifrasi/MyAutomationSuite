@@ -50,10 +50,12 @@ func (g *Generator) CreateMAPruefungSheet() error {
 
 	r = g.evalDrawMonatslimit(ws, r, sel) + EV_TABLE_GAP
 
-	resMAInc := g.evalDrawComparisonTable(ws, r, "Prognostizierte Finanzierungsanteile", true, true, sel)
+	progFinBind := evalCompBindingFor(Registry, "OutputMAPruefungProgFin", []string{"EM", "DM", "KMW", "Zins"})
+	resMAInc := g.evalDrawComparisonTable(ws, r, "Prognostizierte Finanzierungsanteile", true, true, sel, progFinBind)
 	r = resMAInc.nextRow + EV_TABLE_GAP
 
-	resMAExp := g.evalDrawComparisonTable(ws, r, "Prognoseprüfung (Ausgaben)", false, true, sel)
+	progAusgBind := evalCompBindingFor(Registry, "OutputMAPruefungProgAusg", []string{"Bau", "Inv", "Pers", "Aktiv", "Verw", "Eval", "Audit", "Reserve"})
+	resMAExp := g.evalDrawComparisonTable(ws, r, "Prognoseprüfung (Ausgaben)", false, true, sel, progAusgBind)
 	r = resMAExp.nextRow + EV_TABLE_GAP
 
 	// ── Nachgelagerte (sektionsübergreifende) Formeln der MA-Abzugsoptionen ──

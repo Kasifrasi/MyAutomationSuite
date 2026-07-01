@@ -43,6 +43,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 		`=IF(%s="Neueste MA",%s,IFERROR(VALUE(MID(%s,FIND("Periode ",%s)+8,FIND(" ",%s,FIND("Periode ",%s)+8)-(FIND("Periode ",%s)+8))),0))`,
 		labelCell, maxMAP, labelCell, labelCell, labelCell, labelCell, labelCell)
 	g.evalMergedFormula(ws, pCell, cellName(EV_PB_C2, r), pFormula, num0)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungAusgewaehltePeriode.NamedRange, EV_PB_V1, r)
 	r++
 
 	g.evalSelLabel(ws, r, "Ausgewählte Anforderung (#)")
@@ -59,6 +60,7 @@ func (g *Generator) evalDrawMAPanel(ws string, top int) (string, string, int) {
 		`=IF(%s="Neueste MA",MAX(1,%s),IFERROR(VALUE(MID(%s,FIND("(#",%s)+2,FIND(")",%s)-FIND("(#",%s)-2)),0))`,
 		labelCell, maxMAK, labelCell, labelCell, labelCell, labelCell)
 	g.evalMergedFormula(ws, kCell, cellName(EV_PB_C2, r), kFormula, num0)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungAusgewaehlteAnforderung.NamedRange, EV_PB_V1, r)
 	r++
 
 	warnCol1 := EV_PB_C2 + 1 // Spalte H (8)
@@ -249,6 +251,8 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	g.evalLimitCalc(ws, cellName(vEUR, r), anfSum(EV_DTN_MA_META_SUMEU), EV_FMT_EUR, false)
 	anfLCAddr := absName(vLC, rAnf)
 	anfEURAddr := absName(vEUR, rAnf)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitAnforderungLC.NamedRange, vLC, rAnf)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitAnforderungEUR.NamedRange, vEUR, rAnf)
 	r++
 
 	// ─── Jahresbudget je Haushaltsjahr inkl. einfließendem Monatsanteil ──────
@@ -261,6 +265,8 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	yearBudEURAddrs := make([]string, len(BudgetYears))
 	defaultMonths := []int{8, 0, 0} // bisheriges 8-Monats-Verhalten als Ausgangswert
 	fields := []InputField{Registry.InputMAPruefungMonateY1, Registry.InputMAPruefungMonateY2, Registry.InputMAPruefungMonateY3}
+	budLCOut := []OutputField{Registry.OutputMAPruefungLimitJahresbudgetY1LC, Registry.OutputMAPruefungLimitJahresbudgetY2LC, Registry.OutputMAPruefungLimitJahresbudgetY3LC}
+	budEUROut := []OutputField{Registry.OutputMAPruefungLimitJahresbudgetY1EUR, Registry.OutputMAPruefungLimitJahresbudgetY2EUR, Registry.OutputMAPruefungLimitJahresbudgetY3EUR}
 	for i, year := range BudgetYears {
 		label(r, "Jahresbudget "+year, false)
 		budF := fmt.Sprintf("=IFERROR(ROUND(SUBTOTAL(109,%s[%s]),2),0)", BudgetTableAusg, year)
@@ -273,18 +279,22 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 		yearMonthAddrs[i] = monthsInput(r, dm, fields[i])
 		g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s/%s,2),0)", yearBudLCAddrs[i], rate), EV_FMT_EUR, false)
 		yearBudEURAddrs[i] = absName(vEUR, r)
+		g.dbUpsertNamedRange(ws, budLCOut[i].NamedRange, vLC, r)
+		g.dbUpsertNamedRange(ws, budEUROut[i].NamedRange, vEUR, r)
 		r++
 	}
 
 	// Limit-Monate = Summe der eingerechneten Monatsanteile über alle Jahre.
 	label(r, "Limit-Monate (Summe Anteile)", false)
 	sharedCalc(r, fmt.Sprintf("=%s", strings.Join(yearMonthAddrs, "+")), "0")
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitMonate.NamedRange, vLC, r)
 	r++
 
 	// Bezugszeitraum = Zeitraum (Monate) der gewählten Mittelanforderung (übernommen,
 	// nicht editierbar). Dient als Kontrolle gegen die Summe der Monatsanteile.
 	label(r, "Bezugszeitraum (Monate, aus MA)", false)
 	sharedCalc(r, evalMASelectedZeitraum(sel), "0")
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitZeitraum.NamedRange, vLC, r)
 	r++
 
 	// Anteiliges Monatslimit = Σ Jahresbudget_i × Monate_i / 12.
@@ -301,24 +311,32 @@ func (g *Generator) evalDrawMonatslimit(ws string, r int, sel evalSelRefs) int {
 	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(ROUND(%s,2),0)", strings.Join(limTermsEUR, "+")), EV_FMT_EUR, true)
 	limitLCAddr := absName(vLC, rLimit)
 	limitEURAddr := absName(vEUR, rLimit)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitMonatslimitLC.NamedRange, vLC, rLimit)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitMonatslimitEUR.NamedRange, vEUR, rLimit)
 	r++
 
 	label(r, "Status", true)
 	g.evalLimitStatus(ws, vLC, r, anfLCAddr, limitLCAddr)
 	blankMid(r)
 	g.evalLimitStatus(ws, vEUR, r, anfEURAddr, limitEURAddr)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitStatusLC.NamedRange, vLC, r)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitStatusEUR.NamedRange, vEUR, r)
 	r++
 
 	label(r, "Überschreitung", false)
 	g.evalLimitUeber(ws, vLC, r, anfLCAddr, limitLCAddr, EV_FMT_LC)
 	blankMid(r)
 	g.evalLimitUeber(ws, vEUR, r, anfEURAddr, limitEURAddr, EV_FMT_EUR)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitUeberschreitungLC.NamedRange, vLC, r)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitUeberschreitungEUR.NamedRange, vEUR, r)
 	r++
 
 	label(r, "Auslastung %", false)
 	g.evalLimitCalc(ws, cellName(vLC, r), fmt.Sprintf("=IFERROR(%s/%s,0)", anfLCAddr, limitLCAddr), EV_FMT_PCT, false)
 	blankMid(r)
 	g.evalLimitCalc(ws, cellName(vEUR, r), fmt.Sprintf("=IFERROR(%s/%s,0)", anfEURAddr, limitEURAddr), EV_FMT_PCT, false)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitAuslastungLC.NamedRange, vLC, r)
+	g.dbUpsertNamedRange(ws, Registry.OutputMAPruefungLimitAuslastungEUR.NamedRange, vEUR, r)
 	bottom := r
 
 	g.styleOuterBorder(ws, top, lbl, bottom, vEUR, 2, EV_CLR_BORDER)

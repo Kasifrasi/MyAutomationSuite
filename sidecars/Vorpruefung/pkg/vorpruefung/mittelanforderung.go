@@ -391,9 +391,10 @@ func maSaldoLabel(l maLayout) string {
 func maSaldoFormula(l maLayout, fbExists bool) string {
 	if l.level == 1 && fbExists {
 		if l.tableID == 1 {
-			return fmt.Sprintf(`=ROUND(IF(%s="",0,%s),2)`, DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW)
+			saldovortragLWName := Registry.InputDashVPFolgeSaldoLC.NamedRange
+			return fmt.Sprintf(`=ROUND(IF(%s="",0,%s),2)`, saldovortragLWName, saldovortragLWName)
 		}
-		return fmt.Sprintf(`=ROUND(IFERROR(%s,0),2)`, fmt.Sprintf(FBNameSaldoLCFmt, l.tableID-1))
+		return fmt.Sprintf(`=ROUND(IFERROR(%s,0),2)`, Registry.OutputFBSaldoLC.Get(l.tableID-1).NamedRange)
 	}
 	return "=0"
 }

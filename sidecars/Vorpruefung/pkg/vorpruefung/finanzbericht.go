@@ -27,12 +27,6 @@ const (
 	FBNameGeberList = "Geber_Liste"
 	FBNameIDList    = "Budget_ID_Liste"
 
-	// Cross-Perioden-/Sheet-Named-Ranges. Diese speisen Folgeperioden sowie die
-	// Prüf- und MA-Blätter und sind deshalb bewusst als feste Namen zentralisiert.
-	FBNameKursFmt     = "FB_Kurs_%d"
-	FBNameSaldoLCFmt  = "FB_SaldoLC_%d"
-	FBNameSaldoEURFmt = "FB_SaldoEUR_%d"
-
 	// Spalten-Offsets innerhalb einer Periode (relativ zu colStart).
 	// Hauptblock (Einnahmen-/Ausgaben-Übersicht):
 	FBOffLabel  = 0 // Label / ID
@@ -463,18 +457,21 @@ func (g *Generator) fbDrawIncomeRow(ws string, row, col1 int, label string) {
 // Detailtabellen liefern Kurs und Einnahmen-Summen für den Hauptblock.
 func (g *Generator) fbBindPeriod(ws string, reg *TemplateRegistry, l fbLayout) error {
 	g.fbBindPeriodHeader(ws, reg, l)
-	g.fbBindEinnahmen(ws, l)
+	g.fbBindEinnahmen(ws, reg, l)
 	if err := g.fbBindAusgaben(ws, reg, l); err != nil {
 		return err
 	}
-	g.fbBindSaldo(ws, l)
+	g.fbBindSaldo(ws, reg, l)
 	g.fbBindAufschluesselung(ws, reg, l)
-	g.fbBindDifferenz(ws, l)
+	g.fbBindDifferenz(ws, reg, l)
 	return g.fbBindDetailTables(ws, reg, l)
 }
 
 // fbBindPeriodHeader bindet Von/Bis-Eingaben und die Zeitraum-Formel.
 func (g *Generator) fbBindPeriodHeader(ws string, reg *TemplateRegistry, l fbLayout) {
+	// Periode (statischer, gemergter Wert "Periode N").
+	g.dbUpsertNamedRange(ws, reg.OutputFBPeriode.Get(l.periode).NamedRange, l.colLC, l.rowPeriode)
+
 	_ = g.bindInputField(ws, l.rowVon, l.colLC, reg.InputFBVon.Get(l.periode))
 	_ = g.bindInputField(ws, l.rowBis, l.colLC, reg.InputFBBis.Get(l.periode))
 
@@ -482,20 +479,23 @@ func (g *Generator) fbBindPeriodHeader(ws string, reg *TemplateRegistry, l fbLay
 	bisCell := cellName(l.colLC, l.rowBis)
 	_ = g.file.SetCellFormula(ws, cellName(l.colLC, l.rowZeitraum), fmt.Sprintf(
 		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s,"m")+1)`, vonCell, bisCell, vonCell, bisCell))
+	g.dbUpsertNamedRange(ws, reg.OutputFBZeitraum.Get(l.periode).NamedRange, l.colLC, l.rowZeitraum)
 }
 
 // fbBindEinnahmen bindet die Vorperiodensaldo- und die Gesamteinnahmen-Formeln.
 // (Die Typ-Zeilen-Formeln benötigen die Detailtabellen und folgen dort.)
-func (g *Generator) fbBindEinnahmen(ws string, l fbLayout) {
+func (g *Generator) fbBindEinnahmen(ws string, reg *TemplateRegistry, l fbLayout) {
 	f := g.file
 	r := l.rowSaldoVortrag
 
-	saldoVortragLC := fmt.Sprintf(`=ROUND(IF(%s="",0,%s),2)`, DB_NAME_SALDOVORTRAG_LW, DB_NAME_SALDOVORTRAG_LW)
-	saldoVortragEUR := fmt.Sprintf(`=ROUND(IF(%s="",0,%s),2)`, DB_NAME_SALDOVORTRAG_EUR, DB_NAME_SALDOVORTRAG_EUR)
+	saldovortragLWName := reg.InputDashVPFolgeSaldoLC.NamedRange
+	saldovortragEURName := reg.OutputDashSaldovortragEUR.NamedRange
+	saldoVortragLC := fmt.Sprintf(`=ROUND(IF(%s="",0,%s),2)`, saldovortragLWName, saldovortragLWName)
+	saldoVortragEUR := fmt.Sprintf(`=ROUND(IF(%s="",0,%s),2)`, saldovortragEURName, saldovortragEURName)
 
 	if l.isFollowUp {
-		_ = f.SetCellFormula(ws, cellName(l.colLC, r), fmt.Sprintf(`=ROUND(%s,2)`, fmt.Sprintf(FBNameSaldoLCFmt, l.periode-1)))
-		_ = f.SetCellFormula(ws, cellName(l.colEUR, r), fmt.Sprintf(`=ROUND(%s,2)`, fmt.Sprintf(FBNameSaldoEURFmt, l.periode-1)))
+		_ = f.SetCellFormula(ws, cellName(l.colLC, r), fmt.Sprintf(`=ROUND(%s,2)`, reg.OutputFBSaldoLC.Get(l.periode-1).NamedRange))
+		_ = f.SetCellFormula(ws, cellName(l.colEUR, r), fmt.Sprintf(`=ROUND(%s,2)`, reg.OutputFBSaldoEUR.Get(l.periode-1).NamedRange))
 	} else {
 		_ = f.SetCellFormula(ws, cellName(l.colLC, r), saldoVortragLC)
 		_ = f.SetCellFormula(ws, cellName(l.colEUR, r), saldoVortragEUR)
@@ -503,6 +503,12 @@ func (g *Generator) fbBindEinnahmen(ws string, l fbLayout) {
 	// Kumulierte Spalten der Saldozeile speisen sich immer aus dem Dashboard.
 	_ = f.SetCellFormula(ws, cellName(l.colKumLC, r), saldoVortragLC)
 	_ = f.SetCellFormula(ws, cellName(l.colKumEUR, r), saldoVortragEUR)
+
+	// Vorperiodensaldo-Zeile benennen.
+	g.dbUpsertNamedRange(ws, reg.OutputFBVSaldoLC.Get(l.periode).NamedRange, l.colLC, r)
+	g.dbUpsertNamedRange(ws, reg.OutputFBVSaldoEUR.Get(l.periode).NamedRange, l.colEUR, r)
+	g.dbUpsertNamedRange(ws, reg.OutputFBVSaldoKumLC.Get(l.periode).NamedRange, l.colKumLC, r)
+	g.dbUpsertNamedRange(ws, reg.OutputFBVSaldoKumEUR.Get(l.periode).NamedRange, l.colKumEUR, r)
 
 	// Gesamteinnahmen (Vorperiodensaldo + Typ-Zeilen).
 	lastRow := l.rowGesamtEinnahmen - 1
@@ -514,6 +520,12 @@ func (g *Generator) fbBindEinnahmen(ws string, l fbLayout) {
 	_ = f.SetCellFormula(ws, cellName(l.colEUR, gr), fmt.Sprintf(`=ROUND(SUM(%s),2)`, rng(l.colEUR)))
 	_ = f.SetCellFormula(ws, cellName(l.colKumLC, gr), fmt.Sprintf(`=ROUND(SUM(%s),2)`, rng(l.colKumLC)))
 	_ = f.SetCellFormula(ws, cellName(l.colKumEUR, gr), fmt.Sprintf(`=ROUND(SUM(%s),2)`, rng(l.colKumEUR)))
+
+	// Gesamteinnahmen-Zeile benennen.
+	g.dbUpsertNamedRange(ws, reg.OutputFBGEinnahmenLC.Get(l.periode).NamedRange, l.colLC, gr)
+	g.dbUpsertNamedRange(ws, reg.OutputFBGEinnahmenEUR.Get(l.periode).NamedRange, l.colEUR, gr)
+	g.dbUpsertNamedRange(ws, reg.OutputFBKumGEinnahmenLC.Get(l.periode).NamedRange, l.colKumLC, gr)
+	g.dbUpsertNamedRange(ws, reg.OutputFBKumGEinnahmenEUR.Get(l.periode).NamedRange, l.colKumEUR, gr)
 }
 
 // fbBindAusgaben legt die Ausgaben-Tabelle an und setzt ID-/EUR-/Kum-/Summenformeln.
@@ -577,7 +589,7 @@ func (g *Generator) fbBindAusgaben(ws string, reg *TemplateRegistry, l fbLayout)
 }
 
 // fbBindSaldo setzt die Saldo-Formeln und benennt die LC/EUR-Zellen.
-func (g *Generator) fbBindSaldo(ws string, l fbLayout) {
+func (g *Generator) fbBindSaldo(ws string, reg *TemplateRegistry, l fbLayout) {
 	f := g.file
 	r := l.rowSaldoFB
 
@@ -590,8 +602,8 @@ func (g *Generator) fbBindSaldo(ws string, l fbLayout) {
 	_ = f.SetCellFormula(ws, cellName(l.colKumLC, r), diff(l.colKumLC, l.colKumLC))
 	_ = f.SetCellFormula(ws, cellName(l.colKumEUR, r), diff(l.colKumEUR, l.colKumEUR))
 
-	g.dbUpsertNamedRange(ws, fmt.Sprintf(FBNameSaldoLCFmt, l.periode), l.colLC, r)
-	g.dbUpsertNamedRange(ws, fmt.Sprintf(FBNameSaldoEURFmt, l.periode), l.colEUR, r)
+	g.dbUpsertNamedRange(ws, reg.OutputFBSaldoLC.Get(l.periode).NamedRange, l.colLC, r)
+	g.dbUpsertNamedRange(ws, reg.OutputFBSaldoEUR.Get(l.periode).NamedRange, l.colEUR, r)
 }
 
 // fbBindAufschluesselung bindet die LC-Eingaben und verteilt den EUR-Saldo.
@@ -607,15 +619,20 @@ func (g *Generator) fbBindAufschluesselung(ws string, reg *TemplateRegistry, l f
 		currentLC := cellName(l.colLC, row)
 
 		var field InputField
+		var eurOut OutputField
 		switch cat {
 		case "Bank":
 			field = reg.InputFBAufschlBankLC.Get(l.periode)
+			eurOut = reg.OutputFBAufschlBankEUR.Get(l.periode)
 		case "Kasse":
 			field = reg.InputFBAufschlKasseLC.Get(l.periode)
+			eurOut = reg.OutputFBAufschlKasseEUR.Get(l.periode)
 		default:
 			field = reg.InputFBAufschlSonstigesLC.Get(l.periode)
+			eurOut = reg.OutputFBAufschlSonstigesEUR.Get(l.periode)
 		}
 		_ = g.bindInputField(ws, row, l.colLC, field)
+		g.dbUpsertNamedRange(ws, eurOut.NamedRange, l.colEUR, row)
 
 		var formulaEUR string
 		if !isLast {
@@ -635,7 +652,7 @@ func (g *Generator) fbBindAufschluesselung(ws string, reg *TemplateRegistry, l f
 }
 
 // fbBindDifferenz setzt die Kontrollformeln (Saldo vs. Aufschlüsselung).
-func (g *Generator) fbBindDifferenz(ws string, l fbLayout) {
+func (g *Generator) fbBindDifferenz(ws string, reg *TemplateRegistry, l fbLayout) {
 	f := g.file
 	r := l.rowDifferenz
 	check := func(col int) string {
@@ -644,6 +661,9 @@ func (g *Generator) fbBindDifferenz(ws string, l fbLayout) {
 	}
 	_ = f.SetCellFormula(ws, cellName(l.colLC, r), check(l.colLC))
 	_ = f.SetCellFormula(ws, cellName(l.colEUR, r), check(l.colEUR))
+
+	g.dbUpsertNamedRange(ws, reg.OutputFBDifferenzLC.Get(l.periode).NamedRange, l.colLC, r)
+	g.dbUpsertNamedRange(ws, reg.OutputFBDifferenzEUR.Get(l.periode).NamedRange, l.colEUR, r)
 }
 
 // fbBindDetailTables baut die beiden Detail-Einnahmentabellen, setzt die
@@ -655,7 +675,7 @@ func (g *Generator) fbBindDetailTables(ws string, reg *TemplateRegistry, l fbLay
 	rateAddr := absName(l.colLC, l.rowKurs)
 
 	// Durchschnittskurs-Named-Range (Wert wird nach Tabelle 1 gesetzt).
-	g.dbUpsertNamedRange(ws, fmt.Sprintf(FBNameKursFmt, l.periode), l.colLC, l.rowKurs)
+	g.dbUpsertNamedRange(ws, reg.OutputFBKurs.Get(l.periode).NamedRange, l.colLC, l.rowKurs)
 
 	// Tabelle 1: explizite Kurseingabe
 	if err := g.fbCreateEinnahmenTabelle(ws, reg, l, false, saldoVorLC, saldoVorEUR, rateAddr); err != nil {
@@ -679,6 +699,15 @@ func (g *Generator) fbBindDetailTables(ws string, reg *TemplateRegistry, l fbLay
 	tbl2LC := fmt.Sprintf("%s:%s", absName(l.colStart+FBDetOffLC, l.rowDetail2Hdr+1), absName(l.colStart+FBDetOffLC, l.rowDetail2Hdr+FBDetailRowsWK))
 	tbl2EUR := fmt.Sprintf("%s:%s", absName(l.colStart+FBDetOffEUR, l.rowDetail2Hdr+1), absName(l.colStart+FBDetOffEUR, l.rowDetail2Hdr+FBDetailRowsWK))
 
+	// Einnahmen-Typzeilen (feste Reihenfolge EM/DM/KMW/Zins, vgl. TYPE_NAMES) an die
+	// Registry-Ausgabefelder binden: je Typ LC/EUR und kumuliert LC/EUR.
+	incomeFields := [][4]OutputFactory{
+		{reg.OutputFBEMlLC, reg.OutputFBEMEUR, reg.OutputFBKumEMLC, reg.OutputFBKumEMEUR},
+		{reg.OutputFBDMLC, reg.OutputFBDMEUR, reg.OutputFBKumDMLC, reg.OutputFBKumDMEUR},
+		{reg.OutputFBKMWLC, reg.OutputFBKMWEUR, reg.OutputFBKumKMWLC, reg.OutputFBKumKMWEUR},
+		{reg.OutputFBZinsLC, reg.OutputFBZinsEUR, reg.OutputFBKumZinsLC, reg.OutputFBKumZinsEUR},
+	}
+
 	for i := 0; i < l.incomeCount; i++ {
 		typeRow := l.rowIncomeStart + i
 		labelAddr := absName(l.colLabel, typeRow)
@@ -687,6 +716,13 @@ func (g *Generator) fbBindDetailTables(ws string, reg *TemplateRegistry, l fbLay
 
 		_ = f.SetCellFormula(ws, cellName(l.colLC, typeRow), lcFormula)
 		_ = f.SetCellFormula(ws, cellName(l.colEUR, typeRow), eurFormula)
+
+		if i < len(incomeFields) {
+			g.dbUpsertNamedRange(ws, incomeFields[i][0].Get(l.periode).NamedRange, l.colLC, typeRow)
+			g.dbUpsertNamedRange(ws, incomeFields[i][1].Get(l.periode).NamedRange, l.colEUR, typeRow)
+			g.dbUpsertNamedRange(ws, incomeFields[i][2].Get(l.periode).NamedRange, l.colKumLC, typeRow)
+			g.dbUpsertNamedRange(ws, incomeFields[i][3].Get(l.periode).NamedRange, l.colKumEUR, typeRow)
+		}
 
 		if l.isFollowUp {
 			prevKumLC := cellName(l.prevColStart+FBOffKumLC, typeRow)
