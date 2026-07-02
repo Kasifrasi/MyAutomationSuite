@@ -158,7 +158,7 @@ func (g *Generator) CreateBudgetSheet(reg *TemplateRegistry) error {
 	}
 	// Reserve-Betrag und Reserve-Check referenzieren ausschließlich benannte
 	// Bereiche (statt fester Zellbezüge auf Hilfsspalte/Status-Spalte).
-	reserveEurAddr := reg.OutputBudgetReserveEUR.NamedRange
+	reserveEurAddr := bgKostenName("Reserve", "EUR")
 	reserveCheckAddr := reg.InputBudgetReserveFreigabe.NamedRange
 	g.drawBudgetReserveBox(ws, reserveEurAddr)
 	g.drawBudgetBegruendung(ws, reserveCheckAddr)
@@ -171,6 +171,7 @@ func (g *Generator) CreateBudgetSheet(reg *TemplateRegistry) error {
 		return err
 	}
 	_ = g.bindInputField(ws, BudgetReserveRowCheck, BudgetColStatus, reg.InputBudgetReserveFreigabe)
+	g.upsertNamedRange(reg.OutputBudgetReserveEUR.NamedRange, BudgetColStatus, BudgetReserveRowAmount)
 
 	// ── Abschluß (braucht bindete Adressen) ──────────────────────────────────
 	g.styleOuterBorder(ws, BudgetRowTitle, BudgetColLabel, dyn.AusgTotal, BudgetColEUR, 2, BudgetClrBorder)
@@ -567,9 +568,6 @@ func (g *Generator) bindBudgetFinancing(ws string, reg *TemplateRegistry, dyn bu
 			fmt.Sprintf(`=SUMIFS(%s[Betrag (EUR)],%s[Kostenkategorie],"%s")`, BudgetTableAusg, BudgetTableAusg, cat),
 			StyleOptions{})
 		lcName, eurName := bgKostenName(cat, "LW"), bgKostenName(cat, "EUR")
-		if cat == "Reserve" {
-			eurName = reg.OutputBudgetReserveEUR.NamedRange
-		}
 		g.upsertNamedRange(lcName, BudgetColHelpLC, hr)
 		g.upsertNamedRange(eurName, BudgetColHelpEUR, hr)
 	}
