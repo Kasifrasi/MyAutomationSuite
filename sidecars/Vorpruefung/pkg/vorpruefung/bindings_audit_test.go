@@ -77,7 +77,9 @@ func TestAuditBindings(t *testing.T) {
 				continue
 			}
 			for id := 1; id <= MA_TABLE_COUNT; id++ {
-				check(field, fv.Get(id).NamedRange)
+				p := ((id - 1) % MA_PERIOD_COUNT) + 1
+				lvl := ((id - 1) / MA_PERIOD_COUNT) + 1
+				check(field, fv.Get(p, lvl).NamedRange)
 			}
 		case MAOutputFactory:
 			if fv.Format == "" {
@@ -85,7 +87,9 @@ func TestAuditBindings(t *testing.T) {
 				continue
 			}
 			for id := 1; id <= MA_TABLE_COUNT; id++ {
-				check(field, fv.Get(id).NamedRange)
+				p := ((id - 1) % MA_PERIOD_COUNT) + 1
+				lvl := ((id - 1) / MA_PERIOD_COUNT) + 1
+				check(field, fv.Get(p, lvl).NamedRange)
 			}
 		case MAInputKatFactory:
 			if fv.Format == "" {

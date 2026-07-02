@@ -276,11 +276,10 @@ type MAInputFactory struct {
 }
 
 func (ma MAInputFactory) GetMA(periode int, anforderung int) (InputField, error) {
-	tableId, err := calculateTableID(periode, anforderung, ma.MaxPerioden, ma.MaxSlots)
-	if err != nil {
+	if err := validatePeriodeAnforderung(periode, anforderung, ma.MaxPerioden, ma.MaxSlots); err != nil {
 		return InputField{}, err
 	}
-	return ma.Get(tableId), nil
+	return ma.Get(periode, anforderung), nil
 }
 
 type MAOutputFactory struct {
@@ -290,11 +289,10 @@ type MAOutputFactory struct {
 }
 
 func (ma MAOutputFactory) GetMA(periode int, anforderung int) (OutputField, error) {
-	tableId, err := calculateTableID(periode, anforderung, ma.MaxPerioden, ma.MaxSlots)
-	if err != nil {
+	if err := validatePeriodeAnforderung(periode, anforderung, ma.MaxPerioden, ma.MaxSlots); err != nil {
 		return OutputField{}, err
 	}
-	return ma.Get(tableId), nil
+	return ma.Get(periode, anforderung), nil
 }
 
 type MAInputKatFactory struct {
@@ -1168,19 +1166,19 @@ func NewTemplateRegistry() *TemplateRegistry {
 
 		InputMAKat:     ma.MAInpKatFact("Kat_%d_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
 		OutputMAKatEUR: ma.MAOutKatFact("KatEUR_%d_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMASumLC:  ma.MAOutFact("SumLC_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMASumEUR: ma.MAOutFact("SumEUR_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMASumLC:  ma.MAOutFact("SumLC_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMASumEUR: ma.MAOutFact("SumEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
 
-		InputMAEigenmittelLC:   ma.MAInpFact("EigenmittelLC_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMAEigenmittelEUR: ma.MAOutFact("EigenmittelEUR_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMADrittmittelLC:   ma.MAInpFact("DrittmittelLC_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMADrittmittelEUR: ma.MAOutFact("DrittmittelEUR_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMASaldoLC:        ma.MAOutFact("SaldoLC_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMASaldoEUR:       ma.MAOutFact("SaldoEUR_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMAAnforderungLC:   ma.MAInpFact("AnforderungLC_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMAAnforderungEUR: ma.MAOutFact("AnforderungEUR_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAEigenmittelLC:   ma.MAInpFact("EigenmittelLC_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAEigenmittelEUR: ma.MAOutFact("EigenmittelEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMADrittmittelLC:   ma.MAInpFact("DrittmittelLC_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMADrittmittelEUR: ma.MAOutFact("DrittmittelEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMASaldoLC:        ma.MAOutFact("SaldoLC_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMASaldoEUR:       ma.MAOutFact("SaldoEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAAnforderungLC:   ma.MAInpFact("AnforderungLC_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAAnforderungEUR: ma.MAOutFact("AnforderungEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
 
-		InputMAManBetragEUR: ma.MAInpFact("ManBetragEUR_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAManBetragEUR: ma.MAInpFact("ManBetragEUR_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
 
 		// Pruefung MA
 		InputMAPruefungAuswahl:       maPrue.Inp("Auswahl", nil),

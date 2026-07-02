@@ -104,9 +104,9 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_J, j), j)
 		_ = f.SetCellValue(ws, dc(EV_DTN_MA_META_PER, j), p)
 
-		kmwCellLC := Registry.InputMAAnforderungLC.Get(j).NamedRange
-		kmwCellEUR := Registry.OutputMAAnforderungEUR.Get(j).NamedRange
-		manCellEUR := Registry.InputMAManBetragEUR.Get(j).NamedRange
+		kmwCellLC := Registry.InputMAAnforderungLC.Get(p, level).NamedRange
+		kmwCellEUR := Registry.OutputMAAnforderungEUR.Get(p, level).NamedRange
+		manCellEUR := Registry.InputMAManBetragEUR.Get(p, level).NamedRange
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_FILL, j),
 			fmt.Sprintf(`=IF(OR(IFERROR(%s,0)>0, IFERROR(%s,0)>0, IFERROR(%s,0)>0),1,0)`,
@@ -130,10 +130,10 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 				dc(EV_DTN_MA_META_FILL, j), dc(EV_DTN_MA_META_PER, j), dc(EV_DTN_MA_META_PER, j), level)
 		}
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_LABEL, j), labelFormula)
-		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j), fmt.Sprintf(`=IFERROR(%s,0)`, Registry.OutputMASumLC.Get(j).NamedRange))
-		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j), fmt.Sprintf(`=IFERROR(%s,0)`, Registry.OutputMASumEUR.Get(j).NamedRange))
-		eigCellEUR := Registry.OutputMAEigenmittelEUR.Get(j).NamedRange
-		drittCellEUR := Registry.OutputMADrittmittelEUR.Get(j).NamedRange
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMLC, j), fmt.Sprintf(`=IFERROR(%s,0)`, Registry.OutputMASumLC.Get(p, level).NamedRange))
+		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_SUMEU, j), fmt.Sprintf(`=IFERROR(%s,0)`, Registry.OutputMASumEUR.Get(p, level).NamedRange))
+		eigCellEUR := Registry.OutputMAEigenmittelEUR.Get(p, level).NamedRange
+		drittCellEUR := Registry.OutputMADrittmittelEUR.Get(p, level).NamedRange
 
 		_ = f.SetCellFormula(ws, dc(EV_DTN_MA_META_EIGDR, j),
 			fmt.Sprintf(`=IFERROR(ROUND(%s+%s,2),0)`, eigCellEUR, drittCellEUR))
@@ -236,18 +236,18 @@ func (g *Generator) evalBuildDatenHelfer(ws string) {
 
 			var maValLC, maValEUR string
 			if e.cat == "Eigenmittel" {
-				maValLC = Registry.InputMAEigenmittelLC.Get(j).NamedRange
-				maValEUR = Registry.OutputMAEigenmittelEUR.Get(j).NamedRange
+				maValLC = Registry.InputMAEigenmittelLC.Get(p, level).NamedRange
+				maValEUR = Registry.OutputMAEigenmittelEUR.Get(p, level).NamedRange
 			} else if e.cat == "Drittmittel" {
-				maValLC = Registry.InputMADrittmittelLC.Get(j).NamedRange
-				maValEUR = Registry.OutputMADrittmittelEUR.Get(j).NamedRange
+				maValLC = Registry.InputMADrittmittelLC.Get(p, level).NamedRange
+				maValEUR = Registry.OutputMADrittmittelEUR.Get(p, level).NamedRange
 			} else if e.cat == "KMW-Mittel" {
-				maValLC = Registry.InputMAAnforderungLC.Get(j).NamedRange
-				maValEUR = Registry.OutputMAAnforderungEUR.Get(j).NamedRange
+				maValLC = Registry.InputMAAnforderungLC.Get(p, level).NamedRange
+				maValEUR = Registry.OutputMAAnforderungEUR.Get(p, level).NamedRange
 			} else if e.cat == "Manueller Betrag" {
 				// Manueller Betrag hat kein LC-Feld, wir nehmen 0
 				maValLC = "0"
-				maValEUR = Registry.InputMAManBetragEUR.Get(j).NamedRange
+				maValEUR = Registry.InputMAManBetragEUR.Get(p, level).NamedRange
 			} else if idx < maDataRows {
 				// Kostenkategorie-Zeile (idx == Kategorie-Index, siehe gridEntries).
 				maValLC = Registry.InputMAKat.Get(p, level, idx+1).NamedRange

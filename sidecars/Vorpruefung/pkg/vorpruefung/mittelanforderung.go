@@ -293,25 +293,23 @@ func (g *Generator) drawMAHeaderRow(ws string, colLbl, colLC, colEUR, row int, l
 // bindMATable verknüpft die gezeichnete Tabelle mit Formeln und den Named Ranges
 // der TemplateRegistry. Alle Named Ranges kommen ausschließlich aus reg.
 func (g *Generator) bindMATable(ws string, reg *TemplateRegistry, l maLayout, fbExists bool) {
-	id := l.tableID
-
 	bindOut := func(name string, col, row int) {
 		g.upsertNamedFormula(name, fmt.Sprintf("'%s'!%s", ws, absName(col, row)))
 	}
 
-	kursName := reg.InputMAKurs.Get(id).NamedRange
-	vonName := reg.InputMAVon.Get(id).NamedRange
-	bisName := reg.InputMABis.Get(id).NamedRange
+	kursName := reg.InputMAKurs.Get(l.periode, l.level).NamedRange
+	vonName := reg.InputMAVon.Get(l.periode, l.level).NamedRange
+	bisName := reg.InputMABis.Get(l.periode, l.level).NamedRange
 
 	// Kopf: Periode/Zeitraum (Outputs), Von/Bis/Kurs (Inputs)
-	bindOut(reg.OutputMAPeriode.Get(id).NamedRange, l.colLC, l.rowPeriode)
-	_ = g.bindInputField(ws, l.rowVon, l.colLC, reg.InputMAVon.Get(id))
-	_ = g.bindInputField(ws, l.rowBis, l.colLC, reg.InputMABis.Get(id))
+	bindOut(reg.OutputMAPeriode.Get(l.periode, l.level).NamedRange, l.colLC, l.rowPeriode)
+	_ = g.bindInputField(ws, l.rowVon, l.colLC, reg.InputMAVon.Get(l.periode, l.level))
+	_ = g.bindInputField(ws, l.rowBis, l.colLC, reg.InputMABis.Get(l.periode, l.level))
 	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowZeitraum), fmt.Sprintf(
 		`=IF(OR(%s="",%s=""),"",DATEDIF(%s,%s,"m")+1)`,
 		vonName, bisName, vonName, bisName))
-	bindOut(reg.OutputMAZeitraum.Get(id).NamedRange, l.colLC, l.rowZeitraum)
-	_ = g.bindInputField(ws, l.rowKurs, l.colLC, reg.InputMAKurs.Get(id))
+	bindOut(reg.OutputMAZeitraum.Get(l.periode, l.level).NamedRange, l.colLC, l.rowZeitraum)
+	_ = g.bindInputField(ws, l.rowKurs, l.colLC, reg.InputMAKurs.Get(l.periode, l.level))
 
 	// Kostenkategorien: LC = Input, EUR = LC/Kurs (Output)
 	dataRange := fmt.Sprintf("'%s'!%s:%s", ws,
@@ -331,47 +329,47 @@ func (g *Generator) bindMATable(ws string, reg *TemplateRegistry, l maLayout, fb
 		fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(l.colLC, l.rowDataStart), cellName(l.colLC, l.rowDataEnd)))
 	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowSum),
 		fmt.Sprintf(`=ROUND(SUM(%s:%s),2)`, cellName(l.colEUR, l.rowDataStart), cellName(l.colEUR, l.rowDataEnd)))
-	bindOut(reg.OutputMASumLC.Get(id).NamedRange, l.colLC, l.rowSum)
-	bindOut(reg.OutputMASumEUR.Get(id).NamedRange, l.colEUR, l.rowSum)
+	bindOut(reg.OutputMASumLC.Get(l.periode, l.level).NamedRange, l.colLC, l.rowSum)
+	bindOut(reg.OutputMASumEUR.Get(l.periode, l.level).NamedRange, l.colEUR, l.rowSum)
 
 	// Gesamtbedarf an Mitteln = SUMME (über die benannten SUMME-Bereiche)
-	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowGesamt), fmt.Sprintf(`=ROUND(%s,2)`, reg.OutputMASumLC.Get(id).NamedRange))
-	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowGesamt), fmt.Sprintf(`=ROUND(%s,2)`, reg.OutputMASumEUR.Get(id).NamedRange))
+	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowGesamt), fmt.Sprintf(`=ROUND(%s,2)`, reg.OutputMASumLC.Get(l.periode, l.level).NamedRange))
+	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowGesamt), fmt.Sprintf(`=ROUND(%s,2)`, reg.OutputMASumEUR.Get(l.periode, l.level).NamedRange))
 
 	// abzueglich Eigenmittel: LC = Input, EUR = LC/Kurs (Output)
-	_ = g.bindInputField(ws, l.rowEigen, l.colLC, reg.InputMAEigenmittelLC.Get(id))
+	_ = g.bindInputField(ws, l.rowEigen, l.colLC, reg.InputMAEigenmittelLC.Get(l.periode, l.level))
 	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowEigen),
-		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, reg.InputMAEigenmittelLC.Get(id).NamedRange, kursName))
-	bindOut(reg.OutputMAEigenmittelEUR.Get(id).NamedRange, l.colEUR, l.rowEigen)
+		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, reg.InputMAEigenmittelLC.Get(l.periode, l.level).NamedRange, kursName))
+	bindOut(reg.OutputMAEigenmittelEUR.Get(l.periode, l.level).NamedRange, l.colEUR, l.rowEigen)
 
 	// abzueglich Drittmittel: LC = Input, EUR = LC/Kurs (Output)
-	_ = g.bindInputField(ws, l.rowDritt, l.colLC, reg.InputMADrittmittelLC.Get(id))
+	_ = g.bindInputField(ws, l.rowDritt, l.colLC, reg.InputMADrittmittelLC.Get(l.periode, l.level))
 	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowDritt),
-		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, reg.InputMADrittmittelLC.Get(id).NamedRange, kursName))
-	bindOut(reg.OutputMADrittmittelEUR.Get(id).NamedRange, l.colEUR, l.rowDritt)
+		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, reg.InputMADrittmittelLC.Get(l.periode, l.level).NamedRange, kursName))
+	bindOut(reg.OutputMADrittmittelEUR.Get(l.periode, l.level).NamedRange, l.colEUR, l.rowDritt)
 
 	// abzueglich Saldo: LC berechnet (FB/Saldovortrag), EUR = LC/Kurs (beides Output)
-	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowSaldo), maSaldoFormula(l, fbExists))
+	// Die Formel für LC wird später zentral in applyMASaldoFormulas gesetzt
 	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowSaldo),
-		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, reg.OutputMASaldoLC.Get(id).NamedRange, kursName))
-	bindOut(reg.OutputMASaldoLC.Get(id).NamedRange, l.colLC, l.rowSaldo)
-	bindOut(reg.OutputMASaldoEUR.Get(id).NamedRange, l.colEUR, l.rowSaldo)
+		fmt.Sprintf(`=IFERROR(ROUND(%s/%s,2),0)`, reg.OutputMASaldoLC.Get(l.periode, l.level).NamedRange, kursName))
+	bindOut(reg.OutputMASaldoLC.Get(l.periode, l.level).NamedRange, l.colLC, l.rowSaldo)
+	bindOut(reg.OutputMASaldoEUR.Get(l.periode, l.level).NamedRange, l.colEUR, l.rowSaldo)
 
 	// Anforderung = Gesamtbedarf - Eigenmittel - Drittmittel - Saldo.
-	// Alle Operanden über ihre benannten Bereiche (Gesamtbedarf == SUMME).
+	// Da der Saldo positiv "als Bestand" zu interpretieren ist, wird er wie Eigen-/Drittmittel abgezogen.
 	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowAnf), fmt.Sprintf(
 		`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`,
-		reg.OutputMASumLC.Get(id).NamedRange, reg.InputMAEigenmittelLC.Get(id).NamedRange,
-		reg.InputMADrittmittelLC.Get(id).NamedRange, reg.OutputMASaldoLC.Get(id).NamedRange))
-	_ = g.bindInputField(ws, l.rowAnf, l.colLC, reg.InputMAAnforderungLC.Get(id))
+		reg.OutputMASumLC.Get(l.periode, l.level).NamedRange, reg.InputMAEigenmittelLC.Get(l.periode, l.level).NamedRange,
+		reg.InputMADrittmittelLC.Get(l.periode, l.level).NamedRange, reg.OutputMASaldoLC.Get(l.periode, l.level).NamedRange))
+	_ = g.bindInputField(ws, l.rowAnf, l.colLC, reg.InputMAAnforderungLC.Get(l.periode, l.level))
 	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowAnf), fmt.Sprintf(
 		`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`,
-		reg.OutputMASumEUR.Get(id).NamedRange, reg.OutputMAEigenmittelEUR.Get(id).NamedRange,
-		reg.OutputMADrittmittelEUR.Get(id).NamedRange, reg.OutputMASaldoEUR.Get(id).NamedRange))
-	bindOut(reg.OutputMAAnforderungEUR.Get(id).NamedRange, l.colEUR, l.rowAnf)
+		reg.OutputMASumEUR.Get(l.periode, l.level).NamedRange, reg.OutputMAEigenmittelEUR.Get(l.periode, l.level).NamedRange,
+		reg.OutputMADrittmittelEUR.Get(l.periode, l.level).NamedRange, reg.OutputMASaldoEUR.Get(l.periode, l.level).NamedRange))
+	bindOut(reg.OutputMAAnforderungEUR.Get(l.periode, l.level).NamedRange, l.colEUR, l.rowAnf)
 
 	// Manueller Betrag (EUR) – Input
-	_ = g.bindInputField(ws, l.rowManuell, l.colEUR, reg.InputMAManBetragEUR.Get(id))
+	_ = g.bindInputField(ws, l.rowManuell, l.colEUR, reg.InputMAManBetragEUR.Get(l.periode, l.level))
 }
 
 // maSaldoLabel liefert die (gespiegelte) Beschriftung der Saldo-Abzugszeile.

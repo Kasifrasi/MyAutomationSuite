@@ -469,15 +469,35 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 		})
 		_ = g.file.SetCellFormula(ws, c1, formula)
 	}
-	infoRow("Periode:", mirrorOutMA(func(t int) OutputField { return Registry.OutputMAPeriode.Get(t) }), "")
+	infoRow("Periode:", mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMAPeriode.Get(p, level)
+	}), "")
 	r++
-	infoRow("Von:", mirrorInpMA(func(t int) InputField { return Registry.InputMAVon.Get(t) }), "DD.MM.YYYY")
+	infoRow("Von:", mirrorInpMA(func(t int) InputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.InputMAVon.Get(p, level)
+	}), "DD.MM.YYYY")
 	r++
-	infoRow("Bis:", mirrorInpMA(func(t int) InputField { return Registry.InputMABis.Get(t) }), "DD.MM.YYYY")
+	infoRow("Bis:", mirrorInpMA(func(t int) InputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.InputMABis.Get(p, level)
+	}), "DD.MM.YYYY")
 	r++
-	infoRow("Zeitraum:", mirrorOutMA(func(t int) OutputField { return Registry.OutputMAZeitraum.Get(t) }), `0" Monate"`)
+	infoRow("Zeitraum:", mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMAZeitraum.Get(p, level)
+	}), `0" Monate"`)
 	r++
-	infoRow("OANDA-Kurs:", mirrorInpMA(func(t int) InputField { return Registry.InputMAKurs.Get(t) }), "0.0000")
+	infoRow("OANDA-Kurs:", mirrorInpMA(func(t int) InputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.InputMAKurs.Get(p, level)
+	}), "0.0000")
 	r += 2 // Leerzeile
 
 	// Tabellenkopf
@@ -522,8 +542,16 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	}
 
 	labCell("SUMME", true, MAClrGray)
-	bold(pLC, mirrorOutMA(func(t int) OutputField { return Registry.OutputMASumLC.Get(t) }), "#,##0.00", MAClrGray)
-	bold(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMASumEUR.Get(t) }), `#,##0.00" €"`, MAClrGray)
+	bold(pLC, mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMASumLC.Get(p, level)
+	}), "#,##0.00", MAClrGray)
+	bold(pEUR, mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMASumEUR.Get(p, level)
+	}), `#,##0.00" €"`, MAClrGray)
 	r += 2 // Leerzeile
 
 	// Gesamtbedarf-Zeile trägt keinen benannten Bereich (positionsbasiert gespiegelt).
@@ -532,12 +560,28 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	valCell(pEUR, mirror(2, 20), `#,##0.00" €"`, "FFFFFF")
 	r++
 	labCell("abzüglich Eigenmittel:", false, "FFFFFF")
-	valCell(pLC, mirrorInpMA(func(t int) InputField { return Registry.InputMAEigenmittelLC.Get(t) }), "#,##0.00", "FFFFFF")
-	valCell(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMAEigenmittelEUR.Get(t) }), `#,##0.00" €"`, "FFFFFF")
+	valCell(pLC, mirrorInpMA(func(t int) InputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.InputMAEigenmittelLC.Get(p, level)
+	}), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMAEigenmittelEUR.Get(p, level)
+	}), `#,##0.00" €"`, "FFFFFF")
 	r++
 	labCell("abzüglich Drittmittel:", false, "FFFFFF")
-	valCell(pLC, mirrorInpMA(func(t int) InputField { return Registry.InputMADrittmittelLC.Get(t) }), "#,##0.00", "FFFFFF")
-	valCell(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMADrittmittelEUR.Get(t) }), `#,##0.00" €"`, "FFFFFF")
+	valCell(pLC, mirrorInpMA(func(t int) InputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.InputMADrittmittelLC.Get(p, level)
+	}), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMADrittmittelEUR.Get(p, level)
+	}), `#,##0.00" €"`, "FFFFFF")
 	r++
 	// Saldo-Beschriftung dynamisch aus der Quelle spiegeln (Vorprojekt/Vorperiode) –
 	// die Label-Zelle trägt keinen benannten Bereich.
@@ -545,13 +589,29 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 		HAlign: "left", VAlign: "center", FillColor: "FFFFFF",
 		BorderTop: 1, BorderBottom: 1, BorderLeft: 1, BorderRight: 1, BorderColor: EV_GRID_LIGHT,
 	})
-	valCell(pLC, mirrorOutMA(func(t int) OutputField { return Registry.OutputMASaldoLC.Get(t) }), "#,##0.00", "FFFFFF")
-	valCell(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMASaldoEUR.Get(t) }), `#,##0.00" €"`, "FFFFFF")
+	valCell(pLC, mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMASaldoLC.Get(p, level)
+	}), "#,##0.00", "FFFFFF")
+	valCell(pEUR, mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMASaldoEUR.Get(p, level)
+	}), `#,##0.00" €"`, "FFFFFF")
 	r += 2 // Leerzeile
 
 	labCell("KMW-Mittel Anforderung:", true, MAClrKMW)
-	bold(pLC, mirrorInpMA(func(t int) InputField { return Registry.InputMAAnforderungLC.Get(t) }), "#,##0.00", MAClrKMW)
-	bold(pEUR, mirrorOutMA(func(t int) OutputField { return Registry.OutputMAAnforderungEUR.Get(t) }), `#,##0.00" €"`, MAClrKMW)
+	bold(pLC, mirrorInpMA(func(t int) InputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.InputMAAnforderungLC.Get(p, level)
+	}), "#,##0.00", MAClrKMW)
+	bold(pEUR, mirrorOutMA(func(t int) OutputField {
+		p := ((t - 1) % MA_PERIOD_COUNT) + 1
+		level := ((t - 1) / MA_PERIOD_COUNT) + 1
+		return Registry.OutputMAAnforderungEUR.Get(p, level)
+	}), `#,##0.00" €"`, MAClrKMW)
 	bottom := r
 
 	g.styleOuterBorder(ws, top, pLbl, bottom, pEUR, 2, EV_CLR_BORDER)
