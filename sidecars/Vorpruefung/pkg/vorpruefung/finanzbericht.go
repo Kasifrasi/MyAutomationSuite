@@ -615,6 +615,8 @@ func (g *Generator) fbBindSaldo(ws string, reg *TemplateRegistry, l fbLayout) {
 
 	g.dbUpsertNamedRange(ws, reg.OutputFBSaldoLC.Get(l.periode).NamedRange, l.colLC, r)
 	g.dbUpsertNamedRange(ws, reg.OutputFBSaldoEUR.Get(l.periode).NamedRange, l.colEUR, r)
+	g.dbUpsertNamedRange(ws, reg.OutputFBKumSaldoLC.Get(l.periode).NamedRange, l.colKumLC, r)
+	g.dbUpsertNamedRange(ws, reg.OutputFBKumSaldoEUR.Get(l.periode).NamedRange, l.colKumEUR, r)
 }
 
 // fbBindAufschluesselung bindet die LC-Eingaben und verteilt den EUR-Saldo.

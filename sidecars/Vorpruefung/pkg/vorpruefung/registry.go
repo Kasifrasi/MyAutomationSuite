@@ -455,6 +455,8 @@ type TemplateRegistry struct {
 	OutputFBKumGEinnahmenEUR OutputFactory
 	OutputFBSaldoLC          OutputFactory
 	OutputFBSaldoEUR         OutputFactory
+	OutputFBKumSaldoLC       OutputFactory
+	OutputFBKumSaldoEUR      OutputFactory
 
 	// Ergebniszeilen der intelligenten FB-Tabellen (je Periode)
 	OutputFBAusgGesamtLC     OutputFactory // Ausgaben_%d "Gesamtausgaben"
@@ -996,8 +998,10 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputFBKumGEinnahmenLC:  fb.OutFact("KumGEinnahmenLC"),
 		OutputFBKumGEinnahmenEUR: fb.OutFact("KumGEinnahmenEUR"),
 
-		OutputFBSaldoLC:  fb.OutFact("SaldoLC"),
-		OutputFBSaldoEUR: fb.OutFact("SaldoEUR"),
+		OutputFBSaldoLC:     fb.OutFact("SaldoLC"),
+		OutputFBSaldoEUR:    fb.OutFact("SaldoEUR"),
+		OutputFBKumSaldoLC:  fb.OutFact("KumSaldoLC"),
+		OutputFBKumSaldoEUR: fb.OutFact("KumSaldoEUR"),
 
 		OutputFBAusgGesamtLC:     fb.OutFact("AusgGesamtLC"),
 		OutputFBAusgGesamtEUR:    fb.OutFact("AusgGesamtEUR"),
