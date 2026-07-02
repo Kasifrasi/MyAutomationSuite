@@ -103,18 +103,13 @@ func NewTableField(sheet string, baseName string, hasTotals bool, cols []TableCo
 // Factory für dynamische Tabellen (z.B. Ausgaben pro Periode im FB)
 type TableFactory struct {
 	Sheet        string
-	Format       string
+	Base         string
 	Columns      []TableColumn
 	HasTotalsRow bool
 }
 
-func (f TableFactory) Get(args ...int) TableField {
-	anyArgs := make([]any, len(args))
-	for i, v := range args {
-		anyArgs[i] = v
-	}
-	tableName := fmt.Sprintf(f.Format, anyArgs...)
-	return NewTableField(f.Sheet, tableName, f.HasTotalsRow, f.Columns)
+func (f TableFactory) Get(periode int) TableField {
+	return NewTableField(f.Sheet, buildNamedRange(f.Base, periode), f.HasTotalsRow, f.Columns)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -194,33 +189,39 @@ func NewOutputField(sheet string, baseName string) OutputField {
 // 3. Factories
 // ─────────────────────────────────────────────────────────────
 
+// buildNamedRange hängt an einen Basisnamen je Koordinate ein "_<n>" an. Die
+// Anzahl der Koordinaten – und damit die Dimensionalität – bestimmt der konkrete
+// Factory-Typ über seine feste Get-Signatur, NICHT der übergebene String. Dadurch
+// ist die Stelligkeit compilerseitig garantiert; ein Basisname trägt nie selbst
+// %d-Platzhalter.
+func buildNamedRange(base string, coords ...int) string {
+	var b strings.Builder
+	b.WriteString(base)
+	for _, c := range coords {
+		fmt.Fprintf(&b, "_%d", c)
+	}
+	return b.String()
+}
+
+// InputFactory erzeugt periodenindizierte Input-Felder (1 Dimension).
 type InputFactory struct {
-	Sheet  string
-	Format string
-	Val    ValidationList
+	Sheet string
+	Base  string
+	Val   ValidationList
 }
 
-func (f InputFactory) Get(args ...int) InputField {
-	anyArgs := make([]any, len(args))
-	for i, v := range args {
-		anyArgs[i] = v
-	}
-	namedRange := fmt.Sprintf(f.Format, anyArgs...)
-	return NewInputField(f.Sheet, namedRange, f.Val)
+func (f InputFactory) Get(periode int) InputField {
+	return NewInputField(f.Sheet, buildNamedRange(f.Base, periode), f.Val)
 }
 
+// OutputFactory erzeugt periodenindizierte Output-Felder (1 Dimension).
 type OutputFactory struct {
-	Sheet  string
-	Format string
+	Sheet string
+	Base  string
 }
 
-func (f OutputFactory) Get(args ...int) OutputField {
-	anyArgs := make([]any, len(args))
-	for i, v := range args {
-		anyArgs[i] = v
-	}
-	namedRange := fmt.Sprintf(f.Format, anyArgs...)
-	return NewOutputField(f.Sheet, namedRange)
+func (f OutputFactory) Get(periode int) OutputField {
+	return NewOutputField(f.Sheet, buildNamedRange(f.Base, periode))
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -240,106 +241,103 @@ func (b SheetBuilder) Out(baseName string) OutputField {
 	return NewOutputField(b.Sheet, b.Prefix+baseName)
 }
 
-func (b SheetBuilder) InpFact(format string, val ValidationList) InputFactory {
-	return InputFactory{Sheet: b.Sheet, Format: b.Prefix + format, Val: val}
+func (b SheetBuilder) InpFact(base string, val ValidationList) InputFactory {
+	return InputFactory{Sheet: b.Sheet, Base: b.Prefix + base, Val: val}
 }
 
-func (b SheetBuilder) OutFact(format string) OutputFactory {
-	return OutputFactory{Sheet: b.Sheet, Format: b.Prefix + format}
+func (b SheetBuilder) OutFact(base string) OutputFactory {
+	return OutputFactory{Sheet: b.Sheet, Base: b.Prefix + base}
 }
 
 // ─────────────────────────────────────────────────────────────
-// 4.1 Erweiterte Factory für Mittelanforderungen
+// 4.1 Erweiterte Factories für Mittelanforderungen
 // ─────────────────────────────────────────────────────────────
+//
+// Mittelanforderungen kennen genau zwei Indizierungen, die hier bewusst als
+// getrennte Typen mit fester Get-Stelligkeit abgebildet sind:
+//
+//   - (Periode, Slot)              → 2 Dimensionen  (MAInputFactory  / MAOutputFactory)
+//   - (Periode, Slot, Kategorie)   → 3 Dimensionen  (MAInputKatFactory / MAOutputKatFactory)
+//
+// Die Basisnamen tragen KEINE %d-Platzhalter; die Koordinaten-Suffixe erzeugt
+// buildNamedRange. Periode und Slot werden gegen die Grid-Grenzen geprüft – ein
+// Verstoß ist ein statischer Entwicklerfehler und panict schon beim Aufbau der
+// Named Range (konsistent zu NewInputField/NewOutputField).
 
-func validatePeriodeAnforderung(periode, anforderung, maxPerioden, maxSlots int) error {
+func mustValidateMASlot(periode, slot, maxPerioden, maxSlots int) {
 	if periode < 1 || periode > maxPerioden {
-		return fmt.Errorf("ungültige Periode %d. Maximum ist %d", periode, maxPerioden)
+		panic(fmt.Sprintf("[Developer Error] ungültige MA-Periode %d (Maximum %d)", periode, maxPerioden))
 	}
-	if anforderung < 1 || anforderung > maxSlots {
-		return fmt.Errorf("ungültige Anforderung %d. Maximum ist %d", anforderung, maxSlots)
+	if slot < 1 || slot > maxSlots {
+		panic(fmt.Sprintf("[Developer Error] ungültiger MA-Slot %d (Maximum %d)", slot, maxSlots))
 	}
-	return nil
-}
-
-func calculateTableID(periode, anforderung, maxPerioden, maxSlots int) (int, error) {
-	if err := validatePeriodeAnforderung(periode, anforderung, maxPerioden, maxSlots); err != nil {
-		return 0, err
-	}
-	return (periode - 1) + ((anforderung - 1) * maxPerioden) + 1, nil
 }
 
 type MAInputFactory struct {
-	InputFactory
+	Sheet       string
+	Base        string
+	Val         ValidationList
 	MaxPerioden int
 	MaxSlots    int
 }
 
-func (ma MAInputFactory) GetMA(periode int, anforderung int) (InputField, error) {
-	if err := validatePeriodeAnforderung(periode, anforderung, ma.MaxPerioden, ma.MaxSlots); err != nil {
-		return InputField{}, err
-	}
-	return ma.Get(periode, anforderung), nil
+func (f MAInputFactory) Get(periode, slot int) InputField {
+	mustValidateMASlot(periode, slot, f.MaxPerioden, f.MaxSlots)
+	return NewInputField(f.Sheet, buildNamedRange(f.Base, periode, slot), f.Val)
 }
 
 type MAOutputFactory struct {
-	OutputFactory
+	Sheet       string
+	Base        string
 	MaxPerioden int
 	MaxSlots    int
 }
 
-func (ma MAOutputFactory) GetMA(periode int, anforderung int) (OutputField, error) {
-	if err := validatePeriodeAnforderung(periode, anforderung, ma.MaxPerioden, ma.MaxSlots); err != nil {
-		return OutputField{}, err
-	}
-	return ma.Get(periode, anforderung), nil
+func (f MAOutputFactory) Get(periode, slot int) OutputField {
+	mustValidateMASlot(periode, slot, f.MaxPerioden, f.MaxSlots)
+	return NewOutputField(f.Sheet, buildNamedRange(f.Base, periode, slot))
 }
 
 type MAInputKatFactory struct {
-	InputFactory
+	Sheet       string
+	Base        string
+	Val         ValidationList
 	MaxPerioden int
 	MaxSlots    int
 }
 
-func (ma MAInputKatFactory) GetMA(periode int, anforderung int, rowIdx int) (InputField, error) {
-	if err := validatePeriodeAnforderung(periode, anforderung, ma.MaxPerioden, ma.MaxSlots); err != nil {
-		return InputField{}, err
-	}
-	return ma.Get(periode, anforderung, rowIdx), nil
+func (f MAInputKatFactory) Get(periode, slot, kategorie int) InputField {
+	mustValidateMASlot(periode, slot, f.MaxPerioden, f.MaxSlots)
+	return NewInputField(f.Sheet, buildNamedRange(f.Base, periode, slot, kategorie), f.Val)
 }
 
 type MAOutputKatFactory struct {
-	OutputFactory
+	Sheet       string
+	Base        string
 	MaxPerioden int
 	MaxSlots    int
 }
 
-func (ma MAOutputKatFactory) GetMA(periode int, anforderung int, rowIdx int) (OutputField, error) {
-	if err := validatePeriodeAnforderung(periode, anforderung, ma.MaxPerioden, ma.MaxSlots); err != nil {
-		return OutputField{}, err
-	}
-	return ma.Get(periode, anforderung, rowIdx), nil
+func (f MAOutputKatFactory) Get(periode, slot, kategorie int) OutputField {
+	mustValidateMASlot(periode, slot, f.MaxPerioden, f.MaxSlots)
+	return NewOutputField(f.Sheet, buildNamedRange(f.Base, periode, slot, kategorie))
 }
 
 // 4.2 Hilfsmethoden im SheetBuilder für die MA Factories
-func (b SheetBuilder) MAInpFact(format string, val ValidationList, maxPerioden, maxSlots int) MAInputFactory {
-	baseFact := InputFactory{Sheet: b.Sheet, Format: b.Prefix + format, Val: val}
-	return MAInputFactory{InputFactory: baseFact, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
+func (b SheetBuilder) MAInpFact(base string, val ValidationList, maxPerioden, maxSlots int) MAInputFactory {
+	return MAInputFactory{Sheet: b.Sheet, Base: b.Prefix + base, Val: val, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
 }
 
-func (b SheetBuilder) MAOutFact(format string, maxPerioden, maxSlots int) MAOutputFactory {
-	baseFact := OutputFactory{Sheet: b.Sheet, Format: b.Prefix + format}
-	return MAOutputFactory{OutputFactory: baseFact, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
+func (b SheetBuilder) MAOutFact(base string, maxPerioden, maxSlots int) MAOutputFactory {
+	return MAOutputFactory{Sheet: b.Sheet, Base: b.Prefix + base, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
 }
 
-func (b SheetBuilder) MAInpKatFact(format string, val ValidationList, maxPerioden, maxSlots int) MAInputKatFactory {
-	baseFact := InputFactory{Sheet: b.Sheet, Format: b.Prefix + format, Val: val}
-	return MAInputKatFactory{InputFactory: baseFact, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
+func (b SheetBuilder) MAInpKatFact(base string, val ValidationList, maxPerioden, maxSlots int) MAInputKatFactory {
+	return MAInputKatFactory{Sheet: b.Sheet, Base: b.Prefix + base, Val: val, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
 }
 
-func (b SheetBuilder) MAOutKatFact(format string, maxPerioden, maxSlots int) MAOutputKatFactory {
-	baseFact := OutputFactory{Sheet: b.Sheet, Format: b.Prefix + format}
-	return MAOutputKatFactory{OutputFactory: baseFact, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
+func (b SheetBuilder) MAOutKatFact(base string, maxPerioden, maxSlots int) MAOutputKatFactory {
+	return MAOutputKatFactory{Sheet: b.Sheet, Base: b.Prefix + base, MaxPerioden: maxPerioden, MaxSlots: maxSlots}
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -864,7 +862,7 @@ func NewTemplateRegistry() *TemplateRegistry {
 		// Finanzberichte-Tabellen (dynamisch pro Periode 1..FBPeriodenAnzahl)
 		TableFBAusgaben: TableFactory{
 			Sheet:        constants.VPSheetFINANZBERICHTE,
-			Format:       "Ausgaben_%d",
+			Base:         "Ausgaben",
 			HasTotalsRow: true,
 			Columns: []TableColumn{
 				{Header: "ID"},
@@ -876,7 +874,7 @@ func NewTemplateRegistry() *TemplateRegistry {
 		},
 		TableFBEinnahmen: TableFactory{
 			Sheet:        constants.VPSheetFINANZBERICHTE,
-			Format:       "Einnahmen_%d",
+			Base:         "Einnahmen",
 			HasTotalsRow: true,
 			Columns: []TableColumn{
 				{Header: "Typ"},
@@ -888,7 +886,7 @@ func NewTemplateRegistry() *TemplateRegistry {
 		},
 		TableFBEinnahmenWK: TableFactory{
 			Sheet:        constants.VPSheetFINANZBERICHTE,
-			Format:       "Einnahmen_WK_%d",
+			Base:         "Einnahmen_WK",
 			HasTotalsRow: true,
 			Columns: []TableColumn{
 				{Header: "Typ"},
@@ -965,62 +963,62 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputKMWGesamtBetrag: kmw.Out("GesamtBetrag"),
 
 		// Finanzberichte
-		OutputFBPeriode:  fb.OutFact("Periode_%d"),
-		InputFBVon:       fb.InpFact("Von_%d", nil),
-		InputFBBis:       fb.InpFact("Bis_%d", nil),
-		OutputFBZeitraum: fb.OutFact("Zeitraum_%d"),
-		OutputFBKurs:     fb.OutFact("Kurs_%d"),
+		OutputFBPeriode:  fb.OutFact("Periode"),
+		InputFBVon:       fb.InpFact("Von", nil),
+		InputFBBis:       fb.InpFact("Bis", nil),
+		OutputFBZeitraum: fb.OutFact("Zeitraum"),
+		OutputFBKurs:     fb.OutFact("Kurs"),
 
-		OutputFBVSaldoLC:     fb.OutFact("VSaldoLC_%d"),
-		OutputFBVSaldoEUR:    fb.OutFact("VSaldoEUR_%d"),
-		OutputFBVSaldoKumLC:  fb.OutFact("VSaldoKumLC_%d"),
-		OutputFBVSaldoKumEUR: fb.OutFact("VSaldoKumEUR_%d"),
+		OutputFBVSaldoLC:     fb.OutFact("VSaldoLC"),
+		OutputFBVSaldoEUR:    fb.OutFact("VSaldoEUR"),
+		OutputFBVSaldoKumLC:  fb.OutFact("VSaldoKumLC"),
+		OutputFBVSaldoKumEUR: fb.OutFact("VSaldoKumEUR"),
 
-		OutputFBEMlLC:      fb.OutFact("EMlLC_%d"),
-		OutputFBEMEUR:      fb.OutFact("EMEUR_%d"),
-		OutputFBKumEMLC:    fb.OutFact("KumEMLC_%d"),
-		OutputFBKumEMEUR:   fb.OutFact("KumEMEUR_%d"),
-		OutputFBDMLC:       fb.OutFact("DMLC_%d"),
-		OutputFBDMEUR:      fb.OutFact("DMEUR_%d"),
-		OutputFBKumDMLC:    fb.OutFact("KumDMLC_%d"),
-		OutputFBKumDMEUR:   fb.OutFact("KumDMEUR_%d"),
-		OutputFBKMWLC:      fb.OutFact("KMWLC_%d"),
-		OutputFBKMWEUR:     fb.OutFact("KMWEUR_%d"),
-		OutputFBKumKMWLC:   fb.OutFact("KumKMWLC_%d"),
-		OutputFBKumKMWEUR:  fb.OutFact("KumKMWEUR_%d"),
-		OutputFBZinsLC:     fb.OutFact("ZinsLC_%d"),
-		OutputFBZinsEUR:    fb.OutFact("ZinsEUR_%d"),
-		OutputFBKumZinsLC:  fb.OutFact("KumZinsLC_%d"),
-		OutputFBKumZinsEUR: fb.OutFact("KumZinsEUR_%d"),
+		OutputFBEMlLC:      fb.OutFact("EMlLC"),
+		OutputFBEMEUR:      fb.OutFact("EMEUR"),
+		OutputFBKumEMLC:    fb.OutFact("KumEMLC"),
+		OutputFBKumEMEUR:   fb.OutFact("KumEMEUR"),
+		OutputFBDMLC:       fb.OutFact("DMLC"),
+		OutputFBDMEUR:      fb.OutFact("DMEUR"),
+		OutputFBKumDMLC:    fb.OutFact("KumDMLC"),
+		OutputFBKumDMEUR:   fb.OutFact("KumDMEUR"),
+		OutputFBKMWLC:      fb.OutFact("KMWLC"),
+		OutputFBKMWEUR:     fb.OutFact("KMWEUR"),
+		OutputFBKumKMWLC:   fb.OutFact("KumKMWLC"),
+		OutputFBKumKMWEUR:  fb.OutFact("KumKMWEUR"),
+		OutputFBZinsLC:     fb.OutFact("ZinsLC"),
+		OutputFBZinsEUR:    fb.OutFact("ZinsEUR"),
+		OutputFBKumZinsLC:  fb.OutFact("KumZinsLC"),
+		OutputFBKumZinsEUR: fb.OutFact("KumZinsEUR"),
 
-		OutputFBGEinnahmenLC:     fb.OutFact("GEinnahmenLC_%d"),
-		OutputFBGEinnahmenEUR:    fb.OutFact("GEinnahmenEUR_%d"),
-		OutputFBKumGEinnahmenLC:  fb.OutFact("KumGEinnahmenLC_%d"),
-		OutputFBKumGEinnahmenEUR: fb.OutFact("KumGEinnahmenEUR_%d"),
+		OutputFBGEinnahmenLC:     fb.OutFact("GEinnahmenLC"),
+		OutputFBGEinnahmenEUR:    fb.OutFact("GEinnahmenEUR"),
+		OutputFBKumGEinnahmenLC:  fb.OutFact("KumGEinnahmenLC"),
+		OutputFBKumGEinnahmenEUR: fb.OutFact("KumGEinnahmenEUR"),
 
-		OutputFBSaldoLC:  fb.OutFact("SaldoLC_%d"),
-		OutputFBSaldoEUR: fb.OutFact("SaldoEUR_%d"),
+		OutputFBSaldoLC:  fb.OutFact("SaldoLC"),
+		OutputFBSaldoEUR: fb.OutFact("SaldoEUR"),
 
-		OutputFBAusgGesamtLC:     fb.OutFact("AusgGesamtLC_%d"),
-		OutputFBAusgGesamtEUR:    fb.OutFact("AusgGesamtEUR_%d"),
-		OutputFBAusgGesamtKumLC:  fb.OutFact("AusgGesamtKumLC_%d"),
-		OutputFBAusgGesamtKumEUR: fb.OutFact("AusgGesamtKumEUR_%d"),
-		OutputFBEinnGesamtLC:     fb.OutFact("EinnGesamtLC_%d"),
-		OutputFBEinnGesamtEUR:    fb.OutFact("EinnGesamtEUR_%d"),
-		OutputFBEinnGesamtKurs:   fb.OutFact("EinnGesamtKurs_%d"),
-		OutputFBEinnWKGesamtLC:   fb.OutFact("EinnWKGesamtLC_%d"),
-		OutputFBEinnWKGesamtEUR:  fb.OutFact("EinnWKGesamtEUR_%d"),
-		OutputFBEinnWKGesamtKurs: fb.OutFact("EinnWKGesamtKurs_%d"),
+		OutputFBAusgGesamtLC:     fb.OutFact("AusgGesamtLC"),
+		OutputFBAusgGesamtEUR:    fb.OutFact("AusgGesamtEUR"),
+		OutputFBAusgGesamtKumLC:  fb.OutFact("AusgGesamtKumLC"),
+		OutputFBAusgGesamtKumEUR: fb.OutFact("AusgGesamtKumEUR"),
+		OutputFBEinnGesamtLC:     fb.OutFact("EinnGesamtLC"),
+		OutputFBEinnGesamtEUR:    fb.OutFact("EinnGesamtEUR"),
+		OutputFBEinnGesamtKurs:   fb.OutFact("EinnGesamtKurs"),
+		OutputFBEinnWKGesamtLC:   fb.OutFact("EinnWKGesamtLC"),
+		OutputFBEinnWKGesamtEUR:  fb.OutFact("EinnWKGesamtEUR"),
+		OutputFBEinnWKGesamtKurs: fb.OutFact("EinnWKGesamtKurs"),
 
-		InputFBAufschlBankLC:        fb.InpFact("aufschl_Bank_%d", nil),
-		OutputFBAufschlBankEUR:      fb.OutFact("AufschlBankEUR_%d"),
-		InputFBAufschlKasseLC:       fb.InpFact("aufschl_Kasse_%d", nil),
-		OutputFBAufschlKasseEUR:     fb.OutFact("AufschlKasseEUR_%d"),
-		InputFBAufschlSonstigesLC:   fb.InpFact("aufschl_Sonstiges_%d", nil),
-		OutputFBAufschlSonstigesEUR: fb.OutFact("AufschlSonstigesEUR_%d"),
+		InputFBAufschlBankLC:        fb.InpFact("aufschl_Bank", nil),
+		OutputFBAufschlBankEUR:      fb.OutFact("AufschlBankEUR"),
+		InputFBAufschlKasseLC:       fb.InpFact("aufschl_Kasse", nil),
+		OutputFBAufschlKasseEUR:     fb.OutFact("AufschlKasseEUR"),
+		InputFBAufschlSonstigesLC:   fb.InpFact("aufschl_Sonstiges", nil),
+		OutputFBAufschlSonstigesEUR: fb.OutFact("AufschlSonstigesEUR"),
 
-		OutputFBDifferenzLC:  fb.OutFact("DifferenzLC_%d"),
-		OutputFBDifferenzEUR: fb.OutFact("DifferenzEUR_%d"),
+		OutputFBDifferenzLC:  fb.OutFact("DifferenzLC"),
+		OutputFBDifferenzEUR: fb.OutFact("DifferenzEUR"),
 
 		// Pruefung FB
 		InputFBPruefungAuswahl:    fbPrue.Inp("Auswahl", nil),
@@ -1158,27 +1156,27 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputFBPruefungSollIstGesamtAbwEUR:  fbPrue.Out("SollIstGesamtAbwEUR"),
 
 		// MA
-		OutputMAPeriode:  ma.MAOutFact("Periode_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMAVon:       ma.MAInpFact("Von_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMABis:       ma.MAInpFact("Bis_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMAZeitraum: ma.MAOutFact("Zeitraum_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMAKurs:      ma.MAInpFact("Kurs_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAPeriode:  ma.MAOutFact("Periode", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAVon:       ma.MAInpFact("Von", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMABis:       ma.MAInpFact("Bis", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAZeitraum: ma.MAOutFact("Zeitraum", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAKurs:      ma.MAInpFact("Kurs", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
 
-		InputMAKat:     ma.MAInpKatFact("Kat_%d_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMAKatEUR: ma.MAOutKatFact("KatEUR_%d_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMASumLC:  ma.MAOutFact("SumLC_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMASumEUR: ma.MAOutFact("SumEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAKat:     ma.MAInpKatFact("Kat", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAKatEUR: ma.MAOutKatFact("KatEUR", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMASumLC:  ma.MAOutFact("SumLC", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMASumEUR: ma.MAOutFact("SumEUR", MA_PERIOD_COUNT, EV_MA_SLOTS),
 
-		InputMAEigenmittelLC:   ma.MAInpFact("EigenmittelLC_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMAEigenmittelEUR: ma.MAOutFact("EigenmittelEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMADrittmittelLC:   ma.MAInpFact("DrittmittelLC_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMADrittmittelEUR: ma.MAOutFact("DrittmittelEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMASaldoLC:        ma.MAOutFact("SaldoLC_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMASaldoEUR:       ma.MAOutFact("SaldoEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMAAnforderungLC:   ma.MAInpFact("AnforderungLC_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMAAnforderungEUR: ma.MAOutFact("AnforderungEUR_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAEigenmittelLC:   ma.MAInpFact("EigenmittelLC", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAEigenmittelEUR: ma.MAOutFact("EigenmittelEUR", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMADrittmittelLC:   ma.MAInpFact("DrittmittelLC", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMADrittmittelEUR: ma.MAOutFact("DrittmittelEUR", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMASaldoLC:        ma.MAOutFact("SaldoLC", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMASaldoEUR:       ma.MAOutFact("SaldoEUR", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAAnforderungLC:   ma.MAInpFact("AnforderungLC", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAAnforderungEUR: ma.MAOutFact("AnforderungEUR", MA_PERIOD_COUNT, EV_MA_SLOTS),
 
-		InputMAManBetragEUR: ma.MAInpFact("ManBetragEUR_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAManBetragEUR: ma.MAInpFact("ManBetragEUR", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
 
 		// Pruefung MA
 		InputMAPruefungAuswahl:       maPrue.Inp("Auswahl", nil),

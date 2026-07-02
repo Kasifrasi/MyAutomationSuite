@@ -144,7 +144,8 @@ func evalMAChooseManBetrag(sel evalSelRefs) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
-		parts[i] = Registry.InputMAManBetragEUR.Get(i + 1).NamedRange
+		p, level := maFromTableID(i + 1)
+		parts[i] = Registry.InputMAManBetragEUR.Get(p, level).NamedRange
 	}
 	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }
@@ -159,7 +160,8 @@ func evalMAChooseKurs(sel evalSelRefs) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, MA_TABLE_COUNT)
 	for i := range parts {
-		parts[i] = Registry.InputMAKurs.Get(i + 1).NamedRange
+		p, level := maFromTableID(i + 1)
+		parts[i] = Registry.InputMAKurs.Get(p, level).NamedRange
 	}
 	return fmt.Sprintf(`IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }
@@ -188,7 +190,8 @@ func evalMASelectedZeitraum(sel evalSelRefs) string {
 		EVAL_DATEN_SHEET, evalAbsCol(EV_DTN_MA_META_RANK, 1, MA_TABLE_COUNT), sel.maSelK)
 	parts := make([]string, 0, MA_TABLE_COUNT)
 	for t := 1; t <= MA_TABLE_COUNT; t++ {
-		parts = append(parts, Registry.OutputMAZeitraum.Get(t).NamedRange)
+		p, level := maFromTableID(t)
+		parts = append(parts, Registry.OutputMAZeitraum.Get(p, level).NamedRange)
 	}
 	return fmt.Sprintf(`=IFERROR(CHOOSE(%s,%s),0)`, j, strings.Join(parts, ","))
 }

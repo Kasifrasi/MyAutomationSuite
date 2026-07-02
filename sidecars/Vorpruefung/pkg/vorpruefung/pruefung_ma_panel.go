@@ -406,7 +406,7 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	_ = g.file.SetColVisible(ws, colLetter(EV_HELP_COL), false)
 
 	// mirror liefert eine CHOOSE-Formel über alle 18 MA-Tabellen, gewählt per j.
-	// Nur noch für Zellen ohne benannten Bereich (Gesamtbedarf-Zeile, Saldo-Label).
+	// Nur noch für Zellen ohne benannten Bereich (Saldo-Label).
 	mirror := func(colOffset, srcRow int) string {
 		parts := make([]string, 0, MA_TABLE_COUNT)
 		for t := 1; t <= MA_TABLE_COUNT; t++ {
@@ -554,11 +554,6 @@ func (g *Generator) evalDrawMAMirrorPanel(ws string, top int, sel evalSelRefs) {
 	}), `#,##0.00" €"`, MAClrGray)
 	r += 2 // Leerzeile
 
-	// Gesamtbedarf-Zeile trägt keinen benannten Bereich (positionsbasiert gespiegelt).
-	labCell("Gesamtbedarf an Mitteln:", false, "FFFFFF")
-	valCell(pLC, mirror(1, 20), "#,##0.00", "FFFFFF")
-	valCell(pEUR, mirror(2, 20), `#,##0.00" €"`, "FFFFFF")
-	r++
 	labCell("abzüglich Eigenmittel:", false, "FFFFFF")
 	valCell(pLC, mirrorInpMA(func(t int) InputField {
 		p := ((t - 1) % MA_PERIOD_COUNT) + 1

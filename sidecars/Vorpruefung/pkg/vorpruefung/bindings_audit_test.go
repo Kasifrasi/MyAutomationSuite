@@ -56,7 +56,7 @@ func TestAuditBindings(t *testing.T) {
 		case OutputField:
 			check(field, fv.NamedRange)
 		case InputFactory:
-			if fv.Format == "" {
+			if fv.Base == "" {
 				uninit = append(uninit, field)
 				continue
 			}
@@ -64,7 +64,7 @@ func TestAuditBindings(t *testing.T) {
 				check(field, fv.Get(p).NamedRange)
 			}
 		case OutputFactory:
-			if fv.Format == "" {
+			if fv.Base == "" {
 				uninit = append(uninit, field)
 				continue
 			}
@@ -72,7 +72,7 @@ func TestAuditBindings(t *testing.T) {
 				check(field, fv.Get(p).NamedRange)
 			}
 		case MAInputFactory:
-			if fv.Format == "" {
+			if fv.Base == "" {
 				uninit = append(uninit, field)
 				continue
 			}
@@ -82,7 +82,7 @@ func TestAuditBindings(t *testing.T) {
 				check(field, fv.Get(p, lvl).NamedRange)
 			}
 		case MAOutputFactory:
-			if fv.Format == "" {
+			if fv.Base == "" {
 				uninit = append(uninit, field)
 				continue
 			}
@@ -92,7 +92,7 @@ func TestAuditBindings(t *testing.T) {
 				check(field, fv.Get(p, lvl).NamedRange)
 			}
 		case MAInputKatFactory:
-			if fv.Format == "" {
+			if fv.Base == "" {
 				uninit = append(uninit, field)
 				continue
 			}
@@ -104,7 +104,7 @@ func TestAuditBindings(t *testing.T) {
 				}
 			}
 		case MAOutputKatFactory:
-			if fv.Format == "" {
+			if fv.Base == "" {
 				uninit = append(uninit, field)
 				continue
 			}

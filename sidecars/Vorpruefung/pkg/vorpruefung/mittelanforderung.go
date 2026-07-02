@@ -67,9 +67,8 @@ var MA_CATEGORIES = ListKostenkategorien
   |        9        | Kostenkategorie         | Angefordert (LC)     | Angefordert (EUR)    |
   |    10..17       | <Kategorie>             | [Inp Kat LC]         | [= LC/Kurs]          |
   |       18        | SUMME                   | [Σ LC]               | [Σ EUR]              |
-  |       20        | Gesamtbedarf an Mitteln:| [= SUMME]            | [= SUMME]            |
-  |       21        | abzueglich Eigenmittel: | [Inp LC]             | [= LC/Kurs]          |
-  |       22        | abzueglich Drittmittel: | [Inp LC]             | [= LC/Kurs]          |
+  |       20        | abzueglich Eigenmittel: | [Inp LC]             | [= LC/Kurs]          |
+  |       21        | abzueglich Drittmittel: | [Inp LC]             | [= LC/Kurs]          |
   |       23        | abzueglich Saldo …:     | [= FB/Saldovortrag]  | [= LC/Kurs]          |
   |       25        | Anforderung:            | [= Bedarf-Abzüge]    | [= Bedarf-Abzüge]    |
   |       27        | Manueller Betrag (EUR): | (merged Label)       | [Inp EUR]            |
@@ -99,7 +98,6 @@ type maLayout struct {
 	rowDataStart int
 	rowDataEnd   int
 	rowSum       int
-	rowGesamt    int
 	rowEigen     int
 	rowDritt     int
 	rowSaldo     int
@@ -109,11 +107,18 @@ type maLayout struct {
 	dataRows int
 }
 
-// maTableID berechnet die fortlaufende Tabellen-Nummer aus Periode und Block.
-// Identisch zur Registry-Formel (calculateTableID), damit die Named Ranges der
-// Registry (Von_%d … über tableID) exakt getroffen werden.
+// maTableID berechnet die fortlaufende Tabellen-Nummer aus Periode und Level.
 func maTableID(periode, level int) int {
 	return (periode - 1) + (level-1)*MA_PERIOD_COUNT + 1
+}
+
+// maFromTableID ist die Umkehrung von maTableID: aus einer fortlaufenden
+// Tabellen-Nummer (1..MA_TABLE_COUNT) werden Periode und Level rekonstruiert.
+// Wird gebraucht, wo über den flachen Tabellenindex iteriert wird, die Named
+// Ranges der Registry aber (Periode, Level)-indiziert sind.
+func maFromTableID(tableID int) (periode, level int) {
+	idx := tableID - 1
+	return (idx % MA_PERIOD_COUNT) + 1, (idx / MA_PERIOD_COUNT) + 1
 }
 
 // maComputeLayout leitet alle absoluten Zeilen/Spalten einer Tabelle ab.
@@ -139,13 +144,12 @@ func maComputeLayout(colS, startR, periode, level int) maLayout {
 		dataRows: n,
 	}
 	l.rowDataEnd = l.rowDataStart + n - 1
-	l.rowSum = l.rowDataEnd + 1  // Block 1: Zeile 18
-	l.rowGesamt = l.rowSum + 2   // Block 1: Zeile 20 (1 Leerzeile darüber)
-	l.rowEigen = l.rowGesamt + 1 // Block 1: Zeile 21
-	l.rowDritt = l.rowGesamt + 2 // Block 1: Zeile 22
-	l.rowSaldo = l.rowGesamt + 3 // Block 1: Zeile 23
-	l.rowAnf = l.rowSaldo + 2    // Block 1: Zeile 25 (1 Leerzeile darüber)
-	l.rowManuell = l.rowAnf + 2  // Block 1: Zeile 27 (1 Leerzeile darüber)
+	l.rowSum = l.rowDataEnd + 1 // Block 1: Zeile 18
+	l.rowEigen = l.rowSum + 2   // Block 1: Zeile 20 (1 Leerzeile darüber)
+	l.rowDritt = l.rowSum + 3   // Block 1: Zeile 21
+	l.rowSaldo = l.rowSum + 4   // Block 1: Zeile 22
+	l.rowAnf = l.rowSaldo + 2   // Block 1: Zeile 24 (1 Leerzeile darüber)
+	l.rowManuell = l.rowAnf + 2 // Block 1: Zeile 26 (1 Leerzeile darüber)
 	return l
 }
 
@@ -252,11 +256,6 @@ func (g *Generator) drawMATable(ws string, l maLayout) {
 	_ = g.setStyle(ws, cellName(l.colLC, l.rowSum), cellName(l.colLC, l.rowSum), MATotalLCStyle)
 	_ = g.setStyle(ws, cellName(l.colEUR, l.rowSum), cellName(l.colEUR, l.rowSum), MATotalEURStyle)
 
-	// Gesamtbedarf an Mitteln
-	_ = g.setValue(ws, cellName(l.colLbl, l.rowGesamt), "Gesamtbedarf an Mitteln:", StyleOptions{VAlign: "center"})
-	_ = g.setStyle(ws, cellName(l.colLC, l.rowGesamt), cellName(l.colLC, l.rowGesamt), MAGesamtLCStyle)
-	_ = g.setStyle(ws, cellName(l.colEUR, l.rowGesamt), cellName(l.colEUR, l.rowGesamt), MAGesamtEURStyle)
-
 	// abzueglich Eigenmittel / Drittmittel
 	_ = g.setValue(ws, cellName(l.colLbl, l.rowEigen), "abzueglich Eigenmittel:", StyleOptions{VAlign: "center"})
 	_ = g.setStyle(ws, cellName(l.colLC, l.rowEigen), cellName(l.colLC, l.rowEigen), MAAbzugInputStyle)
@@ -332,10 +331,6 @@ func (g *Generator) bindMATable(ws string, reg *TemplateRegistry, l maLayout, fb
 	bindOut(reg.OutputMASumLC.Get(l.periode, l.level).NamedRange, l.colLC, l.rowSum)
 	bindOut(reg.OutputMASumEUR.Get(l.periode, l.level).NamedRange, l.colEUR, l.rowSum)
 
-	// Gesamtbedarf an Mitteln = SUMME (über die benannten SUMME-Bereiche)
-	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowGesamt), fmt.Sprintf(`=ROUND(%s,2)`, reg.OutputMASumLC.Get(l.periode, l.level).NamedRange))
-	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowGesamt), fmt.Sprintf(`=ROUND(%s,2)`, reg.OutputMASumEUR.Get(l.periode, l.level).NamedRange))
-
 	// abzueglich Eigenmittel: LC = Input, EUR = LC/Kurs (Output)
 	_ = g.bindInputField(ws, l.rowEigen, l.colLC, reg.InputMAEigenmittelLC.Get(l.periode, l.level))
 	g.file.SetCellFormula(ws, cellName(l.colEUR, l.rowEigen),
@@ -355,7 +350,7 @@ func (g *Generator) bindMATable(ws string, reg *TemplateRegistry, l maLayout, fb
 	bindOut(reg.OutputMASaldoLC.Get(l.periode, l.level).NamedRange, l.colLC, l.rowSaldo)
 	bindOut(reg.OutputMASaldoEUR.Get(l.periode, l.level).NamedRange, l.colEUR, l.rowSaldo)
 
-	// Anforderung = Gesamtbedarf - Eigenmittel - Drittmittel - Saldo.
+	// Anforderung = SUMME - Eigenmittel - Drittmittel - Saldo.
 	// Da der Saldo positiv "als Bestand" zu interpretieren ist, wird er wie Eigen-/Drittmittel abgezogen.
 	g.file.SetCellFormula(ws, cellName(l.colLC, l.rowAnf), fmt.Sprintf(
 		`=IFERROR(ROUND(%s-%s-%s-%s,2),0)`,
