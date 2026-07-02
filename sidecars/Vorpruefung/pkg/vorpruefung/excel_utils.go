@@ -560,7 +560,9 @@ func (g *Generator) applyColumnValidation(sheet, sqref string, col TableColumn) 
 	}
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = sqref
-	dv.SetDropList(col.Validation)
+	if err := dv.SetDropList(col.Validation); err != nil {
+		return fmt.Errorf("fehler beim Setzen der DropList (evtl. > 255 Zeichen): %w", err)
+	}
 	return g.file.AddDataValidation(sheet, dv)
 }
 

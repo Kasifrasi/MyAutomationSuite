@@ -480,7 +480,7 @@ func (g *Generator) dashSetupColumns(ws string) {
 func (g *Generator) dashCurrencyValidation(sheet string, row, col int) error {
 	dv := excelize.NewDataValidation(true)
 	dv.Sqref = cellName(col, row)
-	dv.SetDropList(ListWaehrung)
+	dv.SetSqrefDropList("Waehrungen_Liste")
 	return g.file.AddDataValidation(sheet, dv)
 }
 

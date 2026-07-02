@@ -24,6 +24,13 @@ func (g *Generator) CreateDatenSheet() error {
 		_ = f.SetCellValue(ws, fmt.Sprintf("A%d", i), fmt.Sprintf("Periode %d", i))
 	}
 
+	// 1b. Währungs-Liste für Dropdowns generieren (Spalte B)
+	for i, w := range ListWaehrung {
+		_ = f.SetCellValue(ws, fmt.Sprintf("B%d", i+1), w)
+	}
+	// Definiere einen benannten Bereich für die Währungen
+	g.upsertNamedFormula("Waehrungen_Liste", fmt.Sprintf("'%s'!$B$1:$B$%d", ws, len(ListWaehrung)))
+
 	// 2. VSTACKs der Tabellen
 
 	// Einnahmen 1 (Explizit) - Spalte C

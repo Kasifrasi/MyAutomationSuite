@@ -29,6 +29,7 @@ var (
 		"VND", "VUV", "WST", "XAF", "XCD", "XCG", "XOF", "XPF", "YER", "ZAR", "ZMW",
 		"ZWG",
 	}
+	ListWaehrungKMW      ValidationList = []string{"EUR", "USD"}
 	ListMonate           ValidationList = []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"}
 	ListKostenkategorien ValidationList = []string{"Bauausgaben", "Investitionen", "Personalkosten", "Projektaktivitaeten", "Projektverwaltung", "Evaluierung", "Audit", "Reserve"}
 )
@@ -856,7 +857,7 @@ func NewTemplateRegistry() *TemplateRegistry {
 						colLetter(KMWColValList), colLetter(KMWColValList), KMWPeriodenAnzahl),
 					Note: "Hilfsliste Periode 1..36 (Spalte Z, ausgeblendet)",
 				}},
-				{Header: "Waehrung", Validation: ListWaehrung},
+				{Header: "Waehrung", Validation: ListWaehrungKMW},
 				{Header: "Betrag", Format: "#,##0.00"},
 				{Header: "Datum"},
 			},
@@ -1159,11 +1160,11 @@ func NewTemplateRegistry() *TemplateRegistry {
 		OutputFBPruefungSollIstGesamtAbwEUR:  fbPrue.Out("SollIstGesamtAbwEUR"),
 
 		// MA
-		OutputMAPeriode:  ma.MAOutFact("Periode_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMAVon:       ma.MAInpFact("Von_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMABis:       ma.MAInpFact("Bis_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
-		OutputMAZeitraum: ma.MAOutFact("Zeitraum_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
-		InputMAKurs:      ma.MAInpFact("Kurs_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAPeriode:  ma.MAOutFact("Periode_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAVon:       ma.MAInpFact("Von_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMABis:       ma.MAInpFact("Bis_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
+		OutputMAZeitraum: ma.MAOutFact("Zeitraum_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
+		InputMAKurs:      ma.MAInpFact("Kurs_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
 
 		InputMAKat:     ma.MAInpKatFact("Kat_%d_%d_%d", nil, MA_PERIOD_COUNT, EV_MA_SLOTS),
 		OutputMAKatEUR: ma.MAOutKatFact("KatEUR_%d_%d_%d", MA_PERIOD_COUNT, EV_MA_SLOTS),
